@@ -1,0 +1,17 @@
+{
+  "extends": "idiomatic",
+  "parserOptions": {
+      "ecmaVersion": 6,
+      "sourceType": "module",
+      "ecmaFeatures": {
+          "jsx": true
+      }
+  },
+  "rules": {
+      "semi": 2,
+      "quotes": ["error", "double"],
+      "indent": ["error", "tab"],
+      "one-var": ["error", "consecutive"],
+      "func-names": ["error", "never"]
+  }
+}
