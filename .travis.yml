@@ -1,5 +1,8 @@
 language: node_js
 node_js:
-  - "9.9.0"
+  - "node"
 services:
   - mongodb
+script:
+  - node src/index.js &
+  - npm test
