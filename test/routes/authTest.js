@@ -68,3 +68,71 @@ describe( "auth/signup", function() {
 			});
 	});
 });
+
+
+describe( "auth/signin", function() {
+
+	it( "should return 200", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/auth/signin" )
+			.send({
+				credentials: {
+					email: "test@gmail.com",
+					password: "test"
+				}
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 200 );
+				res.text.should.be.a( "string" );
+				done();
+			});
+	});
+
+	it( "should return 422 for blank credentials", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/auth/signin" )
+			.send({
+				credentials: {
+					email: "test@gmail.com",
+					password: ""
+				}
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Empty credentials" );
+				done();
+			});
+	});
+
+	it( "should return 404 for invalid email", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/auth/signin" )
+			.send({
+				credentials: {
+					email: "nonexisting@gmail.com",
+					password: "test"
+				}
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 404 );
+				res.text.should.equal( "Email is not registered" );
+				done();
+			});
+	});
+
+	it( "should return 401 for invalid password", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/auth/signin" )
+			.send({
+				credentials: {
+					email: "test@gmail.com",
+					password: "invalid"
+				}
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				res.text.should.equal( "Invalid password" );
+				done();
+			});
+	});
+});
