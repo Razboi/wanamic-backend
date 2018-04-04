@@ -70,11 +70,11 @@ describe( "auth/signup", function() {
 });
 
 
-describe( "auth/signin", function() {
+describe( "auth/login", function() {
 
 	it( "should return 200", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/auth/signin" )
+			.post( "/auth/login" )
 			.send({
 				credentials: {
 					email: "test@gmail.com",
@@ -90,7 +90,7 @@ describe( "auth/signin", function() {
 
 	it( "should return 422 for blank credentials", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/auth/signin" )
+			.post( "/auth/login" )
 			.send({
 				credentials: {
 					email: "test@gmail.com",
@@ -106,7 +106,7 @@ describe( "auth/signin", function() {
 
 	it( "should return 404 for invalid email", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/auth/signin" )
+			.post( "/auth/login" )
 			.send({
 				credentials: {
 					email: "nonexisting@gmail.com",
@@ -122,7 +122,7 @@ describe( "auth/signin", function() {
 
 	it( "should return 401 for invalid password", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/auth/signin" )
+			.post( "/auth/login" )
 			.send({
 				credentials: {
 					email: "test@gmail.com",
