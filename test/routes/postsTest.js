@@ -195,9 +195,10 @@ describe( "PATCH posts/update", function() {
 							invalidToken = res.text;
 							done();
 						});
+				} else {
+					invalidToken = tokenGenerator( user );
+					done();
 				}
-				invalidToken = tokenGenerator( user );
-				done();
 			}).catch( err => console.log( err ));
 	});
 
