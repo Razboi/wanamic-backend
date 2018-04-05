@@ -178,10 +178,24 @@ describe( "PATCH posts/update", function() {
 			});
 	});
 
-	// before testing get the invalid token
+	// before testing get the invalid userToken. If the user doesn't exists create it
 	before( function( done ) {
 		User.findOne({ email: "test2@gmail.com" })
 			.then( user => {
+				if ( !user ) {
+					chai.request( "localhost:8000" )
+						.post( "/auth/signup" )
+						.send({
+							credentials: {
+								email: "test2@gmail.com",
+								password: "test"
+							}
+						})
+						.end(( err, res ) => {
+							invalidToken = res.text;
+							done();
+						});
+				}
 				invalidToken = tokenGenerator( user );
 				done();
 			}).catch( err => console.log( err ));
