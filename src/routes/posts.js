@@ -84,4 +84,44 @@ Router.delete( "/delete", ( req, res, next ) => {
 });
 
 
+Router.patch( "/update", ( req, res, next ) => {
+	var
+		updatedPost,
+		token,
+		userId,
+		err;
+
+	if ( !req.body.data || !req.body.data.post || !req.body.data.token
+		|| !req.body.data.post.id || !req.body.data.post.content ) {
+		err = new Error( "Empty data" );
+		err.statusCode = 422;
+		return next( err );
+	}
+
+	updatedPost = req.body.data.post;
+	token = req.body.data.token;
+
+	try {
+		// get userId from token
+		userId = jwt.verify( token, process.env.SECRET_JWT );
+	} catch ( err ) {
+		err.statusCode = 401;
+		return next( err );
+	}
+
+	Post.findById( updatedPost.id )
+		.then( storedPost => {
+			if ( userId !== storedPost.authorId ) {
+				err = new Error( "Requester isn't the author" );
+				err.statusCode = 401;
+				return next( err );
+			}
+			if ( updatedPost.content ) {
+				storedPost.content = updatedPost.content;
+			};
+			storedPost.save().then(() => res.sendStatus( 200 ));
+		}).catch( err => next( err ));
+});
+
+
 module.exports = Router;
