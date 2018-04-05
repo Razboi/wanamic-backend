@@ -64,5 +64,24 @@ Router.get( "/:username", ( req, res, next ) => {
 		.catch( err => next( err ));
 });
 
+Router.delete( "/delete", ( req, res, next ) => {
+	var
+		post,
+		err;
+
+	if ( !req.body.post || !req.body.post.id ) {
+		err = new Error( "Empty post data" );
+		err.statusCode = 422;
+		return next( err );
+	}
+
+	post = req.body.post;
+
+	Post.remove({ _id: post.id })
+		.then(() => {
+			res.sendStatus( 200 );
+		}).catch( err => next( err ));
+});
+
 
 module.exports = Router;

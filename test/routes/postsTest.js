@@ -6,20 +6,25 @@ const
 	mongoose = require( "mongoose" ),
 	dotenv = require( "dotenv" ),
 	tokenGenerator = require( "../../src/utils/tokenGenerator" ),
+	Post = require( "../../src/models/Post" ),
 	User = require( "../../src/models/User" );
 
 dotenv.config();
 chai.use( chaiHttp );
 
 
-describe( "posts/create", function() {
+describe( "POST posts/create", function() {
 	var token;
+	// before running tests delete the old post tests and create a token
 	before( function( done ) {
 		mongoose.connect( process.env.MONGODB_URL );
-		User.findOne({ email: "test@gmail.com" })
-			.then( user => {
-				token = tokenGenerator( user );
-				done();
+		Post.remove({ authorUsername: "test@gmail.com" })
+			.then(() => {
+				User.findOne({ email: "test@gmail.com" })
+					.then( user => {
+						token = tokenGenerator( user );
+						done();
+					}).catch( err => console.log( err ));
 			}).catch( err => console.log( err ));
 	});
 
@@ -55,6 +60,64 @@ describe( "posts/create", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
+				done();
+			});
+	});
+});
+
+
+describe( "GET posts/:username", function() {
+	it( "should get a post", function( done ) {
+		chai.request( "localhost:8000" )
+			.get( "/posts/test@gmail.com" )
+			.end(( err, res ) => {
+				res.should.have.status( 200 );
+				done();
+			});
+	});
+
+	it( "should return 404 User doesn't exist", function( done ) {
+		chai.request( "localhost:8000" )
+			.get( "/posts/" )
+			.end(( err, res ) => {
+				res.should.have.status( 404 );
+				done();
+			});
+	});
+});
+
+
+describe( "DELETE posts/delete", function() {
+	var postId;
+
+	before( function( done ) {
+		Post.findOne({ authorUsername: "test@gmail.com" })
+			.then( post => {
+				postId = post.id;
+				done();
+			}).catch( err => console.log( err ));
+	});
+
+	it( "should return 200", function( done ) {
+		chai.request( "localhost:8000" )
+			.delete( "/posts/delete" )
+			.send({
+				post: { id: postId }
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 200 );
+				done();
+			});
+	});
+
+	it( "should return 422 Empty post data", function( done ) {
+		chai.request( "localhost:8000" )
+			.delete( "/posts/delete" )
+			.send({
+				post: {}
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
 				done();
 			});
 	});
