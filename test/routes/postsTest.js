@@ -122,3 +122,84 @@ describe( "DELETE posts/delete", function() {
 			});
 	});
 });
+
+
+describe( "PATCH posts/update", function() {
+	var
+		token,
+		invalidToken,
+		postId;
+
+	// before updating a post we need to create the post and get the user token and postId
+	before( function( done ) {
+		User.findOne({ email: "test@gmail.com" })
+			.then( user => {
+				token = tokenGenerator( user );
+				new Post({
+					authorId: user.id,
+					authorUsername: user.email,
+					content: "update test"
+				}).save()
+					.then( post => {
+						postId = post.id;
+						done();
+					}).catch( err => console.log( err ));
+			}).catch( err => console.log( err ));
+	});
+
+	it( "should return 200 and update the post", function( done ) {
+		chai.request( "localhost:8000" )
+			.patch( "/posts/update" )
+			.send({
+				data: {
+					token: token,
+					post: { id: postId, content: "Updated content :)" }
+				}
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 200 );
+				done();
+			});
+	});
+
+	it( "should return 422 Empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.patch( "/posts/update" )
+			.send({
+				data: {
+					token: token,
+					post: {}
+				}
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Empty data" );
+				done();
+			});
+	});
+
+	// before testing get the invalid token
+	before( function( done ) {
+		User.findOne({ email: "test2@gmail.com" })
+			.then( user => {
+				invalidToken = tokenGenerator( user );
+				done();
+			}).catch( err => console.log( err ));
+	});
+
+	it( "should return 401 malformed jwt", function( done ) {
+		chai.request( "localhost:8000" )
+			.patch( "/posts/update" )
+			.send({
+				data: {
+					token: invalidToken,
+					post: { id: postId, content: "Should not update" }
+				}
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				res.text.should.equal( "Requester isn't the author" );
+				done();
+			});
+	});
+});
