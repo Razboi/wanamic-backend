@@ -11,14 +11,13 @@ const
 
 dotenv.config();
 chai.use( chaiHttp );
-
+mongoose.connect( process.env.MONGODB_URL );
 
 describe( "POST posts/create", function() {
 	var token;
 	// before running tests delete the old post tests and create a token
 	before( function( done ) {
-		mongoose.connect( process.env.MONGODB_URL );
-		Post.remove({ authorUsername: "test@gmail.com" })
+		Post.remove({ author: "test@gmail.com" })
 			.then(() => {
 				User.findOne({ email: "test@gmail.com" })
 					.then( user => {
@@ -88,13 +87,19 @@ describe( "GET posts/:username/:skip", function() {
 
 
 describe( "DELETE posts/delete", function() {
-	var postId;
+	var
+		token,
+		postId;
 
 	before( function( done ) {
-		Post.findOne({ authorUsername: "test@gmail.com" })
-			.then( post => {
-				postId = post.id;
-				done();
+		User.findOne({ email: "test@gmail.com" })
+			.then( user => {
+				token = tokenGenerator( user );
+				Post.findOne({ author: "test@gmail.com" })
+					.then( post => {
+						postId = post.id;
+						done();
+					}).catch( err => console.log( err ));
 			}).catch( err => console.log( err ));
 	});
 
@@ -102,7 +107,7 @@ describe( "DELETE posts/delete", function() {
 		chai.request( "localhost:8000" )
 			.delete( "/posts/delete" )
 			.send({
-				post: { id: postId }
+				post: { id: postId, token: token }
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 200 );
@@ -136,8 +141,7 @@ describe( "PATCH posts/update", function() {
 			.then( user => {
 				token = tokenGenerator( user );
 				new Post({
-					authorId: user.id,
-					authorUsername: user.email,
+					author: user.email,
 					content: "update test"
 				}).save()
 					.then( post => {
@@ -216,5 +220,12 @@ describe( "PATCH posts/update", function() {
 				res.text.should.equal( "Requester isn't the author" );
 				done();
 			});
+	});
+
+	after( function( done ) {
+		Post.remove({ _id: postId })
+			.exec()
+			.then(() => done())
+			.catch( err => console.log( err ));
 	});
 });

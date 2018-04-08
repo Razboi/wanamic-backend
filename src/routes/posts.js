@@ -26,22 +26,22 @@ Router.post( "/create", ( req, res, next ) => {
 		return next( err );
 	}
 
+
 	User.findById( userId )
+		.exec()
 		.then( user => {
 			if ( !user ) {
 				err = new Error( "User doesn't exist" );
 				err.statusCode = 404;
 				return next( err );
 			}
-			// TODO: change user.email to user.username
-			username = user.email;
-
 			new Post({
-				authorId: userId,
-				authorUsername: username,
+				author: user.email,
 				content: data.content
 			}).save()
-				.then(() => {
+				.then( post => {
+					user.posts.push( post._id );
+					user.save();
 					res.sendStatus( 201 );
 				})
 				.catch( err => next( err ));
@@ -59,11 +59,17 @@ Router.get( "/:username/:skip", ( req, res, next ) => {
 		return next( err );
 	}
 
-	Post.find({ authorUsername: req.params.username })
-		.sort({ createdAt: -1 })
-		.limit( 10 )
-		.skip( req.params.skip * 10 )
-		.then( posts => res.send( posts ))
+	User.findOne({ email: req.params.username })
+		.populate({
+			path: "posts",
+			options: {
+				limit: 10,
+				skip: req.params.skip * 10,
+				sort: { createdAt: -1 }
+			}
+		})
+		.exec()
+		.then( user => res.send( user.posts ))
 		.catch( err => next( err ));
 });
 
@@ -80,9 +86,42 @@ Router.delete( "/delete", ( req, res, next ) => {
 
 	post = req.body.post;
 
-	Post.remove({ _id: post.id })
-		.then(() => {
-			res.sendStatus( 200 );
+	try {
+		// get userId from token
+		userId = jwt.verify( post.token, process.env.SECRET_JWT );
+	} catch ( err ) {
+		err.statusCode = 401;
+		return next( err );
+	}
+
+	// find the requester and the post, if the requester isn't the author of the post
+	// throw an error, else update
+	User.findById( userId )
+		.exec()
+		.then( user => {
+
+			Post.findById( post.id )
+				.exec()
+				.then( storedPost => {
+
+					if ( user.email !== storedPost.author ) {
+						err = new Error( "Requester isn't the author" );
+						err.statusCode = 401;
+						return next( err );
+					}
+
+					Post.remove({ _id: post.id })
+						.exec()
+						.then(() => {
+							// remove the post from user posts (find index and remove with splice)
+							const index = user.posts.indexOf( storedPost._id );
+							user.posts.splice( index, 1 );
+							user.save()
+								.then(() => res.sendStatus( 200 ))
+								.catch( err => next( err ));
+						}).catch( err => next( err ));
+
+				}).catch( err => next( err ));
 		}).catch( err => next( err ));
 });
 
@@ -112,17 +151,27 @@ Router.patch( "/update", ( req, res, next ) => {
 		return next( err );
 	}
 
-	Post.findById( updatedPost.id )
-		.then( storedPost => {
-			if ( userId !== storedPost.authorId ) {
-				err = new Error( "Requester isn't the author" );
-				err.statusCode = 401;
-				return next( err );
-			}
-			if ( updatedPost.content ) {
-				storedPost.content = updatedPost.content;
-			};
-			storedPost.save().then(() => res.sendStatus( 200 ));
+	// find the requester and the post, if the requester isn't the author of the post
+	// throw an error, else update
+	User.findById( userId )
+		.exec()
+		.then( user => {
+
+			Post.findById( updatedPost.id )
+				.exec()
+				.then( storedPost => {
+
+					if ( user.email !== storedPost.author ) {
+						err = new Error( "Requester isn't the author" );
+						err.statusCode = 401;
+						return next( err );
+					}
+					if ( updatedPost.content ) {
+						storedPost.content = updatedPost.content;
+					};
+					storedPost.save().then(() => res.sendStatus( 200 ));
+
+				}).catch( err => next( err ));
 		}).catch( err => next( err ));
 });
 
