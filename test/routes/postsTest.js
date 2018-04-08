@@ -66,10 +66,10 @@ describe( "POST posts/create", function() {
 });
 
 
-describe( "GET posts/:username", function() {
+describe( "GET posts/:username/:skip", function() {
 	it( "should get a post", function( done ) {
 		chai.request( "localhost:8000" )
-			.get( "/posts/test@gmail.com" )
+			.get( "/posts/test@gmail.com/0" )
 			.end(( err, res ) => {
 				res.should.have.status( 200 );
 				done();
