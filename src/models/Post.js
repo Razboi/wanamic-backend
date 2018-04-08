@@ -1,9 +1,9 @@
 const
 	mongoose = require( "mongoose" ),
+	Schema = mongoose.Schema,
 
 	PostSchema = mongoose.Schema({
-		authorId: { type: String, required: true },
-		authorUsername: { type: String, required: true },
+		author: { type: String, required: true },
 		content: { type: String, required: true },
 	}, { timestamps: true }),
 
