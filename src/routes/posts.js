@@ -49,17 +49,20 @@ Router.post( "/create", ( req, res, next ) => {
 });
 
 
-Router.get( "/:username", ( req, res, next ) => {
+Router.get( "/:username/:skip", ( req, res, next ) => {
 	var
 		err;
 
-	if ( !req.params.username ) {
+	if ( !req.params.username || !req.params.skip ) {
 		err = new Error( "User doesn't exist" );
 		err.statusCode = 404;
 		return next( err );
 	}
 
 	Post.find({ authorUsername: req.params.username })
+		.sort({ createdAt: -1 })
+		.limit( 10 )
+		.skip( req.params.skip * 10 )
 		.then( posts => res.send( posts ))
 		.catch( err => next( err ));
 });
