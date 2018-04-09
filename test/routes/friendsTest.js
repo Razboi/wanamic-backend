@@ -6,7 +6,6 @@ const
 	mongoose = require( "mongoose" ),
 	dotenv = require( "dotenv" ),
 	tokenGenerator = require( "../../src/utils/tokenGenerator" ),
-	Post = require( "../../src/models/Post" ),
 	User = require( "../../src/models/User" );
 
 dotenv.config();
