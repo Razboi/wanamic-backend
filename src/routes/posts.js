@@ -138,7 +138,7 @@ Router.delete( "/delete", ( req, res, next ) => {
 				.exec()
 				.then( storedPost => {
 
-					if ( user.email !== storedPost.author ) {
+					if ( user.id !== storedPost.author ) {
 						err = new Error( "Requester isn't the author" );
 						err.statusCode = 401;
 						return next( err );
@@ -203,7 +203,7 @@ Router.patch( "/update", ( req, res, next ) => {
 				.exec()
 				.then( storedPost => {
 
-					if ( user.email !== storedPost.author ) {
+					if ( user.id !== storedPost.author ) {
 						err = new Error( "Requester isn't the author" );
 						err.statusCode = 401;
 						return next( err );

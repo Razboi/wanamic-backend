@@ -48,7 +48,7 @@ Router.delete( "/delete", ( req, res, next ) => {
 	User.findById( userId )
 		.exec()
 		.then( user => {
-			User.find({ username: req.body.friendUsername })
+			User.find({ email: req.body.friendUsername })
 				.exec()
 				.then( friend => {
 					const friendIndex = user.friends.indexOf( friend._id );
