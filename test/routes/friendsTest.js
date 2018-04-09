@@ -5,6 +5,7 @@ const
 	request = require( "request" ),
 	mongoose = require( "mongoose" ),
 	dotenv = require( "dotenv" ),
+	bcrypt = require( "bcrypt" ),
 	tokenGenerator = require( "../../src/utils/tokenGenerator" ),
 	User = require( "../../src/models/User" );
 
@@ -18,13 +19,19 @@ describe( "POST friends/add", function() {
 	var token;
 
 	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				token = tokenGenerator( user );
-				done();
-			})
-			.catch( err => console.log( err ));
+		new User({
+			email: "test2@gmail.com",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		})
+			.save()
+			.then(() => {
+				User.findOne({ email: "test@gmail.com" })
+					.exec()
+					.then( user => {
+						token = tokenGenerator( user );
+						done();
+					}).catch( err => done( err ));
+			}).catch( err => done( err ));
 	});
 
 	it( "adds a new friend, should return 201", function( done ) {
@@ -121,5 +128,11 @@ describe( "DELETE friends/delete", function() {
 				res.text.should.equal( "jwt malformed" );
 				done();
 			});
+	});
+
+	after( function( done ) {
+		User.remove({ email: "test2@gmail.com" })
+			.then(() => done())
+			.catch( err => done( err ));
 	});
 });
