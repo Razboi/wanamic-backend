@@ -4,6 +4,7 @@ const
 	mongoose = require( "mongoose" ),
 	dotenv = require( "dotenv" ),
 	posts = require( "./routes/posts" ),
+	friends = require( "./routes/friends" ),
 	auth = require( "./routes/auth" );
 
 // apply env variables
@@ -14,6 +15,7 @@ mongoose.connect( process.env.MONGODB_URL, () => console.log( "MongoDB connected
 app.use( bodyParser.json());
 app.use( "/auth", auth );
 app.use( "/posts", posts );
+app.use( "/friends", friends );
 
 // error middleware
 app.use(( err, req, res, next ) => {
