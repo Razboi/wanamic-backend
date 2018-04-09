@@ -1,9 +1,11 @@
 const
 	Router = require( "express" ).Router(),
 	User = require( "../models/User" ),
-	jwt = require( "jsonwebtoken" ),
+	tokenVerifier = require( "../utils/tokenVerifier" ),
 	Post = require( "../models/Post" );
 
+
+// POST
 Router.post( "/create", ( req, res, next ) => {
 	var
 		err,
@@ -19,13 +21,7 @@ Router.post( "/create", ( req, res, next ) => {
 
 	data = req.body.post;
 
-	try {
-		userId = jwt.verify( data.token, process.env.SECRET_JWT );
-	} catch ( err ) {
-		err.statusCode = 401;
-		return next( err );
-	}
-
+	userId = tokenVerifier( data.token, next );
 
 	User.findById( userId )
 		.exec()
@@ -41,6 +37,7 @@ Router.post( "/create", ( req, res, next ) => {
 			}).save()
 				.then( post => {
 					user.posts.push( post._id );
+					user.newsfeed.push( post._id );
 					user.save();
 					res.sendStatus( 201 );
 				})
@@ -48,7 +45,38 @@ Router.post( "/create", ( req, res, next ) => {
 		}).catch( err => next( err ));
 });
 
+Router.post( "/newsfeed/:skip", ( req, res, next ) => {
+	var
+		err,
+		userId,
+		token;
 
+	if ( !req.body.token ) {
+		err = new Error( "Missing token" );
+		err.statusCode = 422;
+		return next( err );
+	}
+
+	token = req.body.token;
+
+	userId = tokenVerifier( token, next );
+
+	User.findById( userId )
+		.populate({
+			path: "newsfeed",
+			options: {
+				limit: 10,
+				skip: req.params.skip * 10,
+				sort: { createdAt: -1 }
+			}
+		})
+		.exec()
+		.then( user => res.send( user.newsfeed ))
+		.catch( err => next( err ));
+});
+
+
+// GET
 Router.get( "/:username/:skip", ( req, res, next ) => {
 	var
 		err;
@@ -73,6 +101,8 @@ Router.get( "/:username/:skip", ( req, res, next ) => {
 		.catch( err => next( err ));
 });
 
+
+// DELETE
 Router.delete( "/delete", ( req, res, next ) => {
 	var
 		post,
@@ -86,13 +116,7 @@ Router.delete( "/delete", ( req, res, next ) => {
 
 	post = req.body.post;
 
-	try {
-		// get userId from token
-		userId = jwt.verify( post.token, process.env.SECRET_JWT );
-	} catch ( err ) {
-		err.statusCode = 401;
-		return next( err );
-	}
+	userId = tokenVerifier( post.token, next );
 
 	// find the requester and the post, if the requester isn't the author of the post
 	// throw an error, else update
@@ -114,8 +138,11 @@ Router.delete( "/delete", ( req, res, next ) => {
 						.exec()
 						.then(() => {
 							// remove the post from user posts (find index and remove with splice)
-							const index = user.posts.indexOf( storedPost._id );
-							user.posts.splice( index, 1 );
+							const
+								postsIndex = user.posts.indexOf( storedPost._id ),
+								newsfeedIndex = user.posts.indexOf( storedPost._id );
+							user.posts.splice( postsIndex, 1 );
+							user.newsfeed.splice( newsfeedIndex, 1 );
 							user.save()
 								.then(() => res.sendStatus( 200 ))
 								.catch( err => next( err ));
@@ -126,6 +153,7 @@ Router.delete( "/delete", ( req, res, next ) => {
 });
 
 
+// PATCH
 Router.patch( "/update", ( req, res, next ) => {
 	var
 		updatedPost,
@@ -143,13 +171,7 @@ Router.patch( "/update", ( req, res, next ) => {
 	updatedPost = req.body.data.post;
 	token = req.body.data.token;
 
-	try {
-		// get userId from token
-		userId = jwt.verify( token, process.env.SECRET_JWT );
-	} catch ( err ) {
-		err.statusCode = 401;
-		return next( err );
-	}
+	userId = tokenVerifier( token, next );
 
 	// find the requester and the post, if the requester isn't the author of the post
 	// throw an error, else update

@@ -9,7 +9,8 @@ const
 		fullname: { type: String },
 		passwordHash: { type: String },
 		posts: [ { type: Schema.Types.ObjectId, ref: "Post" } ],
-		newsfeed: [ { type: Schema.Types.ObjectId, ref: "Post" } ]
+		newsfeed: [ { type: Schema.Types.ObjectId, ref: "Post" } ],
+		friends: [ { type: Schema.Types.ObjectId, ref: "User" } ]
 	});
 
 UserSchema.methods.isValidPassword = function( password ) {

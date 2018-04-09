@@ -20,6 +20,7 @@ describe( "POST posts/create", function() {
 		Post.remove({ author: "test@gmail.com" })
 			.then(() => {
 				User.findOne({ email: "test@gmail.com" })
+					.exec()
 					.then( user => {
 						token = tokenGenerator( user );
 						done();
@@ -66,9 +67,33 @@ describe( "POST posts/create", function() {
 
 
 describe( "GET posts/:username/:skip", function() {
-	it( "should get a post", function( done ) {
+	var
+		token;
+
+	before( function( done ) {
+		User.findOne({ email: "test@gmail.com" })
+			.exec()
+			.then( user => {
+				token = tokenGenerator( user );
+				done();
+			}).catch( err => console.log( err ));
+	});
+
+	it( "should get the user  posts", function( done ) {
 		chai.request( "localhost:8000" )
 			.get( "/posts/test@gmail.com/0" )
+			.end(( err, res ) => {
+				res.should.have.status( 200 );
+				done();
+			});
+	});
+
+	it( "should get the user newsfeed", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/newsfeed/0" )
+			.send({
+				token: token
+			})
 			.end(( err, res ) => {
 				res.should.have.status( 200 );
 				done();
@@ -93,9 +118,11 @@ describe( "DELETE posts/delete", function() {
 
 	before( function( done ) {
 		User.findOne({ email: "test@gmail.com" })
+			.exec()
 			.then( user => {
 				token = tokenGenerator( user );
 				Post.findOne({ author: "test@gmail.com" })
+					.exec()
 					.then( post => {
 						postId = post.id;
 						done();
@@ -138,6 +165,7 @@ describe( "PATCH posts/update", function() {
 	// before updating a post we need to create the post and get the user token and postId
 	before( function( done ) {
 		User.findOne({ email: "test@gmail.com" })
+			.exec()
 			.then( user => {
 				token = tokenGenerator( user );
 				new Post({
@@ -185,6 +213,7 @@ describe( "PATCH posts/update", function() {
 	// before testing get the invalid userToken. If the user doesn't exists create it
 	before( function( done ) {
 		User.findOne({ email: "test2@gmail.com" })
+			.exec()
 			.then( user => {
 				if ( !user ) {
 					chai.request( "localhost:8000" )
