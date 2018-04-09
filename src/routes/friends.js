@@ -20,7 +20,7 @@ Router.post( "/add", ( req, res, next ) => {
 	User.findById( userId )
 		.exec()
 		.then( user => {
-			User.find({ username: req.body.friendUsername })
+			User.findOne({ email: req.body.friendUsername })
 				.exec()
 				.then( friend => {
 					user.friends.push( friend._id );
