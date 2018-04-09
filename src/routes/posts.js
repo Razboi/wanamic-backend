@@ -36,12 +36,22 @@ Router.post( "/create", ( req, res, next ) => {
 				content: data.content
 			}).save()
 				.then( post => {
+
+					User.update(
+						{ _id: { $in: user.friends } },
+						{ $push: { "newsfeed": post._id } },
+						{ multi: true }
+					)
+						.exec()
+						.catch( err => next( err ));
+
 					user.posts.push( post._id );
 					user.newsfeed.push( post._id );
-					user.save();
-					res.sendStatus( 201 );
-				})
-				.catch( err => next( err ));
+					user.save()
+						.then( updatedUser => {
+							res.sendStatus( 201 );
+						}).catch( err => next( err ));
+				}).catch( err => next( err ));
 		}).catch( err => next( err ));
 });
 
@@ -137,17 +147,27 @@ Router.delete( "/delete", ( req, res, next ) => {
 					Post.remove({ _id: post.id })
 						.exec()
 						.then(() => {
-							// remove the post from user posts (find index and remove with splice)
+							// get the index of the post in posts and newsfeed
 							const
 								postsIndex = user.posts.indexOf( storedPost._id ),
 								newsfeedIndex = user.posts.indexOf( storedPost._id );
+
+							// remove the post from the friends newsfeed
+							User.update(
+								{ _id: { $in: user.friends } },
+								{ $pull: { "newsfeed": post.id } },
+								{ multi: true }
+							)
+								.exec()
+								.catch( err => next( err ));
+
+							// remove the post from user posts/newsfeed
 							user.posts.splice( postsIndex, 1 );
 							user.newsfeed.splice( newsfeedIndex, 1 );
 							user.save()
 								.then(() => res.sendStatus( 200 ))
 								.catch( err => next( err ));
 						}).catch( err => next( err ));
-
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));
 });
