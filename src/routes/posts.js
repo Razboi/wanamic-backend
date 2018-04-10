@@ -21,7 +21,11 @@ Router.post( "/create", ( req, res, next ) => {
 
 	data = req.body.post;
 
-	userId = tokenVerifier( data.token, next );
+	try {
+		userId = tokenVerifier( data.token );
+	} catch ( err ) {
+		return next( err );
+	}
 
 	User.findById( userId )
 		.exec()
@@ -69,7 +73,11 @@ Router.post( "/newsfeed/:skip", ( req, res, next ) => {
 
 	token = req.body.token;
 
-	userId = tokenVerifier( token, next );
+	try {
+		userId = tokenVerifier( token );
+	} catch ( err ) {
+		return next( err );
+	}
 
 	User.findById( userId )
 		.populate({
@@ -126,7 +134,11 @@ Router.delete( "/delete", ( req, res, next ) => {
 
 	post = req.body.post;
 
-	userId = tokenVerifier( post.token, next );
+	try {
+		userId = tokenVerifier( post.token );
+	} catch ( err ) {
+		return next( err );
+	}
 
 	// find the requester and the post, if the requester isn't the author of the post
 	// throw an error, else update
@@ -138,7 +150,7 @@ Router.delete( "/delete", ( req, res, next ) => {
 				.exec()
 				.then( storedPost => {
 
-					if ( user.email !== storedPost.author ) {
+					if ( user.id !== storedPost.author ) {
 						err = new Error( "Requester isn't the author" );
 						err.statusCode = 401;
 						return next( err );
@@ -191,7 +203,11 @@ Router.patch( "/update", ( req, res, next ) => {
 	updatedPost = req.body.data.post;
 	token = req.body.data.token;
 
-	userId = tokenVerifier( token, next );
+	try {
+		userId = tokenVerifier( token );
+	} catch ( err ) {
+		return next( err );
+	}
 
 	// find the requester and the post, if the requester isn't the author of the post
 	// throw an error, else update
@@ -203,7 +219,7 @@ Router.patch( "/update", ( req, res, next ) => {
 				.exec()
 				.then( storedPost => {
 
-					if ( user.email !== storedPost.author ) {
+					if ( user.id !== storedPost.author ) {
 						err = new Error( "Requester isn't the author" );
 						err.statusCode = 401;
 						return next( err );

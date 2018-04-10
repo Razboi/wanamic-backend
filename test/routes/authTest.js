@@ -17,7 +17,7 @@ describe( "auth/signup", function() {
 		User.remove({ email: "test@gmail.com" })
 			.then(() => {
 				done();
-			});
+			}).catch( err => done( err ));
 	});
 
 	it( "should return 201", function( done ) {

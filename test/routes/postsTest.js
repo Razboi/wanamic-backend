@@ -5,6 +5,7 @@ const
 	request = require( "request" ),
 	mongoose = require( "mongoose" ),
 	dotenv = require( "dotenv" ),
+	bcrypt = require( "bcrypt" ),
 	tokenGenerator = require( "../../src/utils/tokenGenerator" ),
 	Post = require( "../../src/models/Post" ),
 	User = require( "../../src/models/User" );
@@ -13,19 +14,39 @@ dotenv.config();
 chai.use( chaiHttp );
 mongoose.connect( process.env.MONGODB_URL );
 
+
+// after running tests delete the testing posts
+after( function( done ) {
+	User.remove({ email: "test@gmail.com" })
+		.then(() => {
+			Post.remove({ author: "test@gmail.com" })
+				.then(() => done())
+				.catch( err => done( err ));
+		}).catch( err => done( err ));
+});
+
+before( function( done ) {
+	new User({
+		email: "test@gmail.com",
+		passwordHash: bcrypt.hashSync( "test", 10 )
+	})
+		.save()
+		.then(() => done())
+		.catch( err => done( err ));
+});
+
+
 describe( "POST posts/create", function() {
 	var token;
-	// before running tests delete the old post tests and create a token
+
+	// before running tests create a token
 	before( function( done ) {
-		Post.remove({ author: "test@gmail.com" })
-			.then(() => {
-				User.findOne({ email: "test@gmail.com" })
-					.exec()
-					.then( user => {
-						token = tokenGenerator( user );
-						done();
-					}).catch( err => console.log( err ));
-			}).catch( err => console.log( err ));
+		User.findOne({ email: "test@gmail.com" })
+			.exec()
+			.then( user => {
+				token = tokenGenerator( user );
+				done();
+			}).catch( err => done( err ));
 	});
 
 	it( "creates a new post, should return 201", function( done ) {
@@ -76,7 +97,7 @@ describe( "GET posts/:username/:skip", function() {
 			.then( user => {
 				token = tokenGenerator( user );
 				done();
-			}).catch( err => console.log( err ));
+			}).catch( err => done( err ));
 	});
 
 	it( "should get the user  posts", function( done ) {
@@ -121,13 +142,16 @@ describe( "DELETE posts/delete", function() {
 			.exec()
 			.then( user => {
 				token = tokenGenerator( user );
-				Post.findOne({ author: "test@gmail.com" })
-					.exec()
+				new Post({
+					author: user._id,
+					content: "Delete me"
+				})
+					.save()
 					.then( post => {
 						postId = post.id;
 						done();
-					}).catch( err => console.log( err ));
-			}).catch( err => console.log( err ));
+					}).catch( err => done( err ));
+			}).catch( err => done( err ));
 	});
 
 	it( "should return 200", function( done ) {
@@ -169,14 +193,14 @@ describe( "PATCH posts/update", function() {
 			.then( user => {
 				token = tokenGenerator( user );
 				new Post({
-					author: user.email,
+					author: user._id,
 					content: "update test"
 				}).save()
 					.then( post => {
 						postId = post.id;
 						done();
-					}).catch( err => console.log( err ));
-			}).catch( err => console.log( err ));
+					}).catch( err => done( err ));
+			}).catch( err => done( err ));
 	});
 
 	it( "should return 200 and update the post", function( done ) {
@@ -232,7 +256,7 @@ describe( "PATCH posts/update", function() {
 					invalidToken = tokenGenerator( user );
 					done();
 				}
-			}).catch( err => console.log( err ));
+			}).catch( err => done( err ));
 	});
 
 	it( "should return 401 malformed jwt", function( done ) {
@@ -255,6 +279,6 @@ describe( "PATCH posts/update", function() {
 		Post.remove({ _id: postId })
 			.exec()
 			.then(() => done())
-			.catch( err => console.log( err ));
+			.catch( err => done( err ));
 	});
 });

@@ -14,23 +14,43 @@ chai.use( chaiHttp );
 mongoose.connect( process.env.MONGODB_URL );
 
 
+after( function( done ) {
+	User.remove({ email: "test@gmail.com" })
+		.then(() => {
+			User.remove({ email: "test2@gmail.com" })
+				.then(() => done())
+				.catch( err => done( err ));
+		}).catch( err => done( err ));
+});
+
+before( function( done ) {
+	new User({
+		email: "test@gmail.com",
+		passwordHash: bcrypt.hashSync( "test", 10 )
+	})
+		.save()
+		.then(() => {
+			new User({
+				email: "test2@gmail.com",
+				passwordHash: bcrypt.hashSync( "test", 10 )
+			})
+				.save()
+				.then(() => done())
+				.catch( err => done( err ));
+		}).catch( err => done( err ));
+});
+
+
 // POST
 describe( "POST friends/add", function() {
 	var token;
 
 	before( function( done ) {
-		new User({
-			email: "test2@gmail.com",
-			passwordHash: bcrypt.hashSync( "test", 10 )
-		})
-			.save()
-			.then(() => {
-				User.findOne({ email: "test@gmail.com" })
-					.exec()
-					.then( user => {
-						token = tokenGenerator( user );
-						done();
-					}).catch( err => done( err ));
+		User.findOne({ email: "test@gmail.com" })
+			.exec()
+			.then( user => {
+				token = tokenGenerator( user );
+				done();
 			}).catch( err => done( err ));
 	});
 
@@ -86,8 +106,7 @@ describe( "DELETE friends/delete", function() {
 			.then( user => {
 				token = tokenGenerator( user );
 				done();
-			})
-			.catch( err => console.log( err ));
+			}).catch( err => done( err ));
 	});
 
 	it( "deletes a friend, should return 200", function( done ) {
@@ -128,11 +147,5 @@ describe( "DELETE friends/delete", function() {
 				res.text.should.equal( "jwt malformed" );
 				done();
 			});
-	});
-
-	after( function( done ) {
-		User.remove({ email: "test2@gmail.com" })
-			.then(() => done())
-			.catch( err => done( err ));
 	});
 });

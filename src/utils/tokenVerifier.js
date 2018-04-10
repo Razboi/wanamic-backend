@@ -1,12 +1,12 @@
 const jwt = require( "jsonwebtoken" );
 
-tokenVerifier = ( token, next ) => {
+tokenVerifier = token => {
 	var err;
 
 	if ( !token ) {
 		err = new Error( "Empty token" );
 		err.statusCode = 401;
-		return next( err );
+		throw err;
 	}
 	try {
 		// get userId from token
@@ -14,7 +14,7 @@ tokenVerifier = ( token, next ) => {
 		return userId;
 	} catch ( err ) {
 		err.statusCode = 401;
-		return next( err );
+		throw err;
 	}
 };
 
