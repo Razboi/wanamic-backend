@@ -15,14 +15,20 @@ Router.post( "/add", ( req, res, next ) => {
 		return next( err );
 	}
 
-	userId = tokenVerifier( req.body.token, next );
+	try {
+		userId = tokenVerifier( req.body.token );
+	} catch ( err ) {
+		return next( err );
+	}
 
 	User.findById( userId )
 		.exec()
 		.then( user => {
+
 			User.findOne({ email: req.body.friendUsername })
 				.exec()
 				.then( friend => {
+
 					user.friends.push( friend._id );
 					user.save();
 					res.sendStatus( 201 );
@@ -43,14 +49,20 @@ Router.delete( "/delete", ( req, res, next ) => {
 		return next( err );
 	}
 
-	userId = tokenVerifier( req.body.token, next );
+	try {
+		userId = tokenVerifier( req.body.token );
+	} catch ( err ) {
+		return next( err );
+	}
 
 	User.findById( userId )
 		.exec()
 		.then( user => {
-			User.find({ email: req.body.friendUsername })
+
+			User.findOne({ email: req.body.friendUsername })
 				.exec()
 				.then( friend => {
+
 					const friendIndex = user.friends.indexOf( friend._id );
 					user.friends.splice( friendIndex, 1 );
 					user.save()
