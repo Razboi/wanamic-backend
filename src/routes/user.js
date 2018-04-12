@@ -1,6 +1,8 @@
 const
 	Router = require( "express" ).Router(),
-	User = require( "../models/User" );
+	User = require( "../models/User" ),
+	multer = require( "multer" ),
+	upload = multer({ dest: "../wanamic-frontend/src/images" });
 
 Router.get( "/:username", ( req, res, next ) => {
 	var
@@ -22,26 +24,28 @@ Router.get( "/:username", ( req, res, next ) => {
 			}
 			data = {
 				username: user.email, fullname: user.fullname, friends: user.friends,
-				description: user.description, keywords: user.keywords
+				description: user.description, keywords: user.keywords,
+				profileImage: user.profileImage, headerImage: user.headerImage
 			};
 			res.send( data );
 		}).catch( err => next( err ));
 });
 
 
-Router.post( "/info", ( req, res, next ) => {
+Router.post( "/info", upload.fields([ { name: "userImage", maxCount: 1 },
+	{ name: "headerImage", maxCount: 1 } ]), ( req, res, next ) => {
 	var
 		err,
 		data,
 		userId;
 
-	if ( !req.body.token || !req.body.data ) {
-		err = new Error( "Empty data" );
+	if ( !req.body.token ) {
+		err = new Error( "Token not found" );
 		err.statusCode = 422;
 		return next( err );
 	}
 
-	data = req.body.data;
+	data = req.body;
 
 	try {
 		userId = tokenVerifier( req.body.token );
@@ -68,10 +72,18 @@ Router.post( "/info", ( req, res, next ) => {
 			if ( data.username ) {
 				user.username = data.username;
 			}
+			if ( req.files[ "userImage" ]) {
+				console.log( "here" );
+				user.profileImage = req.files[ "userImage" ][ 0 ].filename;
+			}
+			if ( req.files[ "headerImage" ]) {
+				console.log( "here2" );
+				user.headerImage = req.files[ "headerImage" ][ 0 ].filename;
+			}
 			user.save()
 				.then( res.sendStatus( 201 ))
 				.catch( err => next( err ));
-		});
+		}).catch( err => next( err ));
 });
 
 

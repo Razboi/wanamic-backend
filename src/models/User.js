@@ -12,7 +12,9 @@ const
 		newsfeed: [ { type: Schema.Types.ObjectId, ref: "Post" } ],
 		friends: [ { type: Schema.Types.ObjectId, ref: "User" } ],
 		description: { type: String },
-		keywords: [ { type: String } ]
+		keywords: [ { type: String } ],
+		profileImage: { type: String },
+		headerImage: { type: String }
 	});
 
 UserSchema.methods.isValidPassword = function( password ) {

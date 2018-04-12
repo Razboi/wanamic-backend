@@ -89,7 +89,14 @@ Router.post( "/newsfeed/:skip", ( req, res, next ) => {
 			}
 		})
 		.exec()
-		.then( user => res.send( user.newsfeed ))
+		.then( user => {
+			if ( !user ) {
+				err = new Error( "User doesn't exist" );
+				err.statusCode = 404;
+				return next( err );
+			}
+			res.send( user.newsfeed );
+		})
 		.catch( err => next( err ));
 });
 
@@ -152,6 +159,11 @@ Router.delete( "/delete", ( req, res, next ) => {
 	User.findById( userId )
 		.exec()
 		.then( user => {
+			if ( !user ) {
+				err = new Error( "User doesn't exist" );
+				err.statusCode = 404;
+				return next( err );
+			}
 
 			Post.findById( post.id )
 				.exec()
@@ -221,6 +233,11 @@ Router.patch( "/update", ( req, res, next ) => {
 	User.findById( userId )
 		.exec()
 		.then( user => {
+			if ( !user ) {
+				err = new Error( "User doesn't exist" );
+				err.statusCode = 404;
+				return next( err );
+			}
 
 			Post.findById( updatedPost.id )
 				.exec()
