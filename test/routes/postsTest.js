@@ -143,7 +143,7 @@ describe( "DELETE posts/delete", function() {
 			.then( user => {
 				token = tokenGenerator( user );
 				new Post({
-					author: user._id,
+					author: user.email,
 					content: "Delete me"
 				})
 					.save()
@@ -193,7 +193,7 @@ describe( "PATCH posts/update", function() {
 			.then( user => {
 				token = tokenGenerator( user );
 				new Post({
-					author: user._id,
+					author: user.email,
 					content: "update test"
 				}).save()
 					.then( post => {

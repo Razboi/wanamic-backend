@@ -115,7 +115,14 @@ Router.get( "/:username/:skip", ( req, res, next ) => {
 			}
 		})
 		.exec()
-		.then( user => res.send( user.posts ))
+		.then( user => {
+			if ( !user ) {
+				err = new Error( "User doesn't exist" );
+				err.statusCode = 404;
+				return next( err );
+			}
+			res.send( user.posts );
+		})
 		.catch( err => next( err ));
 });
 
@@ -150,7 +157,7 @@ Router.delete( "/delete", ( req, res, next ) => {
 				.exec()
 				.then( storedPost => {
 
-					if ( user.id !== storedPost.author ) {
+					if ( user.email !== storedPost.author ) {
 						err = new Error( "Requester isn't the author" );
 						err.statusCode = 401;
 						return next( err );
@@ -219,7 +226,7 @@ Router.patch( "/update", ( req, res, next ) => {
 				.exec()
 				.then( storedPost => {
 
-					if ( user.id !== storedPost.author ) {
+					if ( user.email !== storedPost.author ) {
 						err = new Error( "Requester isn't the author" );
 						err.statusCode = 401;
 						return next( err );
