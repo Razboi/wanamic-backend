@@ -73,11 +73,9 @@ Router.post( "/info", upload.fields([ { name: "userImage", maxCount: 1 },
 				user.username = data.username;
 			}
 			if ( req.files[ "userImage" ]) {
-				console.log( "here" );
 				user.profileImage = req.files[ "userImage" ][ 0 ].filename;
 			}
 			if ( req.files[ "headerImage" ]) {
-				console.log( "here2" );
 				user.headerImage = req.files[ "headerImage" ][ 0 ].filename;
 			}
 			user.save()
