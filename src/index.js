@@ -5,6 +5,8 @@ const
 	dotenv = require( "dotenv" ),
 	posts = require( "./routes/posts" ),
 	friends = require( "./routes/friends" ),
+	followers = require( "./routes/followers" ),
+	user = require( "./routes/user" ),
 	auth = require( "./routes/auth" );
 
 // apply env variables
@@ -16,6 +18,8 @@ app.use( bodyParser.json());
 app.use( "/auth", auth );
 app.use( "/posts", posts );
 app.use( "/friends", friends );
+app.use( "/user", user );
+app.use( "/followers", followers );
 
 // error middleware
 app.use(( err, req, res, next ) => {

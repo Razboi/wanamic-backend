@@ -31,7 +31,7 @@ router.post( "/signup", ( req, res, next ) => {
 					.then( user => {
 						const token = tokenGenerator( user );
 						res.status( 201 );
-						res.send( token );
+						res.send({ token: token, username: user.email });
 					})
 					.catch( err => next( err ));
 			}
@@ -68,7 +68,7 @@ router.post( "/login", ( req, res, next ) => {
 			}
 
 			const token = tokenGenerator( user );
-			res.send( token );
+			res.send({ token: token, username: user.email });
 
 		})
 		.catch( err => next( err ));

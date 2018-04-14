@@ -10,7 +10,13 @@ const
 		passwordHash: { type: String },
 		posts: [ { type: Schema.Types.ObjectId, ref: "Post" } ],
 		newsfeed: [ { type: Schema.Types.ObjectId, ref: "Post" } ],
-		friends: [ { type: Schema.Types.ObjectId, ref: "User" } ]
+		friends: [ { type: Schema.Types.ObjectId, ref: "User" } ],
+		followers: [ { type: Schema.Types.ObjectId, ref: "User" } ],
+		following: [ { type: Schema.Types.ObjectId, ref: "User" } ],
+		description: { type: String },
+		keywords: [ { type: String } ],
+		profileImage: { type: String },
+		headerImage: { type: String }
 	});
 
 UserSchema.methods.isValidPassword = function( password ) {
