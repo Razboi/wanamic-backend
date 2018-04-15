@@ -25,7 +25,8 @@ Router.get( "/:username", ( req, res, next ) => {
 			data = {
 				username: user.email, fullname: user.fullname, friends: user.friends,
 				description: user.description, keywords: user.keywords,
-				profileImage: user.profileImage, headerImage: user.headerImage
+				profileImage: user.profileImage, headerImage: user.headerImage,
+				interests: user.interests
 			};
 			res.send( data );
 		}).catch( err => next( err ));
@@ -81,6 +82,56 @@ Router.post( "/info", upload.fields([ { name: "userImage", maxCount: 1 },
 			user.save()
 				.then( res.sendStatus( 201 ))
 				.catch( err => next( err ));
+		}).catch( err => next( err ));
+});
+
+Router.post( "/match", ( req, res, next ) => {
+	var
+		err;
+
+	if ( !req.body.data ) {
+		err = new Error( "Empty data" );
+		err.statusCode = 422;
+		return next( err );
+	}
+
+	User.find({ interests: { $in: req.body.data } })
+		.then( users => {
+			res.send( users );
+		}).catch( err => next( err ));
+});
+
+Router.post( "/addInterests", ( req, res, next ) => {
+	var
+		userId,
+		err;
+
+	if ( !req.body.data || !req.body.token ) {
+		err = new Error( "Empty data" );
+		err.statusCode = 422;
+		return next( err );
+	}
+
+	try {
+		userId = tokenVerifier( req.body.token );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	User.findById( userId )
+		.then( user => {
+			if ( !user ) {
+				err = new Error( "User doesn't exist" );
+				err.statusCode = 404;
+				return next( err );
+			}
+			req.body.data.map(( interest, index ) => {
+				if ( !user.interests.includes( interest )) {
+					user.interests.push( interest );
+				}
+			});
+			user.save();
+			res.sendStatus( 201 );
 		}).catch( err => next( err ));
 });
 
