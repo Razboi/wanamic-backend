@@ -1,7 +1,8 @@
 const
 	Router = require( "express" ).Router(),
 	User = require( "../models/User" ),
-	tokenVerifier = require( "../utils/tokenVerifier" );
+	tokenVerifier = require( "../utils/tokenVerifier" ),
+	async = require( "async" );
 
 Router.post( "/follow", ( req, res, next ) => {
 	var
@@ -28,7 +29,7 @@ Router.post( "/follow", ( req, res, next ) => {
 				err.statusCode = 404;
 				return next( err );
 			}
-			User.findOne({ email: req.body.targetUsername })
+			User.findOne({ username: req.body.targetUsername })
 				.exec()
 				.then( target => {
 					if ( !target ) {
@@ -71,7 +72,7 @@ Router.delete( "/unfollow", ( req, res, next ) => {
 				err.statusCode = 404;
 				return next( err );
 			}
-			User.findOne({ email: req.body.targetUsername })
+			User.findOne({ username: req.body.targetUsername })
 				.exec()
 				.then( target => {
 					if ( !target ) {
@@ -89,7 +90,57 @@ Router.delete( "/unfollow", ( req, res, next ) => {
 					res.sendStatus( 200 );
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));
+});
 
+
+Router.post( "/setupFollow", ( req, res, next ) => {
+	var
+		err,
+		userId;
+
+	if ( !req.body.token || !req.body.users ) {
+		err = new Error( "Empty data" );
+		err.statusCode = 422;
+		return next( err );
+	}
+
+	try {
+		userId = tokenVerifier( req.body.token );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	User.findById( userId )
+		.exec()
+		.then( user => {
+			if ( !user ) {
+				err = new Error( "User doesn't exist" );
+				err.statusCode = 404;
+				return next( err );
+			}
+
+			async.eachSeries( req.body.users, function( userToFollow, done ) {
+				User.findOne({ username: userToFollow })
+					.exec()
+					.then( target => {
+						if ( !target ) {
+							err = new Error( "User doesn't exist" );
+							err.statusCode = 404;
+							return next( err );
+						}
+						user.following.push( target._id );
+						user.save()
+							.then(() => {
+								target.followers.push( user._id );
+								target.save()
+									.then(() => done())
+
+									.catch( err => next( err ));
+							}).catch( err => next( err ));
+					}).catch( err => next( err ));
+			});
+			res.sendStatus( 201 );
+		}).catch( err => next( err ));
 });
 
 

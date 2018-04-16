@@ -26,12 +26,16 @@ after( function( done ) {
 before( function( done ) {
 	new User({
 		email: "test@gmail.com",
+		username: "testuser",
+		fullname: "Test User",
 		passwordHash: bcrypt.hashSync( "test", 10 )
 	})
 		.save()
 		.then(() => {
 			new User({
 				email: "test2@gmail.com",
+				username: "testuser2",
+				fullname: "Test User2",
 				passwordHash: bcrypt.hashSync( "test", 10 )
 			})
 				.save()
@@ -59,7 +63,7 @@ describe( "POST friends/add", function() {
 			.post( "/friends/add" )
 			.send({
 				token: token,
-				friendUsername: "test2@gmail.com"
+				friendUsername: "testuser2"
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 201 );
@@ -85,7 +89,7 @@ describe( "POST friends/add", function() {
 			.post( "/friends/add" )
 			.send({
 				token: "123213adasdsad21321321",
-				friendUsername: "test2@gmail.com"
+				friendUsername: "testuser2"
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
@@ -114,7 +118,7 @@ describe( "DELETE friends/delete", function() {
 			.delete( "/friends/delete" )
 			.send({
 				token: token,
-				friendUsername: "test2@gmail.com"
+				friendUsername: "testuser2"
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 200 );
@@ -140,7 +144,7 @@ describe( "DELETE friends/delete", function() {
 			.delete( "/friends/delete" )
 			.send({
 				token: "123213adasdsad21321321",
-				friendUsername: "test2@gmail.com"
+				friendUsername: "testuser2"
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );

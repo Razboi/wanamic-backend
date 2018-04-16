@@ -15,7 +15,8 @@ Router.get( "/:username", ( req, res, next ) => {
 		return next( err );
 	}
 
-	User.findOne({ email: req.params.username })
+	User.findOne({ username: req.params.username })
+		.exec()
 		.then( user => {
 			if ( !user ) {
 				err = new Error( "User doesn't exist" );
@@ -23,7 +24,7 @@ Router.get( "/:username", ( req, res, next ) => {
 				return next( err );
 			}
 			data = {
-				username: user.email, fullname: user.fullname, friends: user.friends,
+				username: user.username, fullname: user.fullname, friends: user.friends,
 				description: user.description, keywords: user.keywords,
 				profileImage: user.profileImage, headerImage: user.headerImage,
 				interests: user.interests
@@ -55,6 +56,7 @@ Router.post( "/info", upload.fields([ { name: "userImage", maxCount: 1 },
 	}
 
 	User.findById( userId )
+		.exec()
 		.then( user => {
 			if ( !user ) {
 				err = new Error( "User doesn't exist" );
@@ -72,6 +74,13 @@ Router.post( "/info", upload.fields([ { name: "userImage", maxCount: 1 },
 			}
 			if ( data.username ) {
 				user.username = data.username;
+			}
+			if ( data.interests ) {
+				data.interests.map(( interest, index ) => {
+					if ( !user.interests.includes( interest )) {
+						user.interests.push( interest );
+					}
+				});
 			}
 			if ( req.files[ "userImage" ]) {
 				user.profileImage = req.files[ "userImage" ][ 0 ].filename;
@@ -96,6 +105,8 @@ Router.post( "/match", ( req, res, next ) => {
 	}
 
 	User.find({ interests: { $in: req.body.data } })
+		.limit( 10 )
+		.exec()
 		.then( users => {
 			res.send( users );
 		}).catch( err => next( err ));
@@ -119,6 +130,7 @@ Router.post( "/addInterests", ( req, res, next ) => {
 	}
 
 	User.findById( userId )
+		.exec()
 		.then( user => {
 			if ( !user ) {
 				err = new Error( "User doesn't exist" );
@@ -132,6 +144,68 @@ Router.post( "/addInterests", ( req, res, next ) => {
 			});
 			user.save();
 			res.sendStatus( 201 );
+		}).catch( err => next( err ));
+});
+
+
+Router.post( "/checkInitialized", ( req, res, next ) => {
+	var
+		userId,
+		err;
+
+	if ( !req.body.token ) {
+		err = new Error( "Token not found" );
+		err.statusCode = 422;
+		return next( err );
+	}
+
+	try {
+		userId = tokenVerifier( req.body.token );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	User.findById( userId )
+		.exec()
+		.then( user => {
+			if ( !user ) {
+				err = new Error( "User doesn't exist" );
+				err.statusCode = 404;
+				return next( err );
+			}
+			res.send( user.initialized );
+		}).catch( err => next( err ));
+});
+
+
+Router.post( "/initialize", ( req, res, next ) => {
+	var
+		userId,
+		err;
+
+	if ( !req.body.token ) {
+		err = new Error( "Token not found" );
+		err.statusCode = 422;
+		return next( err );
+	}
+
+	try {
+		userId = tokenVerifier( req.body.token );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	User.findById( userId )
+		.exec()
+		.then( user => {
+			if ( !user ) {
+				err = new Error( "User doesn't exist" );
+				err.statusCode = 404;
+				return next( err );
+			}
+			user.initialized = true;
+			user.save();
+			res.sendStatus( 200 );
 		}).catch( err => next( err ));
 });
 

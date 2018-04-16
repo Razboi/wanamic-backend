@@ -10,8 +10,7 @@ Router.post( "/create", ( req, res, next ) => {
 	var
 		err,
 		data,
-		userId,
-		username;
+		userId;
 
 	if ( !req.body.post || !req.body.post.token || !req.body.post.content ) {
 		err = new Error( "Empty post data" );
@@ -36,7 +35,7 @@ Router.post( "/create", ( req, res, next ) => {
 				return next( err );
 			}
 			new Post({
-				author: user.email,
+				author: user.username,
 				content: data.content
 			}).save()
 				.then( post => {
@@ -112,7 +111,7 @@ Router.get( "/:username/:skip", ( req, res, next ) => {
 		return next( err );
 	}
 
-	User.findOne({ email: req.params.username })
+	User.findOne({ username: req.params.username })
 		.populate({
 			path: "posts",
 			options: {
@@ -169,7 +168,7 @@ Router.delete( "/delete", ( req, res, next ) => {
 				.exec()
 				.then( storedPost => {
 
-					if ( user.email !== storedPost.author ) {
+					if ( user.username !== storedPost.author ) {
 						err = new Error( "Requester isn't the author" );
 						err.statusCode = 401;
 						return next( err );
@@ -243,7 +242,7 @@ Router.patch( "/update", ( req, res, next ) => {
 				.exec()
 				.then( storedPost => {
 
-					if ( user.email !== storedPost.author ) {
+					if ( user.username !== storedPost.author ) {
 						err = new Error( "Requester isn't the author" );
 						err.statusCode = 401;
 						return next( err );

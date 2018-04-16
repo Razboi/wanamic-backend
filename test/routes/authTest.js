@@ -26,6 +26,8 @@ describe( "auth/signup", function() {
 			.send({
 				credentials: {
 					email: "test@gmail.com",
+					username: "testuser",
+					fullname: "Test User",
 					password: "test"
 				}
 			})
@@ -58,12 +60,32 @@ describe( "auth/signup", function() {
 			.send({
 				credentials: {
 					email: "test@gmail.com",
+					username: "newtestuser",
+					fullname: "Test User",
 					password: "test"
 				}
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
 				res.text.should.equal( "Already registered email" );
+				done();
+			});
+	});
+
+	it( "should return 422 for already registered username", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/auth/signup" )
+			.send({
+				credentials: {
+					email: "test2@gmail.com",
+					username: "testuser",
+					fullname: "Test User",
+					password: "test"
+				}
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Username already registered" );
 				done();
 			});
 	});

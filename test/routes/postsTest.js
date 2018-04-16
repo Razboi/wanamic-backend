@@ -28,6 +28,8 @@ after( function( done ) {
 before( function( done ) {
 	new User({
 		email: "test@gmail.com",
+		username: "testuser",
+		fullname: "Test User",
 		passwordHash: bcrypt.hashSync( "test", 10 )
 	})
 		.save()
@@ -102,7 +104,7 @@ describe( "GET posts/:username/:skip", function() {
 
 	it( "should get the user  posts", function( done ) {
 		chai.request( "localhost:8000" )
-			.get( "/posts/test@gmail.com/0" )
+			.get( "/posts/testuser/0" )
 			.end(( err, res ) => {
 				res.should.have.status( 200 );
 				done();
@@ -143,7 +145,7 @@ describe( "DELETE posts/delete", function() {
 			.then( user => {
 				token = tokenGenerator( user );
 				new Post({
-					author: user.email,
+					author: user.username,
 					content: "Delete me"
 				})
 					.save()
@@ -193,7 +195,7 @@ describe( "PATCH posts/update", function() {
 			.then( user => {
 				token = tokenGenerator( user );
 				new Post({
-					author: user.email,
+					author: user.username,
 					content: "update test"
 				}).save()
 					.then( post => {
@@ -245,6 +247,8 @@ describe( "PATCH posts/update", function() {
 						.send({
 							credentials: {
 								email: "test2@gmail.com",
+								username: "testuser2",
+								fullname: "Test User2",
 								password: "test"
 							}
 						})

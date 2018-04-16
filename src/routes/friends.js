@@ -30,7 +30,7 @@ Router.post( "/add", ( req, res, next ) => {
 				return next( err );
 			}
 
-			User.findOne({ email: req.body.friendUsername })
+			User.findOne({ username: req.body.friendUsername })
 				.exec()
 				.then( friend => {
 					if ( !friend ) {
@@ -74,7 +74,7 @@ Router.delete( "/delete", ( req, res, next ) => {
 				err.statusCode = 404;
 				return next( err );
 			}
-			User.findOne({ email: req.body.friendUsername })
+			User.findOne({ username: req.body.friendUsername })
 				.exec()
 				.then( friend => {
 					if ( !friend ) {
