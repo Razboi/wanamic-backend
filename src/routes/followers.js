@@ -38,10 +38,10 @@ Router.post( "/follow", ( req, res, next ) => {
 						return next( err );
 					}
 					target.followers.push( user._id );
-					target.save();
 					user.following.push( target._id );
-					user.save();
-					res.sendStatus( 201 );
+					Promise.all([ target.save(), user.save() ])
+						.then(() => res.sendStatus( 201 ))
+						.catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));
 });
@@ -126,20 +126,21 @@ Router.post( "/setupFollow", ( req, res, next ) => {
 						if ( !target ) {
 							err = new Error( "User doesn't exist" );
 							err.statusCode = 404;
-							return next( err );
+							return done( err );
 						}
 						user.following.push( target._id );
-						user.save()
-							.then(() => {
-								target.followers.push( user._id );
-								target.save()
-									.then(() => done())
-
-									.catch( err => next( err ));
-							}).catch( err => next( err ));
+						target.followers.push( user._id );
+						Promise.all([ user.save(), target.save() ])
+							.then(() => done())
+							.catch( err => next( err ));
 					}).catch( err => next( err ));
+			}, err => {
+				if ( err ) {
+					next( err );
+				} else {
+					res.sendStatus( 201 );
+				}
 			});
-			res.sendStatus( 201 );
 		}).catch( err => next( err ));
 });
 

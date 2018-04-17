@@ -71,11 +71,38 @@ describe( "POST followers/follow", function() {
 			});
 	});
 
+	it( "should return 404 User doesn't exist", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/followers/follow" )
+			.send({
+				token: token,
+				targetUsername: "nonexistinguser"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 404 );
+				res.text.should.equal( "User doesn't exist" );
+				done();
+			});
+	});
+
 	it( "should return 422 Empty data", function( done ) {
 		chai.request( "localhost:8000" )
 			.post( "/followers/follow" )
 			.send({
 				token: token
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Empty data" );
+				done();
+			});
+	});
+
+	it( "should return 422 Empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/followers/follow" )
+			.send({
+				targetUsername: "testuser2"
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
@@ -99,8 +126,9 @@ describe( "POST followers/follow", function() {
 	});
 });
 
+
 // DELETE
-describe( "DELETE friends/delete", function() {
+describe( "DELETE followers/unfollow", function() {
 	var token;
 
 	before( function( done ) {
@@ -138,12 +166,121 @@ describe( "DELETE friends/delete", function() {
 			});
 	});
 
+	it( "should return 422 Empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.delete( "/followers/unfollow" )
+			.send({
+				targetUsername: "testuser2"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Empty data" );
+				done();
+			});
+	});
+
+	it( "should return 404 User doesn't exist", function( done ) {
+		chai.request( "localhost:8000" )
+			.delete( "/followers/unfollow" )
+			.send({
+				token: token,
+				targetUsername: "inexistentuser"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 404 );
+				res.text.should.equal( "User doesn't exist" );
+				done();
+			});
+	});
+
 	it( "should return 401 malformed jwt", function( done ) {
 		chai.request( "localhost:8000" )
 			.delete( "/followers/unfollow" )
 			.send({
 				token: "123213adasdsad21321321",
 				targetUsername: "test2@gmail.com"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
+				done();
+			});
+	});
+});
+
+
+// POST
+describe( "POST followers/setupFollow", function() {
+	var token;
+
+	before( function( done ) {
+		User.findOne({ email: "test@gmail.com" })
+			.exec()
+			.then( user => {
+				token = tokenGenerator( user );
+				done();
+			}).catch( err => done( err ));
+	});
+
+	it( "adds a list of users to following, should return 201", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/followers/setupFollow" )
+			.send({
+				token: token,
+				users: [ "testuser2", "testuser" ]
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 201 );
+				done();
+			});
+	});
+
+	it( "should return 404 User doesn't exist", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/followers/setupFollow" )
+			.send({
+				token: token,
+				users: [ "nonexistinguser321" ]
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 404 );
+				res.text.should.equal( "User doesn't exist" );
+				done();
+			});
+	});
+
+	it( "should return 422 Empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/followers/setupFollow" )
+			.send({
+				token: token
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Empty data" );
+				done();
+			});
+	});
+
+	it( "should return 422 Empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/followers/setupFollow" )
+			.send({
+				users: [ "testuser2", "testuser" ]
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Empty data" );
+				done();
+			});
+	});
+
+	it( "should return 401 malformed jwt", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/followers/setupFollow" )
+			.send({
+				token: "123213adasdsad21321321",
+				users: [ "testuser2", "testuser" ]
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );

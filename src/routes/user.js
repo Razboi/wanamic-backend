@@ -82,10 +82,10 @@ Router.post( "/info", upload.fields([ { name: "userImage", maxCount: 1 },
 					}
 				});
 			}
-			if ( req.files[ "userImage" ]) {
+			if ( req.files && req.files[ "userImage" ]) {
 				user.profileImage = req.files[ "userImage" ][ 0 ].filename;
 			}
-			if ( req.files[ "headerImage" ]) {
+			if ( req.files && req.files[ "headerImage" ]) {
 				user.headerImage = req.files[ "headerImage" ][ 0 ].filename;
 			}
 			user.save()
@@ -144,68 +144,6 @@ Router.post( "/addInterests", ( req, res, next ) => {
 			});
 			user.save();
 			res.sendStatus( 201 );
-		}).catch( err => next( err ));
-});
-
-
-Router.post( "/checkInitialized", ( req, res, next ) => {
-	var
-		userId,
-		err;
-
-	if ( !req.body.token ) {
-		err = new Error( "Token not found" );
-		err.statusCode = 422;
-		return next( err );
-	}
-
-	try {
-		userId = tokenVerifier( req.body.token );
-	} catch ( err ) {
-		return next( err );
-	}
-
-	User.findById( userId )
-		.exec()
-		.then( user => {
-			if ( !user ) {
-				err = new Error( "User doesn't exist" );
-				err.statusCode = 404;
-				return next( err );
-			}
-			res.send( user.initialized );
-		}).catch( err => next( err ));
-});
-
-
-Router.post( "/initialize", ( req, res, next ) => {
-	var
-		userId,
-		err;
-
-	if ( !req.body.token ) {
-		err = new Error( "Token not found" );
-		err.statusCode = 422;
-		return next( err );
-	}
-
-	try {
-		userId = tokenVerifier( req.body.token );
-	} catch ( err ) {
-		return next( err );
-	}
-
-	User.findById( userId )
-		.exec()
-		.then( user => {
-			if ( !user ) {
-				err = new Error( "User doesn't exist" );
-				err.statusCode = 404;
-				return next( err );
-			}
-			user.initialized = true;
-			user.save();
-			res.sendStatus( 200 );
 		}).catch( err => next( err ));
 });
 

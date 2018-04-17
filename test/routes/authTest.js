@@ -26,7 +26,7 @@ describe( "auth/signup", function() {
 			.send({
 				credentials: {
 					email: "test@gmail.com",
-					username: "testuser",
+					username: "signuptestuser",
 					fullname: "Test User",
 					password: "test"
 				}
@@ -67,7 +67,6 @@ describe( "auth/signup", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
-				res.text.should.equal( "Already registered email" );
 				done();
 			});
 	});
@@ -85,7 +84,6 @@ describe( "auth/signup", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
-				res.text.should.equal( "Username already registered" );
 				done();
 			});
 	});

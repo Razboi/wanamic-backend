@@ -106,8 +106,8 @@ Router.get( "/:username/:skip", ( req, res, next ) => {
 		err;
 
 	if ( !req.params.username || !req.params.skip ) {
-		err = new Error( "User doesn't exist" );
-		err.statusCode = 404;
+		err = new Error( "Empty params" );
+		err.statusCode = 422;
 		return next( err );
 	}
 
@@ -140,7 +140,7 @@ Router.delete( "/delete", ( req, res, next ) => {
 		err;
 
 	if ( !req.body.post || !req.body.post.id ) {
-		err = new Error( "Empty post data" );
+		err = new Error( "Empty data" );
 		err.statusCode = 422;
 		return next( err );
 	}
@@ -167,6 +167,11 @@ Router.delete( "/delete", ( req, res, next ) => {
 			Post.findById( post.id )
 				.exec()
 				.then( storedPost => {
+					if ( !storedPost ) {
+						err = new Error( "Post doesn't exist" );
+						err.statusCode = 404;
+						return next( err );
+					}
 
 					if ( user.username !== storedPost.author ) {
 						err = new Error( "Requester isn't the author" );

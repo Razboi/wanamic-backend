@@ -14,12 +14,11 @@ dotenv.config();
 chai.use( chaiHttp );
 mongoose.connect( process.env.MONGODB_URL );
 
-
 // after running tests delete the testing posts
 after( function( done ) {
 	User.remove({ email: "test@gmail.com" })
 		.then(() => {
-			Post.remove({ author: "test@gmail.com" })
+			Post.remove({ author: "signuptestuser" })
 				.then(() => done())
 				.catch( err => done( err ));
 		}).catch( err => done( err ));
@@ -38,6 +37,7 @@ before( function( done ) {
 });
 
 
+
 describe( "POST posts/create", function() {
 	var token;
 
@@ -49,6 +49,12 @@ describe( "POST posts/create", function() {
 				token = tokenGenerator( user );
 				done();
 			}).catch( err => done( err ));
+	});
+
+	after( function( done ) {
+		Post.remove({ author: "testuser" })
+			.then(() => done())
+			.catch( err => done( err ));
 	});
 
 	it( "creates a new post, should return 201", function( done ) {
@@ -89,6 +95,7 @@ describe( "POST posts/create", function() {
 });
 
 
+
 describe( "GET posts/:username/:skip", function() {
 	var
 		token;
@@ -110,6 +117,22 @@ describe( "GET posts/:username/:skip", function() {
 				done();
 			});
 	});
+});
+
+
+
+describe( "GET posts/newsfeed/:skip", function() {
+	var
+		token;
+
+	before( function( done ) {
+		User.findOne({ email: "test@gmail.com" })
+			.exec()
+			.then( user => {
+				token = tokenGenerator( user );
+				done();
+			}).catch( err => done( err ));
+	});
 
 	it( "should get the user newsfeed", function( done ) {
 		chai.request( "localhost:8000" )
@@ -123,20 +146,36 @@ describe( "GET posts/:username/:skip", function() {
 			});
 	});
 
-	it( "should return 404 User doesn't exist", function( done ) {
+	it( "should return 422 Missing token", function( done ) {
 		chai.request( "localhost:8000" )
-			.get( "/posts/" )
+			.post( "/posts/newsfeed/0" )
 			.end(( err, res ) => {
-				res.should.have.status( 404 );
+				res.should.have.status( 422 );
+				res.text.should.equal( "Missing token" );
+				done();
+			});
+	});
+
+	it( "should return 422 Missing token", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/newsfeed/0" )
+			.send({
+				token: "123123asdasd123123"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
 				done();
 			});
 	});
 });
 
 
+
 describe( "DELETE posts/delete", function() {
 	var
 		token,
+		invalidToken,
 		postId;
 
 	before( function( done ) {
@@ -156,6 +195,94 @@ describe( "DELETE posts/delete", function() {
 			}).catch( err => done( err ));
 	});
 
+	it( "should return 422 Empty post data", function( done ) {
+		chai.request( "localhost:8000" )
+			.delete( "/posts/delete" )
+			.send({
+				post: {}
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Empty data" );
+				done();
+			});
+	});
+
+	it( "should return 422 Empty post data", function( done ) {
+		chai.request( "localhost:8000" )
+			.delete( "/posts/delete" )
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Empty data" );
+				done();
+			});
+	});
+
+	it( "should return 401", function( done ) {
+		chai.request( "localhost:8000" )
+			.delete( "/posts/delete" )
+			.send({
+				post: { id: postId, token: "123123" }
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
+				done();
+			});
+	});
+
+	it( "should return 500 for invalid objectId", function( done ) {
+		chai.request( "localhost:8000" )
+			.delete( "/posts/delete" )
+			.send({
+				post: { id: "123321", token: token }
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 500 );
+				done();
+			});
+	});
+
+	before( function( done ) {
+		User.findOne({ email: "test2@gmail.com" })
+			.exec()
+			.then( user => {
+				if ( !user ) {
+					chai.request( "localhost:8000" )
+						.post( "/auth/signup" )
+						.send({
+							credentials: {
+								email: "test2@gmail.com",
+								username: "testuser2",
+								fullname: "Test User2",
+								password: "test"
+							}
+						})
+						.end(( err, res ) => {
+							invalidToken = res.text;
+							done();
+						});
+				} else {
+					invalidToken = tokenGenerator( user );
+					done();
+				}
+			}).catch( err => done( err ));
+	});
+
+	it( "should return 401 Requester isn't the author", function( done ) {
+		chai.request( "localhost:8000" )
+			.delete( "/posts/delete" )
+			.send({
+				post: { id: postId, token: invalidToken }
+			})
+			.end(( err, res ) => {
+				console.log( res.text );
+				res.should.have.status( 401 );
+				res.text.should.equal( "Requester isn't the author" );
+				done();
+			});
+	});
+
 	it( "should return 200", function( done ) {
 		chai.request( "localhost:8000" )
 			.delete( "/posts/delete" )
@@ -167,19 +294,8 @@ describe( "DELETE posts/delete", function() {
 				done();
 			});
 	});
-
-	it( "should return 422 Empty post data", function( done ) {
-		chai.request( "localhost:8000" )
-			.delete( "/posts/delete" )
-			.send({
-				post: {}
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 422 );
-				done();
-			});
-	});
 });
+
 
 
 describe( "PATCH posts/update", function() {
@@ -236,6 +352,22 @@ describe( "PATCH posts/update", function() {
 			});
 	});
 
+	it( "should return 401 jwt malformed", function( done ) {
+		chai.request( "localhost:8000" )
+			.patch( "/posts/update" )
+			.send({
+				data: {
+					token: "12312asdas123123",
+					post: { id: postId, content: "Should not update" }
+				}
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
+				done();
+			});
+	});
+
 	// before testing get the invalid userToken. If the user doesn't exists create it
 	before( function( done ) {
 		User.findOne({ email: "test2@gmail.com" })
@@ -263,7 +395,7 @@ describe( "PATCH posts/update", function() {
 			}).catch( err => done( err ));
 	});
 
-	it( "should return 401 malformed jwt", function( done ) {
+	it( "should return 401 Requester isn't the author", function( done ) {
 		chai.request( "localhost:8000" )
 			.patch( "/posts/update" )
 			.send({
