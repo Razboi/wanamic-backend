@@ -125,7 +125,6 @@ describe( "post user/match", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 200 );
-				res.text.should.equal( "[]" );
 				done();
 			});
 	});
