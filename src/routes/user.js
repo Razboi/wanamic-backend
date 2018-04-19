@@ -62,21 +62,11 @@ Router.post( "/info", upload.fields([ { name: "userImage", maxCount: 1 },
 			if ( data.description ) {
 				user.description = data.description;
 			}
-			if ( data.keywords ) {
-				user.keywords = data.keywords;
-			}
 			if ( data.fullname ) {
 				user.fullname = data.fullname;
 			}
 			if ( data.username ) {
 				user.username = data.username;
-			}
-			if ( data.interests ) {
-				data.interests.map(( interest, index ) => {
-					if ( !user.interests.includes( interest )) {
-						user.interests.push( interest );
-					}
-				});
 			}
 			if ( req.files && req.files[ "userImage" ]) {
 				user.profileImage = req.files[ "userImage" ][ 0 ].filename;
@@ -150,14 +140,14 @@ Router.post( "/sugestedUsers", ( req, res, next ) => {
 		userId,
 		err;
 
-	if ( !req.body.data ) {
+	if ( !req.body.token || req.body.skip === undefined ) {
 		err = new Error( "Empty data" );
 		err.statusCode = 422;
 		return next( err );
 	}
 
 	try {
-		userId = tokenVerifier( req.body.data );
+		userId = tokenVerifier( req.body.token );
 	} catch ( err ) {
 		return next( err );
 	}
@@ -171,6 +161,7 @@ Router.post( "/sugestedUsers", ( req, res, next ) => {
 				return next( err );
 			}
 			User.findOne({ interests: { $in: user.interests } })
+				.skip( req.body.skip )
 				.where( "_id" ).ne( user.id )
 				.select(
 					"username fullname description keywords profileImage headerImage"
@@ -210,11 +201,10 @@ Router.post( "/randomUser", ( req, res, next ) => {
 Router.post( "/matchKwUsers", ( req, res, next ) => {
 	var
 		userId,
-		err,
-		randomUser;
-
-	if ( !req.body.token || !req.body.data ) {
-		err = new Error( "Empty token" );
+		err;
+	console.log( req.body.skip );
+	if ( !req.body.token || !req.body.data || req.body.skip === undefined ) {
+		err = new Error( "Empty data" );
 		err.statusCode = 422;
 		return next( err );
 	}
@@ -226,6 +216,7 @@ Router.post( "/matchKwUsers", ( req, res, next ) => {
 	}
 
 	User.findOne({ keywords: { $in: req.body.data } })
+		.skip( req.body.skip )
 		.where( "_id" ).ne( userId )
 		.select(
 			"username fullname description keywords profileImage headerImage"
@@ -233,6 +224,34 @@ Router.post( "/matchKwUsers", ( req, res, next ) => {
 		.exec()
 		.then( user => {
 			res.send( user );
+		}).catch( err => next( err ));
+});
+
+
+Router.post( "/setUserKw", ( req, res, next ) => {
+	var
+		userId,
+		err;
+
+	if ( !req.body.token || !req.body.data ) {
+		err = new Error( "Empty data" );
+		err.statusCode = 422;
+		return next( err );
+	}
+
+	try {
+		userId = tokenVerifier( req.body.token );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	User.findById( userId )
+		.exec()
+		.then( user => {
+			user.keywords = req.body.data;
+			user.save()
+				.then(() => res.sendStatus( 201 ))
+				.catch( err => console.log( err ));
 		}).catch( err => next( err ));
 });
 
