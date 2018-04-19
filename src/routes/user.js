@@ -170,16 +170,69 @@ Router.post( "/sugestedUsers", ( req, res, next ) => {
 				err.statusCode = 404;
 				return next( err );
 			}
-			User.find({ interests: { $in: user.interests } })
+			User.findOne({ interests: { $in: user.interests } })
 				.where( "_id" ).ne( user.id )
 				.select(
-					"username fullname description posts keywords profileImage headerImage"
+					"username fullname description keywords profileImage headerImage"
 				)
-				.limit( 7 )
 				.exec()
-				.then( users => {
-					res.send( users );
+				.then( user => {
+					res.send( user );
 				}).catch( err => next( err ));
+		}).catch( err => next( err ));
+});
+
+// retrieve a random user that is not the requester
+Router.post( "/randomUser", ( req, res, next ) => {
+	var
+		userId,
+		err,
+		randomUser;
+
+	if ( !req.body.token ) {
+		err = new Error( "Empty token" );
+		err.statusCode = 422;
+		return next( err );
+	}
+
+	try {
+		userId = tokenVerifier( req.body.token );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	findRandomUser( userId )
+		.then( user => res.send( user ))
+		.catch( err => next( err ));
+});
+
+
+Router.post( "/matchKwUsers", ( req, res, next ) => {
+	var
+		userId,
+		err,
+		randomUser;
+
+	if ( !req.body.token || !req.body.data ) {
+		err = new Error( "Empty token" );
+		err.statusCode = 422;
+		return next( err );
+	}
+
+	try {
+		userId = tokenVerifier( req.body.token );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	User.findOne({ keywords: { $in: req.body.data } })
+		.where( "_id" ).ne( userId )
+		.select(
+			"username fullname description keywords profileImage headerImage"
+		)
+		.exec()
+		.then( user => {
+			res.send( user );
 		}).catch( err => next( err ));
 });
 
