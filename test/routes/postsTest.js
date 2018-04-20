@@ -276,7 +276,6 @@ describe( "DELETE posts/delete", function() {
 				post: { id: postId, token: invalidToken }
 			})
 			.end(( err, res ) => {
-				console.log( res.text );
 				res.should.have.status( 401 );
 				res.text.should.equal( "Requester isn't the author" );
 				done();

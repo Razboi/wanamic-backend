@@ -202,7 +202,7 @@ Router.post( "/matchKwUsers", ( req, res, next ) => {
 	var
 		userId,
 		err;
-	console.log( req.body.skip );
+
 	if ( !req.body.token || !req.body.data || req.body.skip === undefined ) {
 		err = new Error( "Empty data" );
 		err.statusCode = 422;
