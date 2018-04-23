@@ -58,6 +58,65 @@ Router.post( "/create", ( req, res, next ) => {
 		}).catch( err => next( err ));
 });
 
+Router.post( "/media", ( req, res, next ) => {
+	var
+		err,
+		data,
+		token,
+		userId;
+
+	if ( !req.body.token || !req.body.data ) {
+		err = new Error( "Empty post data" );
+		err.statusCode = 422;
+		return next( err );
+	}
+
+	data = req.body.data;
+	token = req.body.token;
+
+	try {
+		userId = tokenVerifier( token );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	User.findById( userId )
+		.exec()
+		.then( user => {
+			if ( !user ) {
+				err = new Error( "User doesn't exist" );
+				err.statusCode = 404;
+				return next( err );
+			}
+			new Post({
+				author: user.username,
+				media: true,
+				content: data.content,
+				mediaContent: {
+					title: data.title,
+					image: data.image
+				}
+			}).save()
+				.then( post => {
+
+					User.update(
+						{ _id: { $in: user.friends } },
+						{ $push: { "newsfeed": post._id } },
+						{ multi: true }
+					)
+						.exec()
+						.catch( err => next( err ));
+
+					user.posts.push( post._id );
+					user.newsfeed.push( post._id );
+					user.save()
+						.then( updatedUser => {
+							res.sendStatus( 201 );
+						}).catch( err => next( err ));
+				}).catch( err => next( err ));
+		}).catch( err => next( err ));
+});
+
 Router.post( "/newsfeed/:skip", ( req, res, next ) => {
 	var
 		err,
