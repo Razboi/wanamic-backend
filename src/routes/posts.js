@@ -4,7 +4,9 @@ const
 	tokenVerifier = require( "../utils/tokenVerifier" ),
 	Post = require( "../models/Post" ),
 	LinkPreview = require( "react-native-link-preview" ),
-	extractHostname = require( "../utils/extractHostname" );
+	extractHostname = require( "../utils/extractHostname" ),
+	multer = require( "multer" ),
+	upload = multer({ dest: "../wanamic-frontend/src/images" });
 
 
 // POST
@@ -99,8 +101,7 @@ Router.post( "/media", ( req, res, next ) => {
 				mediaContent: {
 					title: data.title,
 					artist: data.artist,
-					image: data.image,
-					linkContent: data.link
+					image: data.image
 				}
 			}).save()
 				.then( post => {
@@ -194,6 +195,64 @@ Router.post( "/mediaLink", ( req, res, next ) => {
 						}).catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => console.log( err ));
+});
+
+Router.post( "/mediaPicture", upload.single( "picture" ), ( req, res, next ) => {
+	var
+		err,
+		data,
+		userId;
+	console.log( req.file );
+
+	if ( !req.body.token || !req.body ) {
+		err = new Error( "Empty post data" );
+		err.statusCode = 422;
+		return next( err );
+	}
+
+	data = req.body;
+
+	try {
+		userId = tokenVerifier( data.token );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	User.findById( userId )
+		.exec()
+		.then( user => {
+			if ( !user ) {
+				err = new Error( "User doesn't exist" );
+				err.statusCode = 404;
+				return next( err );
+			}
+			new Post({
+				author: user.username,
+				media: true,
+				picture: true,
+				content: data.content,
+				mediaContent: {
+					image: req.file.filename,
+				}
+			}).save()
+				.then( post => {
+
+					User.update(
+						{ _id: { $in: user.friends } },
+						{ $push: { "newsfeed": post._id } },
+						{ multi: true }
+					)
+						.exec()
+						.catch( err => next( err ));
+
+					user.posts.push( post._id );
+					user.newsfeed.push( post._id );
+					user.save()
+						.then( updatedUser => {
+							res.sendStatus( 201 );
+						}).catch( err => next( err ));
+				}).catch( err => next( err ));
+		}).catch( err => next( err ));
 });
 
 Router.post( "/newsfeed/:skip", ( req, res, next ) => {

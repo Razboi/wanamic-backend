@@ -7,6 +7,7 @@ const
 		content: { type: String },
 		media: { type: Boolean, default: false },
 		link: { type: Boolean, default: false },
+		picture: { type: Boolean, default: false },
 		mediaContent: {
 			title: { type: String },
 			artist: { type: String },
