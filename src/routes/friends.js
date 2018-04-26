@@ -1,18 +1,15 @@
 const
 	Router = require( "express" ).Router(),
 	User = require( "../models/User" ),
-	tokenVerifier = require( "../utils/tokenVerifier" );
+	tokenVerifier = require( "../utils/tokenVerifier" ),
+	errors = require( "../utils/errors" );
 
-// Add friend
+
 Router.post( "/add", ( req, res, next ) => {
-	var
-		err,
-		userId;
+	var userId;
 
 	if ( !req.body.token || !req.body.friendUsername ) {
-		err = new Error( "Empty data" );
-		err.statusCode = 422;
-		return next( err );
+		return next( errors.blankData());
 	}
 
 	try {
@@ -25,24 +22,20 @@ Router.post( "/add", ( req, res, next ) => {
 		.exec()
 		.then( user => {
 			if ( !user ) {
-				err = new Error( "User doesn't exist" );
-				err.statusCode = 404;
-				return next( err );
+				return next( errors.userDoesntExist());
 			}
 
 			User.findOne({ username: req.body.friendUsername })
 				.exec()
 				.then( friend => {
 					if ( !friend ) {
-						err = new Error( "User doesn't exist" );
-						err.statusCode = 404;
-						return next( err );
+						return next( errors.userDoesntExist());
 					}
 					user.friends.push( friend._id );
-					user.save();
 					friend.friends.push( user._id );
-					friend.save();
-					res.sendStatus( 201 );
+					Promise.all([ user.save(), friend.save() ])
+						.then(() => res.sendStatus( 201 ))
+						.catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));
 });
@@ -50,14 +43,10 @@ Router.post( "/add", ( req, res, next ) => {
 
 // Delete friend
 Router.delete( "/delete", ( req, res, next ) => {
-	var
-		err,
-		userId;
+	var userId;
 
 	if ( !req.body.token || !req.body.friendUsername ) {
-		err = new Error( "Empty data" );
-		err.statusCode = 422;
-		return next( err );
+		return next( errors.blankData());
 	}
 
 	try {
@@ -70,26 +59,22 @@ Router.delete( "/delete", ( req, res, next ) => {
 		.exec()
 		.then( user => {
 			if ( !user ) {
-				err = new Error( "User doesn't exist" );
-				err.statusCode = 404;
-				return next( err );
+				return next( errors.userDoesntExist());
 			}
 			User.findOne({ username: req.body.friendUsername })
 				.exec()
 				.then( friend => {
 					if ( !friend ) {
-						err = new Error( "User doesn't exist" );
-						err.statusCode = 404;
-						return next( err );
+						return next( errors.userDoesntExist());
 					}
 					const
 						friendIndex = user.friends.indexOf( friend._id ),
 						userIndex = friend.friends.indexOf( user._id );
 					user.friends.splice( friendIndex, 1 );
-					user.save();
 					friend.friends.splice( userIndex, 1 );
-					friend.save();
-					res.sendStatus( 200 );
+					Promise.all([ user.save(), friend.save() ])
+						.then(() => res.sendStatus( 200 ))
+						.catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));
 });

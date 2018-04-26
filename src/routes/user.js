@@ -2,17 +2,16 @@ const
 	Router = require( "express" ).Router(),
 	User = require( "../models/User" ),
 	multer = require( "multer" ),
-	upload = multer({ dest: "../wanamic-frontend/src/images" });
+	upload = multer({ dest: "../wanamic-frontend/src/images" }),
+	findRandomUser = require( "../utils/findRandomUser" ),
+	async = require( "async" ),
+	errors = require( "../utils/errors" );
 
+// get user info
 Router.get( "/:username", ( req, res, next ) => {
-	var
-		err,
-		data;
 
 	if ( !req.params.username ) {
-		err = new Error( "User doesn't exist" );
-		err.statusCode = 404;
-		return next( err );
+		return next( errors.blankData());
 	}
 
 	User.findOne({ username: req.params.username })
@@ -21,29 +20,24 @@ Router.get( "/:username", ( req, res, next ) => {
 		.exec()
 		.then( user => {
 			if ( !user ) {
-				err = new Error( "User doesn't exist" );
-				err.statusCode = 404;
-				return next( err );
+				return next( errors.userDoesntExist());
 			}
 			res.send( user );
 		}).catch( err => next( err ));
 });
 
-
+// set user info
 Router.post( "/info", upload.fields([ { name: "userImage", maxCount: 1 },
 	{ name: "headerImage", maxCount: 1 } ]), ( req, res, next ) => {
 	var
-		err,
-		data,
+		newInfo,
 		userId;
 
 	if ( !req.body.token ) {
-		err = new Error( "Token not found" );
-		err.statusCode = 422;
-		return next( err );
+		return next( errors.blankData());
 	}
 
-	data = req.body;
+	newInfo = req.body;
 
 	try {
 		userId = tokenVerifier( req.body.token );
@@ -55,18 +49,16 @@ Router.post( "/info", upload.fields([ { name: "userImage", maxCount: 1 },
 		.exec()
 		.then( user => {
 			if ( !user ) {
-				err = new Error( "User doesn't exist" );
-				err.statusCode = 404;
-				return next( err );
+				return next( errors.userDoesntExist());
 			}
-			if ( data.description ) {
-				user.description = data.description;
+			if ( newInfo.description ) {
+				user.description = newInfo.description;
 			}
-			if ( data.fullname ) {
-				user.fullname = data.fullname;
+			if ( newInfo.fullname ) {
+				user.fullname = newInfo.fullname;
 			}
-			if ( data.username ) {
-				user.username = data.username;
+			if ( newInfo.username ) {
+				user.username = newInfo.username;
 			}
 			if ( req.files && req.files[ "userImage" ]) {
 				user.profileImage = req.files[ "userImage" ][ 0 ].filename;
@@ -80,14 +72,11 @@ Router.post( "/info", upload.fields([ { name: "userImage", maxCount: 1 },
 		}).catch( err => next( err ));
 });
 
+// get 10 users with the same interests
 Router.post( "/match", ( req, res, next ) => {
-	var
-		err;
 
 	if ( !req.body.data ) {
-		err = new Error( "Empty data" );
-		err.statusCode = 422;
-		return next( err );
+		return next( errors.blankData());
 	}
 
 	User.find({ interests: { $in: req.body.data } })
@@ -99,16 +88,17 @@ Router.post( "/match", ( req, res, next ) => {
 		}).catch( err => next( err ));
 });
 
+// add new interests
 Router.post( "/addInterests", ( req, res, next ) => {
 	var
 		userId,
-		err;
+		newInterests;
 
 	if ( !req.body.data || !req.body.token ) {
-		err = new Error( "Empty data" );
-		err.statusCode = 422;
-		return next( err );
+		return next( errors.blankData());
 	}
+
+	newInterests = req.body.data;
 
 	try {
 		userId = tokenVerifier( req.body.token );
@@ -120,30 +110,28 @@ Router.post( "/addInterests", ( req, res, next ) => {
 		.exec()
 		.then( user => {
 			if ( !user ) {
-				err = new Error( "User doesn't exist" );
-				err.statusCode = 404;
-				return next( err );
+				return next( errors.userDoesntExist());
 			}
-			req.body.data.map(( interest, index ) => {
-				if ( !user.interests.includes( interest )) {
-					user.interests.push( interest );
+
+			async.eachSeries( newInterests, function( newInterest, done ) {
+				if ( !user.interests.includes( newInterest )) {
+					user.interests.push( newInterest );
+					done();
 				}
 			});
-			user.save();
-			res.sendStatus( 201 );
+
+			user.save()
+				.then(() => res.sendStatus( 201 ))
+				.catch( err => next( err ));
 		}).catch( err => next( err ));
 });
 
-
+// get one user with the same general interests
 Router.post( "/sugestedUsers", ( req, res, next ) => {
-	var
-		userId,
-		err;
+	var userId;
 
 	if ( !req.body.token || req.body.skip === undefined ) {
-		err = new Error( "Empty data" );
-		err.statusCode = 422;
-		return next( err );
+		return next( errors.blankData());
 	}
 
 	try {
@@ -156,9 +144,7 @@ Router.post( "/sugestedUsers", ( req, res, next ) => {
 		.exec()
 		.then( user => {
 			if ( !user ) {
-				err = new Error( "User doesn't exist" );
-				err.statusCode = 404;
-				return next( err );
+				return next( errors.userDoesntExist());
 			}
 			User.findOne({ interests: { $in: user.interests } })
 				.skip( req.body.skip )
@@ -177,13 +163,10 @@ Router.post( "/sugestedUsers", ( req, res, next ) => {
 Router.post( "/randomUser", ( req, res, next ) => {
 	var
 		userId,
-		err,
 		randomUser;
 
 	if ( !req.body.token ) {
-		err = new Error( "Empty token" );
-		err.statusCode = 422;
-		return next( err );
+		return next( errors.blankData());
 	}
 
 	try {
@@ -197,16 +180,12 @@ Router.post( "/randomUser", ( req, res, next ) => {
 		.catch( err => next( err ));
 });
 
-
+// get one user with one or more common keywords
 Router.post( "/matchKwUsers", ( req, res, next ) => {
-	var
-		userId,
-		err;
+	var userId;
 
 	if ( !req.body.token || !req.body.data || req.body.skip === undefined ) {
-		err = new Error( "Empty data" );
-		err.statusCode = 422;
-		return next( err );
+		return next( errors.blankData());
 	}
 
 	try {
@@ -227,16 +206,12 @@ Router.post( "/matchKwUsers", ( req, res, next ) => {
 		}).catch( err => next( err ));
 });
 
-
+// set the user keywords
 Router.post( "/setUserKw", ( req, res, next ) => {
-	var
-		userId,
-		err;
+	var userId;
 
 	if ( !req.body.token || !req.body.data ) {
-		err = new Error( "Empty data" );
-		err.statusCode = 422;
-		return next( err );
+		return next( errors.blankData());
 	}
 
 	try {
@@ -248,10 +223,13 @@ Router.post( "/setUserKw", ( req, res, next ) => {
 	User.findById( userId )
 		.exec()
 		.then( user => {
+			if ( !user ) {
+				return next( errors.userDoesntExist());
+			}
 			user.keywords = req.body.data;
 			user.save()
 				.then(() => res.sendStatus( 201 ))
-				.catch( err => console.log( err ));
+				.catch( err => next( err ));
 		}).catch( err => next( err ));
 });
 

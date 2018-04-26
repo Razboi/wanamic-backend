@@ -6,20 +6,17 @@ const
 	LinkPreview = require( "react-native-link-preview" ),
 	extractHostname = require( "../utils/extractHostname" ),
 	multer = require( "multer" ),
-	upload = multer({ dest: "../wanamic-frontend/src/images" });
+	upload = multer({ dest: "../wanamic-frontend/src/images" }),
+	errors = require( "../utils/errors" );
 
 
-// POST
 Router.post( "/create", ( req, res, next ) => {
 	var
-		err,
 		data,
 		userId;
 
 	if ( !req.body.post || !req.body.post.token || !req.body.post.content ) {
-		err = new Error( "Empty post data" );
-		err.statusCode = 422;
-		return next( err );
+		return next( errors.blankData());
 	}
 
 	data = req.body.post;
@@ -34,45 +31,38 @@ Router.post( "/create", ( req, res, next ) => {
 		.exec()
 		.then( user => {
 			if ( !user ) {
-				err = new Error( "User doesn't exist" );
-				err.statusCode = 404;
-				return next( err );
+				return next( errors.userDoesntExist());
 			}
 			new Post({
 				author: user.username,
 				content: data.content
 			}).save()
-				.then( post => {
-
+				.then( newPost => {
 					User.update(
 						{ _id: { $in: user.friends } },
-						{ $push: { "newsfeed": post._id } },
+						{ $push: { "newsfeed": newPost._id } },
 						{ multi: true }
 					)
 						.exec()
 						.catch( err => next( err ));
 
-					user.posts.push( post._id );
-					user.newsfeed.push( post._id );
+					user.posts.push( newPost._id );
+					user.newsfeed.push( newPost._id );
 					user.save()
-						.then( updatedUser => {
-							res.sendStatus( 201 );
-						}).catch( err => next( err ));
+						.then(() => res.sendStatus( 201 ))
+						.catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));
 });
 
 Router.post( "/media", ( req, res, next ) => {
 	var
-		err,
 		data,
 		token,
 		userId;
 
 	if ( !req.body.token || !req.body.data ) {
-		err = new Error( "Empty post data" );
-		err.statusCode = 422;
-		return next( err );
+		return next( errors.blankData());
 	}
 
 	data = req.body.data;
@@ -88,9 +78,7 @@ Router.post( "/media", ( req, res, next ) => {
 		.exec()
 		.then( user => {
 			if ( !user ) {
-				err = new Error( "User doesn't exist" );
-				err.statusCode = 404;
-				return next( err );
+				return next( errors.userDoesntExist());
 			}
 			new Post({
 				author: user.username,
@@ -103,29 +91,26 @@ Router.post( "/media", ( req, res, next ) => {
 					image: data.image
 				}
 			}).save()
-				.then( post => {
-
+				.then( newPost => {
 					User.update(
 						{ _id: { $in: user.friends } },
-						{ $push: { "newsfeed": post._id } },
+						{ $push: { "newsfeed": newPost._id } },
 						{ multi: true }
 					)
 						.exec()
 						.catch( err => next( err ));
 
-					user.posts.push( post._id );
-					user.newsfeed.push( post._id );
+					user.posts.push( newPost._id );
+					user.newsfeed.push( newPost._id );
 					user.save()
-						.then( updatedUser => {
-							res.sendStatus( 201 );
-						}).catch( err => next( err ));
+						.then( updatedUser => res.sendStatus( 201 ))
+						.catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));
 });
 
 Router.post( "/mediaLink", ( req, res, next ) => {
 	var
-		err,
 		data,
 		token,
 		userId,
@@ -133,9 +118,7 @@ Router.post( "/mediaLink", ( req, res, next ) => {
 		embeddedUrl;
 
 	if ( !req.body.token || !req.body.data || !req.body.data.link ) {
-		err = new Error( "Empty post data" );
-		err.statusCode = 422;
-		return next( err );
+		return next( errors.blankData());
 	}
 
 	data = req.body.data;
@@ -157,9 +140,7 @@ Router.post( "/mediaLink", ( req, res, next ) => {
 				.exec()
 				.then( user => {
 					if ( !user ) {
-						err = new Error( "User doesn't exist" );
-						err.statusCode = 404;
-						return next( err );
+						return next( errors.userDoesntExist());
 					}
 					new Post({
 						author: user.username,
@@ -175,22 +156,20 @@ Router.post( "/mediaLink", ( req, res, next ) => {
 							image: previewData.images[ 0 ]
 						}
 					}).save()
-						.then( post => {
-
+						.then( newPost => {
 							User.update(
 								{ _id: { $in: user.friends } },
-								{ $push: { "newsfeed": post._id } },
+								{ $push: { "newsfeed": newPost._id } },
 								{ multi: true }
 							)
 								.exec()
 								.catch( err => next( err ));
 
-							user.posts.push( post._id );
-							user.newsfeed.push( post._id );
+							user.posts.push( newPost._id );
+							user.newsfeed.push( newPost._id );
 							user.save()
-								.then( updatedUser => {
-									res.sendStatus( 201 );
-								}).catch( err => next( err ));
+								.then( updatedUser => res.sendStatus( 201 ))
+								.catch( err => next( err ));
 						}).catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => console.log( err ));
@@ -198,14 +177,11 @@ Router.post( "/mediaLink", ( req, res, next ) => {
 
 Router.post( "/mediaPicture", upload.single( "picture" ), ( req, res, next ) => {
 	var
-		err,
 		data,
 		userId;
 
 	if ( !req.body.token || !req.body || !req.file ) {
-		err = new Error( "Empty data" );
-		err.statusCode = 422;
-		return next( err );
+		return next( errors.blankData());
 	}
 
 	data = req.body;
@@ -220,9 +196,7 @@ Router.post( "/mediaPicture", upload.single( "picture" ), ( req, res, next ) => 
 		.exec()
 		.then( user => {
 			if ( !user ) {
-				err = new Error( "User doesn't exist" );
-				err.statusCode = 404;
-				return next( err );
+				return next( errors.userDoesntExist());
 			}
 			new Post({
 				author: user.username,
@@ -233,36 +207,32 @@ Router.post( "/mediaPicture", upload.single( "picture" ), ( req, res, next ) => 
 					image: req.file.filename,
 				}
 			}).save()
-				.then( post => {
-
+				.then( newPost => {
 					User.update(
 						{ _id: { $in: user.friends } },
-						{ $push: { "newsfeed": post._id } },
+						{ $push: { "newsfeed": newPost._id } },
 						{ multi: true }
 					)
 						.exec()
 						.catch( err => next( err ));
 
-					user.posts.push( post._id );
-					user.newsfeed.push( post._id );
+					user.posts.push( newPost._id );
+					user.newsfeed.push( newPost._id );
 					user.save()
-						.then( updatedUser => {
-							res.sendStatus( 201 );
-						}).catch( err => next( err ));
+						.then( updatedUser => res.sendStatus( 201 ))
+						.catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));
 });
 
+
 Router.post( "/newsfeed/:skip", ( req, res, next ) => {
 	var
-		err,
 		userId,
 		token;
 
 	if ( !req.body.token ) {
-		err = new Error( "Missing token" );
-		err.statusCode = 422;
-		return next( err );
+		return next( errors.blankData());
 	}
 
 	token = req.body.token;
@@ -285,25 +255,17 @@ Router.post( "/newsfeed/:skip", ( req, res, next ) => {
 		.exec()
 		.then( user => {
 			if ( !user ) {
-				err = new Error( "User doesn't exist" );
-				err.statusCode = 404;
-				return next( err );
+				return next( errors.userDoesntExist());
 			}
 			res.send( user.newsfeed );
-		})
-		.catch( err => next( err ));
+		}).catch( err => next( err ));
 });
 
 
-// GET
 Router.get( "/:username/:skip", ( req, res, next ) => {
-	var
-		err;
 
 	if ( !req.params.username || !req.params.skip ) {
-		err = new Error( "Empty params" );
-		err.statusCode = 422;
-		return next( err );
+		return next( errors.blankData());
 	}
 
 	User.findOne({ username: req.params.username })
@@ -318,26 +280,18 @@ Router.get( "/:username/:skip", ( req, res, next ) => {
 		.exec()
 		.then( user => {
 			if ( !user ) {
-				err = new Error( "User doesn't exist" );
-				err.statusCode = 404;
-				return next( err );
+				return next( errors.userDoesntExist());
 			}
 			res.send( user.posts );
-		})
-		.catch( err => next( err ));
+		}).catch( err => next( err ));
 });
 
 
-// DELETE
 Router.delete( "/delete", ( req, res, next ) => {
-	var
-		post,
-		err;
+	var post;
 
 	if ( !req.body.post || !req.body.post.id ) {
-		err = new Error( "Empty data" );
-		err.statusCode = 422;
-		return next( err );
+		return next( errors.blankData());
 	}
 
 	post = req.body.post;
@@ -348,41 +302,31 @@ Router.delete( "/delete", ( req, res, next ) => {
 		return next( err );
 	}
 
-	// find the requester and the post, if the requester isn't the author of the post
-	// throw an error, else update
 	User.findById( userId )
 		.exec()
 		.then( user => {
 			if ( !user ) {
-				err = new Error( "User doesn't exist" );
-				err.statusCode = 404;
-				return next( err );
+				return next( errors.userDoesntExist());
 			}
 
 			Post.findById( post.id )
 				.exec()
 				.then( storedPost => {
 					if ( !storedPost ) {
-						err = new Error( "Post doesn't exist" );
-						err.statusCode = 404;
-						return next( err );
+						return next( errors.postDoesntExist());
 					}
 
 					if ( user.username !== storedPost.author ) {
-						err = new Error( "Requester isn't the author" );
-						err.statusCode = 401;
-						return next( err );
+						return next( errors.unauthorized());
 					}
 
 					Post.remove({ _id: post.id })
 						.exec()
 						.then(() => {
-							// get the index of the post in posts and newsfeed
 							const
 								postsIndex = user.posts.indexOf( storedPost._id ),
 								newsfeedIndex = user.posts.indexOf( storedPost._id );
 
-							// remove the post from the friends newsfeed
 							User.update(
 								{ _id: { $in: user.friends } },
 								{ $pull: { "newsfeed": post.id } },
@@ -391,7 +335,6 @@ Router.delete( "/delete", ( req, res, next ) => {
 								.exec()
 								.catch( err => next( err ));
 
-							// remove the post from user posts/newsfeed
 							user.posts.splice( postsIndex, 1 );
 							user.newsfeed.splice( newsfeedIndex, 1 );
 							user.save()
@@ -403,19 +346,15 @@ Router.delete( "/delete", ( req, res, next ) => {
 });
 
 
-// PATCH
 Router.patch( "/update", ( req, res, next ) => {
 	var
 		updatedPost,
 		token,
-		userId,
-		err;
+		userId;
 
 	if ( !req.body.data || !req.body.data.post || !req.body.data.token
 		|| !req.body.data.post.id || !req.body.data.post.content ) {
-		err = new Error( "Empty data" );
-		err.statusCode = 422;
-		return next( err );
+		return next( errors.blankData());
 	}
 
 	updatedPost = req.body.data.post;
@@ -427,31 +366,25 @@ Router.patch( "/update", ( req, res, next ) => {
 		return next( err );
 	}
 
-	// find the requester and the post, if the requester isn't the author of the post
-	// throw an error, else update
 	User.findById( userId )
 		.exec()
 		.then( user => {
 			if ( !user ) {
-				err = new Error( "User doesn't exist" );
-				err.statusCode = 404;
-				return next( err );
+				return next( errors.userDoesntExist());
 			}
 
 			Post.findById( updatedPost.id )
 				.exec()
 				.then( storedPost => {
-
 					if ( user.username !== storedPost.author ) {
-						err = new Error( "Requester isn't the author" );
-						err.statusCode = 401;
-						return next( err );
+						return next( errors.unauthorized());
 					}
 					if ( updatedPost.content ) {
 						storedPost.content = updatedPost.content;
 					};
-					storedPost.save().then(() => res.sendStatus( 200 ));
-
+					storedPost.save()
+						.then(() => res.sendStatus( 200 ))
+						.catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));
 });

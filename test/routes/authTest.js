@@ -49,7 +49,7 @@ describe( "auth/signup", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
-				res.text.should.equal( "Empty credentials" );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -67,6 +67,7 @@ describe( "auth/signup", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
+				res.text.should.equal( "Email already registered" );
 				done();
 			});
 	});
@@ -84,6 +85,7 @@ describe( "auth/signup", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
+				res.text.should.equal( "Username already registered" );
 				done();
 			});
 	});
@@ -120,7 +122,7 @@ describe( "auth/login", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
-				res.text.should.equal( "Empty credentials" );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -136,7 +138,7 @@ describe( "auth/login", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
-				res.text.should.equal( "Empty credentials" );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});

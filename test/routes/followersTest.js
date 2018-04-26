@@ -93,7 +93,7 @@ describe( "POST followers/follow", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
-				res.text.should.equal( "Empty data" );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -106,7 +106,7 @@ describe( "POST followers/follow", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
-				res.text.should.equal( "Empty data" );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -161,7 +161,7 @@ describe( "DELETE followers/unfollow", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
-				res.text.should.equal( "Empty data" );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -174,7 +174,7 @@ describe( "DELETE followers/unfollow", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
-				res.text.should.equal( "Empty data" );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -257,7 +257,7 @@ describe( "POST followers/setupFollow", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
-				res.text.should.equal( "Empty data" );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -270,7 +270,7 @@ describe( "POST followers/setupFollow", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
-				res.text.should.equal( "Empty data" );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});

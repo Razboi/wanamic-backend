@@ -79,7 +79,7 @@ describe( "POST friends/add", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
-				res.text.should.equal( "Empty data" );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -92,7 +92,7 @@ describe( "POST friends/add", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
-				res.text.should.equal( "Empty data" );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -161,7 +161,7 @@ describe( "DELETE friends/delete", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
-				res.text.should.equal( "Empty data" );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -174,7 +174,7 @@ describe( "DELETE friends/delete", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
-				res.text.should.equal( "Empty data" );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});

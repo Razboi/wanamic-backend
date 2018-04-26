@@ -98,6 +98,7 @@ describe( "post user/info", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -112,6 +113,7 @@ describe( "post user/info", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
 				done();
 			});
 	});
@@ -138,7 +140,7 @@ describe( "post user/match", function() {
 			.post( "/user/match" )
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
-				res.text.should.equal( "Empty data" );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -169,7 +171,7 @@ describe( "post user/addInterests", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
-				res.text.should.equal( "Empty data" );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -182,7 +184,7 @@ describe( "post user/addInterests", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
-				res.text.should.equal( "Empty data" );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -196,6 +198,7 @@ describe( "post user/addInterests", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
 				done();
 			});
 	});
@@ -226,7 +229,7 @@ describe( "post user/sugestedUsers", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
-				res.text.should.equal( "Empty data" );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -239,7 +242,7 @@ describe( "post user/sugestedUsers", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
-				res.text.should.equal( "Empty data" );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -253,6 +256,7 @@ describe( "post user/sugestedUsers", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
 				done();
 			});
 	});
@@ -281,7 +285,7 @@ describe( "post user/randomUser", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
-				res.text.should.equal( "Empty token" );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -294,6 +298,7 @@ describe( "post user/randomUser", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
 				done();
 			});
 	});
@@ -326,7 +331,7 @@ describe( "post user/matchKwUsers", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
-				res.text.should.equal( "Empty data" );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -340,7 +345,7 @@ describe( "post user/matchKwUsers", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
-				res.text.should.equal( "Empty data" );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -354,7 +359,7 @@ describe( "post user/matchKwUsers", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
-				res.text.should.equal( "Empty data" );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -369,6 +374,7 @@ describe( "post user/matchKwUsers", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
 				done();
 			});
 	});
@@ -399,7 +405,7 @@ describe( "post user/setUserKw", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
-				res.text.should.equal( "Empty data" );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -412,7 +418,7 @@ describe( "post user/setUserKw", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
-				res.text.should.equal( "Empty data" );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -426,6 +432,7 @@ describe( "post user/setUserKw", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
 				done();
 			});
 	});

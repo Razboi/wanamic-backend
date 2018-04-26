@@ -77,6 +77,7 @@ describe( "POST posts/create", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -89,6 +90,7 @@ describe( "POST posts/create", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
 				done();
 			});
 	});
@@ -134,6 +136,7 @@ describe( "POST posts/media", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -146,6 +149,7 @@ describe( "POST posts/media", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -158,6 +162,7 @@ describe( "POST posts/media", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
 				done();
 			});
 	});
@@ -202,6 +207,7 @@ describe( "POST posts/mediaLink", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -214,6 +220,7 @@ describe( "POST posts/mediaLink", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -226,6 +233,7 @@ describe( "POST posts/mediaLink", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
 				done();
 			});
 	});
@@ -260,6 +268,7 @@ describe( "POST posts/mediaPicture", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -272,6 +281,7 @@ describe( "POST posts/mediaPicture", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -333,7 +343,7 @@ describe( "GET posts/newsfeed/:skip", function() {
 			.post( "/posts/newsfeed/0" )
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
-				res.text.should.equal( "Missing token" );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -385,7 +395,7 @@ describe( "DELETE posts/delete", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
-				res.text.should.equal( "Empty data" );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -395,7 +405,7 @@ describe( "DELETE posts/delete", function() {
 			.delete( "/posts/delete" )
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
-				res.text.should.equal( "Empty data" );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -459,7 +469,7 @@ describe( "DELETE posts/delete", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
-				res.text.should.equal( "Requester isn't the author" );
+				res.text.should.equal( "Unauthorized" );
 				done();
 			});
 	});
@@ -528,7 +538,7 @@ describe( "PATCH posts/update", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
-				res.text.should.equal( "Empty data" );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -587,7 +597,7 @@ describe( "PATCH posts/update", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
-				res.text.should.equal( "Requester isn't the author" );
+				res.text.should.equal( "Unauthorized" );
 				done();
 			});
 	});

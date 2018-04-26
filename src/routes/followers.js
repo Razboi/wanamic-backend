@@ -2,17 +2,14 @@ const
 	Router = require( "express" ).Router(),
 	User = require( "../models/User" ),
 	tokenVerifier = require( "../utils/tokenVerifier" ),
-	async = require( "async" );
+	async = require( "async" ),
+	errors = require( "../utils/errors" );
 
 Router.post( "/follow", ( req, res, next ) => {
-	var
-		err,
-		userId;
+	var userId;
 
 	if ( !req.body.token || !req.body.targetUsername ) {
-		err = new Error( "Empty data" );
-		err.statusCode = 422;
-		return next( err );
+		return next( errors.blankData());
 	}
 
 	try {
@@ -25,21 +22,17 @@ Router.post( "/follow", ( req, res, next ) => {
 		.exec()
 		.then( user => {
 			if ( !user ) {
-				err = new Error( "User doesn't exist" );
-				err.statusCode = 404;
-				return next( err );
+				return next( errors.userDoesntExist());
 			}
 			User.findOne({ username: req.body.targetUsername })
 				.exec()
-				.then( target => {
-					if ( !target ) {
-						err = new Error( "User doesn't exist" );
-						err.statusCode = 404;
-						return next( err );
+				.then( userToFollow => {
+					if ( !userToFollow ) {
+						return next( errors.userDoesntExist());
 					}
-					target.followers.push( user._id );
-					user.following.push( target._id );
-					Promise.all([ target.save(), user.save() ])
+					userToFollow.followers.push( user._id );
+					user.following.push( userToFollow._id );
+					Promise.all([ userToFollow.save(), user.save() ])
 						.then(() => res.sendStatus( 201 ))
 						.catch( err => next( err ));
 				}).catch( err => next( err ));
@@ -48,14 +41,10 @@ Router.post( "/follow", ( req, res, next ) => {
 
 
 Router.delete( "/unfollow", ( req, res, next ) => {
-	var
-		err,
-		userId;
+	var userId;
 
 	if ( !req.body.token || !req.body.targetUsername ) {
-		err = new Error( "Empty data" );
-		err.statusCode = 422;
-		return next( err );
+		return next( errors.blankData());
 	}
 
 	try {
@@ -68,40 +57,32 @@ Router.delete( "/unfollow", ( req, res, next ) => {
 		.exec()
 		.then( user => {
 			if ( !user ) {
-				err = new Error( "User doesn't exist" );
-				err.statusCode = 404;
-				return next( err );
+				return next( errors.userDoesntExist());
 			}
 			User.findOne({ username: req.body.targetUsername })
 				.exec()
-				.then( target => {
-					if ( !target ) {
-						err = new Error( "User doesn't exist" );
-						err.statusCode = 404;
-						return next( err );
+				.then( userToUnfollow => {
+					if ( !userToUnfollow ) {
+						return next( errors.userDoesntExist());
 					}
 					const
-						targetIndex = user.following.indexOf( target._id ),
-						userIndex = target.followers.indexOf( user._id );
+						targetIndex = user.following.indexOf( userToUnfollow._id ),
+						userIndex = userToUnfollow.followers.indexOf( user._id );
 					user.following.splice( targetIndex, 1 );
-					user.save();
-					target.followers.splice( userIndex, 1 );
-					target.save();
-					res.sendStatus( 200 );
+					userToUnfollow.followers.splice( userIndex, 1 );
+					Promise.all([ userToUnfollow.save(), user.save() ])
+						.then(() => res.sendStatus( 200 ))
+						.catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));
 });
 
-
+// follow multiple users
 Router.post( "/setupFollow", ( req, res, next ) => {
-	var
-		err,
-		userId;
+	var userId;
 
 	if ( !req.body.token || !req.body.users ) {
-		err = new Error( "Empty data" );
-		err.statusCode = 422;
-		return next( err );
+		return next( errors.blankData());
 	}
 
 	try {
@@ -114,9 +95,7 @@ Router.post( "/setupFollow", ( req, res, next ) => {
 		.exec()
 		.then( user => {
 			if ( !user ) {
-				err = new Error( "User doesn't exist" );
-				err.statusCode = 404;
-				return next( err );
+				return next( errors.userDoesntExist());
 			}
 
 			async.eachSeries( req.body.users, function( userToFollow, done ) {
@@ -124,9 +103,7 @@ Router.post( "/setupFollow", ( req, res, next ) => {
 					.exec()
 					.then( target => {
 						if ( !target ) {
-							err = new Error( "User doesn't exist" );
-							err.statusCode = 404;
-							return done( err );
+							return next( errors.userDoesntExist());
 						}
 						user.following.push( target._id );
 						target.followers.push( user._id );
