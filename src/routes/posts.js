@@ -2,7 +2,11 @@ const
 	Router = require( "express" ).Router(),
 	User = require( "../models/User" ),
 	tokenVerifier = require( "../utils/tokenVerifier" ),
-	Post = require( "../models/Post" );
+	Post = require( "../models/Post" ),
+	LinkPreview = require( "react-native-link-preview" ),
+	extractHostname = require( "../utils/extractHostname" ),
+	multer = require( "multer" ),
+	upload = multer({ dest: "../wanamic-frontend/src/images" });
 
 
 // POST
@@ -37,6 +41,197 @@ Router.post( "/create", ( req, res, next ) => {
 			new Post({
 				author: user.username,
 				content: data.content
+			}).save()
+				.then( post => {
+
+					User.update(
+						{ _id: { $in: user.friends } },
+						{ $push: { "newsfeed": post._id } },
+						{ multi: true }
+					)
+						.exec()
+						.catch( err => next( err ));
+
+					user.posts.push( post._id );
+					user.newsfeed.push( post._id );
+					user.save()
+						.then( updatedUser => {
+							res.sendStatus( 201 );
+						}).catch( err => next( err ));
+				}).catch( err => next( err ));
+		}).catch( err => next( err ));
+});
+
+Router.post( "/media", ( req, res, next ) => {
+	var
+		err,
+		data,
+		token,
+		userId;
+
+	if ( !req.body.token || !req.body.data ) {
+		err = new Error( "Empty post data" );
+		err.statusCode = 422;
+		return next( err );
+	}
+
+	data = req.body.data;
+	token = req.body.token;
+
+	try {
+		userId = tokenVerifier( token );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	User.findById( userId )
+		.exec()
+		.then( user => {
+			if ( !user ) {
+				err = new Error( "User doesn't exist" );
+				err.statusCode = 404;
+				return next( err );
+			}
+			new Post({
+				author: user.username,
+				media: true,
+				link: !!data.link,
+				content: data.content,
+				mediaContent: {
+					title: data.title,
+					artist: data.artist,
+					image: data.image
+				}
+			}).save()
+				.then( post => {
+
+					User.update(
+						{ _id: { $in: user.friends } },
+						{ $push: { "newsfeed": post._id } },
+						{ multi: true }
+					)
+						.exec()
+						.catch( err => next( err ));
+
+					user.posts.push( post._id );
+					user.newsfeed.push( post._id );
+					user.save()
+						.then( updatedUser => {
+							res.sendStatus( 201 );
+						}).catch( err => next( err ));
+				}).catch( err => next( err ));
+		}).catch( err => next( err ));
+});
+
+Router.post( "/mediaLink", ( req, res, next ) => {
+	var
+		err,
+		data,
+		token,
+		userId,
+		hostname,
+		embeddedUrl;
+
+	if ( !req.body.token || !req.body.data || !req.body.data.link ) {
+		err = new Error( "Empty post data" );
+		err.statusCode = 422;
+		return next( err );
+	}
+
+	data = req.body.data;
+	token = req.body.token;
+
+	try {
+		userId = tokenVerifier( token );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	LinkPreview.getPreview( data.link )
+		.then( previewData => {
+			hostname = extractHostname( previewData.url );
+			if ( hostname === "www.youtube.com" ) {
+				embeddedUrl = previewData.url.replace( "watch?v=", "embed/" );
+			}
+			User.findById( userId )
+				.exec()
+				.then( user => {
+					if ( !user ) {
+						err = new Error( "User doesn't exist" );
+						err.statusCode = 404;
+						return next( err );
+					}
+					new Post({
+						author: user.username,
+						media: true,
+						link: true,
+						content: data.content,
+						linkContent: {
+							url: previewData.url,
+							embeddedUrl: embeddedUrl,
+							hostname: hostname,
+							title: previewData.title,
+							description: previewData.description,
+							image: previewData.images[ 0 ]
+						}
+					}).save()
+						.then( post => {
+
+							User.update(
+								{ _id: { $in: user.friends } },
+								{ $push: { "newsfeed": post._id } },
+								{ multi: true }
+							)
+								.exec()
+								.catch( err => next( err ));
+
+							user.posts.push( post._id );
+							user.newsfeed.push( post._id );
+							user.save()
+								.then( updatedUser => {
+									res.sendStatus( 201 );
+								}).catch( err => next( err ));
+						}).catch( err => next( err ));
+				}).catch( err => next( err ));
+		}).catch( err => console.log( err ));
+});
+
+Router.post( "/mediaPicture", upload.single( "picture" ), ( req, res, next ) => {
+	var
+		err,
+		data,
+		userId;
+
+	if ( !req.body.token || !req.body || !req.file ) {
+		err = new Error( "Empty data" );
+		err.statusCode = 422;
+		return next( err );
+	}
+
+	data = req.body;
+
+	try {
+		userId = tokenVerifier( data.token );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	User.findById( userId )
+		.exec()
+		.then( user => {
+			if ( !user ) {
+				err = new Error( "User doesn't exist" );
+				err.statusCode = 404;
+				return next( err );
+			}
+			new Post({
+				author: user.username,
+				media: true,
+				picture: true,
+				content: data.content,
+				mediaContent: {
+					image: req.file.filename,
+				}
 			}).save()
 				.then( post => {
 

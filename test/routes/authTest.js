@@ -90,6 +90,7 @@ describe( "auth/signup", function() {
 });
 
 
+
 describe( "auth/login", function() {
 
 	it( "should return 200", function( done ) {
@@ -115,6 +116,22 @@ describe( "auth/login", function() {
 				credentials: {
 					email: "test@gmail.com",
 					password: ""
+				}
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Empty credentials" );
+				done();
+			});
+	});
+
+	it( "should return 422 for blank credentials", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/auth/login" )
+			.send({
+				credentials: {
+					email: "",
+					password: "123"
 				}
 			})
 			.end(( err, res ) => {

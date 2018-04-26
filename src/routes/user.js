@@ -16,6 +16,8 @@ Router.get( "/:username", ( req, res, next ) => {
 	}
 
 	User.findOne({ username: req.params.username })
+		.select( "username fullname description keywords profileImage headerImage" +
+							" interests friends" )
 		.exec()
 		.then( user => {
 			if ( !user ) {
@@ -23,13 +25,7 @@ Router.get( "/:username", ( req, res, next ) => {
 				err.statusCode = 404;
 				return next( err );
 			}
-			data = {
-				username: user.username, fullname: user.fullname, friends: user.friends,
-				description: user.description, keywords: user.keywords,
-				profileImage: user.profileImage, headerImage: user.headerImage,
-				interests: user.interests
-			};
-			res.send( data );
+			res.send( user );
 		}).catch( err => next( err ));
 });
 
@@ -66,21 +62,11 @@ Router.post( "/info", upload.fields([ { name: "userImage", maxCount: 1 },
 			if ( data.description ) {
 				user.description = data.description;
 			}
-			if ( data.keywords ) {
-				user.keywords = data.keywords;
-			}
 			if ( data.fullname ) {
 				user.fullname = data.fullname;
 			}
 			if ( data.username ) {
 				user.username = data.username;
-			}
-			if ( data.interests ) {
-				data.interests.map(( interest, index ) => {
-					if ( !user.interests.includes( interest )) {
-						user.interests.push( interest );
-					}
-				});
 			}
 			if ( req.files && req.files[ "userImage" ]) {
 				user.profileImage = req.files[ "userImage" ][ 0 ].filename;
@@ -105,6 +91,7 @@ Router.post( "/match", ( req, res, next ) => {
 	}
 
 	User.find({ interests: { $in: req.body.data } })
+		.select( "username fullname description" )
 		.limit( 10 )
 		.exec()
 		.then( users => {
@@ -144,6 +131,127 @@ Router.post( "/addInterests", ( req, res, next ) => {
 			});
 			user.save();
 			res.sendStatus( 201 );
+		}).catch( err => next( err ));
+});
+
+
+Router.post( "/sugestedUsers", ( req, res, next ) => {
+	var
+		userId,
+		err;
+
+	if ( !req.body.token || req.body.skip === undefined ) {
+		err = new Error( "Empty data" );
+		err.statusCode = 422;
+		return next( err );
+	}
+
+	try {
+		userId = tokenVerifier( req.body.token );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	User.findById( userId )
+		.exec()
+		.then( user => {
+			if ( !user ) {
+				err = new Error( "User doesn't exist" );
+				err.statusCode = 404;
+				return next( err );
+			}
+			User.findOne({ interests: { $in: user.interests } })
+				.skip( req.body.skip )
+				.where( "_id" ).ne( user.id )
+				.select(
+					"username fullname description keywords profileImage headerImage"
+				)
+				.exec()
+				.then( user => {
+					res.send( user );
+				}).catch( err => next( err ));
+		}).catch( err => next( err ));
+});
+
+// retrieve a random user that is not the requester
+Router.post( "/randomUser", ( req, res, next ) => {
+	var
+		userId,
+		err,
+		randomUser;
+
+	if ( !req.body.token ) {
+		err = new Error( "Empty token" );
+		err.statusCode = 422;
+		return next( err );
+	}
+
+	try {
+		userId = tokenVerifier( req.body.token );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	findRandomUser( userId )
+		.then( user => res.send( user ))
+		.catch( err => next( err ));
+});
+
+
+Router.post( "/matchKwUsers", ( req, res, next ) => {
+	var
+		userId,
+		err;
+
+	if ( !req.body.token || !req.body.data || req.body.skip === undefined ) {
+		err = new Error( "Empty data" );
+		err.statusCode = 422;
+		return next( err );
+	}
+
+	try {
+		userId = tokenVerifier( req.body.token );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	User.findOne({ keywords: { $in: req.body.data } })
+		.skip( req.body.skip )
+		.where( "_id" ).ne( userId )
+		.select(
+			"username fullname description keywords profileImage headerImage"
+		)
+		.exec()
+		.then( user => {
+			res.send( user );
+		}).catch( err => next( err ));
+});
+
+
+Router.post( "/setUserKw", ( req, res, next ) => {
+	var
+		userId,
+		err;
+
+	if ( !req.body.token || !req.body.data ) {
+		err = new Error( "Empty data" );
+		err.statusCode = 422;
+		return next( err );
+	}
+
+	try {
+		userId = tokenVerifier( req.body.token );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	User.findById( userId )
+		.exec()
+		.then( user => {
+			user.keywords = req.body.data;
+			user.save()
+				.then(() => res.sendStatus( 201 ))
+				.catch( err => console.log( err ));
 		}).catch( err => next( err ));
 });
 

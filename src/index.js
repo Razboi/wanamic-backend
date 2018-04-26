@@ -7,7 +7,8 @@ const
 	friends = require( "./routes/friends" ),
 	followers = require( "./routes/followers" ),
 	user = require( "./routes/user" ),
-	auth = require( "./routes/auth" );
+	auth = require( "./routes/auth" ),
+	findRandomUser = require( "./utils/findRandomUser" );
 
 // apply env variables
 dotenv.config();

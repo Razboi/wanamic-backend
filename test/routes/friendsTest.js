@@ -84,6 +84,19 @@ describe( "POST friends/add", function() {
 			});
 	});
 
+	it( "should return 422 Empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/friends/add" )
+			.send({
+				friendUsername: "testuser2"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Empty data" );
+				done();
+			});
+	});
+
 	it( "should return 401 malformed jwt", function( done ) {
 		chai.request( "localhost:8000" )
 			.post( "/friends/add" )
@@ -94,6 +107,20 @@ describe( "POST friends/add", function() {
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
 				res.text.should.equal( "jwt malformed" );
+				done();
+			});
+	});
+
+	it( "should return 404 User doesn't exist", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/friends/add" )
+			.send({
+				token: token,
+				friendUsername: "inexistingusername"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 404 );
+				res.text.should.equal( "User doesn't exist" );
 				done();
 			});
 	});
@@ -139,6 +166,19 @@ describe( "DELETE friends/delete", function() {
 			});
 	});
 
+	it( "should return 422 Empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.delete( "/friends/delete" )
+			.send({
+				friendUsername: "testuser2"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Empty data" );
+				done();
+			});
+	});
+
 	it( "should return 401 malformed jwt", function( done ) {
 		chai.request( "localhost:8000" )
 			.delete( "/friends/delete" )
@@ -149,6 +189,20 @@ describe( "DELETE friends/delete", function() {
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
 				res.text.should.equal( "jwt malformed" );
+				done();
+			});
+	});
+
+	it( "should return 404 User doesn't exist", function( done ) {
+		chai.request( "localhost:8000" )
+			.delete( "/friends/delete" )
+			.send({
+				token: token,
+				friendUsername: "inexistingusername"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 404 );
+				res.text.should.equal( "User doesn't exist" );
 				done();
 			});
 	});

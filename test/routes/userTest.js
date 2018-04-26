@@ -38,6 +38,8 @@ before( function( done ) {
 		.catch( err => done( err ));
 });
 
+
+// GET :username
 describe( "GET user/:username info", function() {
 
 	it( "should return 200", function( done ) {
@@ -70,6 +72,7 @@ describe( "GET user/:username info", function() {
 });
 
 
+// POST info
 describe( "post user/info", function() {
 
 	it( "should return 200", function( done ) {
@@ -115,6 +118,7 @@ describe( "post user/info", function() {
 });
 
 
+// POST match
 describe( "post user/match", function() {
 
 	it( "should return 200", function( done ) {
@@ -125,7 +129,6 @@ describe( "post user/match", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 200 );
-				res.text.should.equal( "[]" );
 				done();
 			});
 	});
@@ -142,6 +145,7 @@ describe( "post user/match", function() {
 });
 
 
+// POST addInterests
 describe( "post user/addInterests", function() {
 
 	it( "should return 201", function( done ) {
@@ -179,6 +183,249 @@ describe( "post user/addInterests", function() {
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
 				res.text.should.equal( "Empty data" );
+				done();
+			});
+	});
+
+	it( "should return 401 invalid jwt", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/user/addInterests" )
+			.send({
+				token: "123123sadasda1231312",
+				data: [ "Technology", "Art", "Science" ]
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				done();
+			});
+	});
+});
+
+
+// POST sugestedUsers
+describe( "post user/sugestedUsers", function() {
+
+	it( "should return 200", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/user/sugestedUsers" )
+			.send({
+				token: token,
+				skip: 0
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 200 );
+				done();
+			});
+	});
+
+	it( "should return 422", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/user/sugestedUsers" )
+			.send({
+				token: token
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Empty data" );
+				done();
+			});
+	});
+
+	it( "should return 422", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/user/sugestedUsers" )
+			.send({
+				skip: 0
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Empty data" );
+				done();
+			});
+	});
+
+	it( "should return 401 invalid jwt", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/user/sugestedUsers" )
+			.send({
+				token: "123123sadasda1231312",
+				skip: 0
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				done();
+			});
+	});
+});
+
+
+// POST randomUser
+describe( "post user/randomUser", function() {
+
+	it( "should return 200", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/user/randomUser" )
+			.send({
+				token: token
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 200 );
+				done();
+			});
+	});
+
+	it( "should return 422", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/user/randomUser" )
+			.send({
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Empty token" );
+				done();
+			});
+	});
+
+	it( "should return 401 invalid jwt", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/user/randomUser" )
+			.send({
+				token: "123123sadasda1231312"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				done();
+			});
+	});
+});
+
+
+// POST matchKwUsers
+describe( "post user/matchKwUsers", function() {
+
+	it( "should return 200", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/user/matchKwUsers" )
+			.send({
+				token: token,
+				skip: 0,
+				data: [ "test" ]
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 200 );
+				done();
+			});
+	});
+
+	it( "should return 422", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/user/matchKwUsers" )
+			.send({
+				token: token,
+				skip: 0
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Empty data" );
+				done();
+			});
+	});
+
+	it( "should return 422", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/user/matchKwUsers" )
+			.send({
+				token: token,
+				data: []
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Empty data" );
+				done();
+			});
+	});
+
+	it( "should return 422", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/user/matchKwUsers" )
+			.send({
+				data: [],
+				skip: 0
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Empty data" );
+				done();
+			});
+	});
+
+	it( "should return 401 invalid jwt", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/user/matchKwUsers" )
+			.send({
+				token: "123123sadasda1231312",
+				data: [],
+				skip: 0
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				done();
+			});
+	});
+});
+
+
+// POST setUserKw
+describe( "post user/setUserKw", function() {
+
+	it( "should return 201", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/user/setUserKw" )
+			.send({
+				token: token,
+				data: [ "test" ]
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 201 );
+				done();
+			});
+	});
+
+	it( "should return 422", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/user/setUserKw" )
+			.send({
+				token: token
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Empty data" );
+				done();
+			});
+	});
+
+	it( "should return 422", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/user/setUserKw" )
+			.send({
+				data: []
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Empty data" );
+				done();
+			});
+	});
+
+	it( "should return 401 invalid jwt", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/user/setUserKw" )
+			.send({
+				token: "123123sadasda1231312",
+				data: []
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
 				done();
 			});
 	});
