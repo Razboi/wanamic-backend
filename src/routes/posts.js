@@ -69,7 +69,6 @@ Router.post( "/media", ( req, res, next ) => {
 		token,
 		userId;
 
-
 	if ( !req.body.token || !req.body.data ) {
 		err = new Error( "Empty post data" );
 		err.statusCode = 422;
@@ -133,7 +132,7 @@ Router.post( "/mediaLink", ( req, res, next ) => {
 		hostname,
 		embeddedUrl;
 
-	if ( !req.body.token || !req.body.data ) {
+	if ( !req.body.token || !req.body.data || !req.body.data.link ) {
 		err = new Error( "Empty post data" );
 		err.statusCode = 422;
 		return next( err );
@@ -202,10 +201,9 @@ Router.post( "/mediaPicture", upload.single( "picture" ), ( req, res, next ) => 
 		err,
 		data,
 		userId;
-	console.log( req.file );
 
-	if ( !req.body.token || !req.body ) {
-		err = new Error( "Empty post data" );
+	if ( !req.body.token || !req.body || !req.file ) {
+		err = new Error( "Empty data" );
 		err.statusCode = 422;
 		return next( err );
 	}

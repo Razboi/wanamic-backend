@@ -95,6 +95,188 @@ describe( "POST posts/create", function() {
 });
 
 
+describe( "POST posts/media", function() {
+	var token;
+
+	// before running tests create a token
+	before( function( done ) {
+		User.findOne({ email: "test@gmail.com" })
+			.exec()
+			.then( user => {
+				token = tokenGenerator( user );
+				done();
+			}).catch( err => done( err ));
+	});
+
+	after( function( done ) {
+		Post.remove({ author: "testuser" })
+			.then(() => done())
+			.catch( err => done( err ));
+	});
+
+	it( "creates a new post, should return 201", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/media" )
+			.send({
+				token: token, data: {}
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 201 );
+				done();
+			});
+	});
+
+	it( "should return 422 for empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/media" )
+			.send({
+				token: token
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				done();
+			});
+	});
+
+	it( "should return 422 for empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/media" )
+			.send({
+				data: {}
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				done();
+			});
+	});
+
+	it( "should return 401 for invalid token", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/media" )
+			.send({
+				token: "1232312sadasd213213", data: {}
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				done();
+			});
+	});
+});
+
+describe( "POST posts/mediaLink", function() {
+	var token;
+
+	// before running tests create a token
+	before( function( done ) {
+		User.findOne({ email: "test@gmail.com" })
+			.exec()
+			.then( user => {
+				token = tokenGenerator( user );
+				done();
+			}).catch( err => done( err ));
+	});
+
+	after( function( done ) {
+		Post.remove({ author: "testuser" })
+			.then(() => done())
+			.catch( err => done( err ));
+	});
+
+	it( "creates a new post, should return 201", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/mediaLink" )
+			.send({
+				token: token, data: { link: "https://www.youtube.com/watch?v=B58OBfM-8A4" }
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 201 );
+				done();
+			});
+	});
+
+	it( "should return 422 for empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/mediaLink" )
+			.send({
+				token: token
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				done();
+			});
+	});
+
+	it( "should return 422 for empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/mediaLink" )
+			.send({
+				data: { link: "https://www.youtube.com/watch?v=B58OBfM-8A4" }
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				done();
+			});
+	});
+
+	it( "should return 401 for invalid token", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/mediaLink" )
+			.send({
+				token: "1232312sadasd213213", data: { link: "https://www.youtube.com/watch?v=B58OBfM-8A4" }
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				done();
+			});
+	});
+});
+
+
+describe( "POST posts/mediaPicture", function() {
+	var
+		token;
+
+	// before running tests create a token
+	before( function( done ) {
+		User.findOne({ email: "test@gmail.com" })
+			.exec()
+			.then( user => {
+				token = tokenGenerator( user );
+				done();
+			}).catch( err => done( err ));
+	});
+
+	after( function( done ) {
+		Post.remove({ author: "testuser" })
+			.then(() => done())
+			.catch( err => done( err ));
+	});
+
+	it( "should return 422 for empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/mediaPicture" )
+			.send({
+				picture: [ "123" ]
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				done();
+			});
+	});
+
+	it( "should return 422 for empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/mediaPicture" )
+			.send({
+				token: "123asdad123123"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				done();
+			});
+	});
+});
+
 
 describe( "GET posts/:username/:skip", function() {
 	var
