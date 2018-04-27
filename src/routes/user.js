@@ -22,6 +22,7 @@ Router.get( "/:username", ( req, res, next ) => {
 			if ( !user ) {
 				return next( errors.userDoesntExist());
 			}
+			user.keywords = "#" + user.keywords.toString().replace( /,/g, " #" );
 			res.send( user );
 		}).catch( err => next( err ));
 });

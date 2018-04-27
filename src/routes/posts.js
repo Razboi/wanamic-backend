@@ -9,17 +9,41 @@ const
 	upload = multer({ dest: "../wanamic-frontend/src/images" }),
 	errors = require( "../utils/errors" );
 
+Router.post( "/explore/:skip", ( req, res, next ) => {
+	var userId;
+
+	if ( !req.body.token || !req.params.skip ) {
+		return next( errors.blankData());
+	}
+
+	data = req.body;
+
+	try {
+		userId = tokenVerifier( data.token );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	Post.find()
+		.limit( 10 )
+		.skip( req.params.skip * 10 )
+		.sort( "-createdAt" )
+		.exec()
+		.then( posts => res.send( posts ))
+		.catch( err => next( err ));
+});
+
 
 Router.post( "/create", ( req, res, next ) => {
 	var
 		data,
 		userId;
 
-	if ( !req.body.post || !req.body.post.token || !req.body.post.content ) {
+	if ( !req.body.token || !req.body.post ) {
 		return next( errors.blankData());
 	}
 
-	data = req.body.post;
+	data = req.body;
 
 	try {
 		userId = tokenVerifier( data.token );
@@ -35,7 +59,7 @@ Router.post( "/create", ( req, res, next ) => {
 			}
 			new Post({
 				author: user.username,
-				content: data.content
+				content: data.post
 			}).save()
 				.then( newPost => {
 					User.update(
