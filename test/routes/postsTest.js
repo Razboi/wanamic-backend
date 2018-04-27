@@ -61,7 +61,7 @@ describe( "POST posts/create", function() {
 		chai.request( "localhost:8000" )
 			.post( "/posts/create" )
 			.send({
-				post: { token: token, content: "test2" }
+				token: token, post: "test2"
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 201 );
@@ -72,9 +72,7 @@ describe( "POST posts/create", function() {
 	it( "should return 422 for empty data", function( done ) {
 		chai.request( "localhost:8000" )
 			.post( "/posts/create" )
-			.send({
-				post: {}
-			})
+			.send({})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
 				res.text.should.equal( "Required data not found" );
@@ -86,7 +84,7 @@ describe( "POST posts/create", function() {
 		chai.request( "localhost:8000" )
 			.post( "/posts/create" )
 			.send({
-				post: { token: "1232312sadasd213213", content: "test2" }
+				token: "1232312sadasd213213", post: "test2"
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
