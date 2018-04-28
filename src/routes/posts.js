@@ -25,6 +25,7 @@ Router.post( "/explore/:skip", ( req, res, next ) => {
 	}
 
 	Post.find()
+		.where( "media" ).equals( true )
 		.limit( 10 )
 		.skip( req.params.skip * 10 )
 		.sort( "-createdAt" )
