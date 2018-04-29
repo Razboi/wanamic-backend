@@ -31,8 +31,12 @@ Router.post( "/add", ( req, res, next ) => {
 					if ( !friend ) {
 						return next( errors.userDoesntExist());
 					}
-					user.friends.push( friend._id );
-					friend.friends.push( user._id );
+					if ( !user.friends.includes( friend._id )) {
+						user.friends.push( friend._id );
+					}
+					if ( !friend.friends.includes( user._id )) {
+						friend.friends.push( user._id );
+					}
 					Promise.all([ user.save(), friend.save() ])
 						.then(() => res.sendStatus( 201 ))
 						.catch( err => next( err ));

@@ -80,6 +80,80 @@ Router.post( "/create", ( req, res, next ) => {
 		}).catch( err => next( err ));
 });
 
+
+Router.post( "/like", ( req, res, next ) => {
+	var
+		data,
+		userId;
+
+	if ( !req.body.token || !req.body.postId ) {
+		return next( errors.blankData());
+	}
+
+	data = req.body;
+
+	try {
+		userId = tokenVerifier( data.token );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	Post.findById( data.postId )
+		.exec()
+		.then( post => {
+			if ( !post ) {
+				return next( errors.postDoesntExist());
+			}
+			User.findById( userId )
+				.then( user => {
+					if ( !post.likedBy.includes( user.username )) {
+						post.likedBy.push( user.username );
+					}
+					post.save()
+						.then(() => res.sendStatus( 201 ))
+						.catch( err => next( err ));
+				}).catch( err => next( err ));
+		}).catch( err => next( err ));
+});
+
+
+Router.patch( "/dislike", ( req, res, next ) => {
+	var
+		data,
+		userId;
+
+	if ( !req.body.token || !req.body.postId ) {
+		return next( errors.blankData());
+	}
+
+	data = req.body;
+
+	try {
+		userId = tokenVerifier( data.token );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	Post.findById( data.postId )
+		.exec()
+		.then( post => {
+			if ( !post ) {
+				return next( errors.postDoesntExist());
+			}
+			User.findById( userId )
+				.then( user => {
+					if ( post.likedBy.includes( user.username )) {
+						const index = post.likedBy.indexOf( user.username );
+						post.likedBy.splice( index, 1 );
+					}
+					post.save()
+						.then(() => res.sendStatus( 200 ))
+						.catch( err => next( err ));
+				}).catch( err => next( err ));
+		}).catch( err => next( err ));
+});
+
+
 Router.post( "/media", ( req, res, next ) => {
 	var
 		data,

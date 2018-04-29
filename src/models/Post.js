@@ -8,6 +8,7 @@ const
 		media: { type: Boolean, default: false },
 		link: { type: Boolean, default: false },
 		picture: { type: Boolean, default: false },
+		likedBy: [ { type: String } ],
 		mediaContent: {
 			title: { type: String },
 			artist: { type: String },

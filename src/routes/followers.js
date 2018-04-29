@@ -30,8 +30,12 @@ Router.post( "/follow", ( req, res, next ) => {
 					if ( !userToFollow ) {
 						return next( errors.userDoesntExist());
 					}
-					userToFollow.followers.push( user._id );
-					user.following.push( userToFollow._id );
+					if ( !userToFollow.followers.includes( user._id )) {
+						userToFollow.followers.push( user._id );
+					}
+					if ( !user.following.includes( userToFollow._id )) {
+						user.following.push( userToFollow._id );
+					}
 					Promise.all([ userToFollow.save(), user.save() ])
 						.then(() => res.sendStatus( 201 ))
 						.catch( err => next( err ));
