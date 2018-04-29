@@ -1,11 +1,11 @@
 const
-	router = require( "express" ).Router(),
+	Router = require( "express" ).Router(),
 	bcrypt = require( "bcrypt" ),
 	tokenGenerator = require( "../utils/tokenGenerator" ),
 	User = require( "../models/User" ),
 	errors = require( "../utils/errors" );
 
-router.post( "/signup", ( req, res, next ) => {
+Router.post( "/signup", ( req, res, next ) => {
 	const credentials = req.body.credentials;
 
 	if ( !credentials || !credentials.email || !credentials.password ||
@@ -41,7 +41,7 @@ router.post( "/signup", ( req, res, next ) => {
 });
 
 
-router.post( "/login", ( req, res, next ) => {
+Router.post( "/login", ( req, res, next ) => {
 	const credentials = req.body.credentials;
 
 	if ( !credentials || !credentials.email || !credentials.password ) {
@@ -61,4 +61,4 @@ router.post( "/login", ( req, res, next ) => {
 		}).catch( err => next( err ));
 });
 
-module.exports = router;
+module.exports = Router;

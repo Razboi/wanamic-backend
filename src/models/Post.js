@@ -9,6 +9,7 @@ const
 		link: { type: Boolean, default: false },
 		picture: { type: Boolean, default: false },
 		likedBy: [ { type: String } ],
+		comments: [ { type: Schema.Types.ObjectId, ref: "Comment" } ],
 		mediaContent: {
 			title: { type: String },
 			artist: { type: String },
