@@ -422,8 +422,7 @@ Router.delete( "/delete", ( req, res, next ) => {
 						return next( errors.unauthorized());
 					}
 
-					Post.remove({ _id: post.id })
-						.exec()
+					storedPost.remove()
 						.then(() => {
 							const
 								postsIndex = user.posts.indexOf( storedPost._id ),
@@ -431,7 +430,7 @@ Router.delete( "/delete", ( req, res, next ) => {
 
 							User.update(
 								{ _id: { $in: user.friends } },
-								{ $pull: { "newsfeed": post.id } },
+								{ $pull: { "newsfeed": storedPost.id } },
 								{ multi: true }
 							)
 								.exec()
