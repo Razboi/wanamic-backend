@@ -349,6 +349,9 @@ Router.post( "/newsfeed/:skip", ( req, res, next ) => {
 				limit: 10,
 				skip: req.params.skip * 10,
 				sort: { createdAt: -1 }
+			},
+			populate: {
+				path: "sharedPost"
 			}
 		})
 		.exec()
@@ -484,6 +487,69 @@ Router.patch( "/update", ( req, res, next ) => {
 					storedPost.save()
 						.then(() => res.sendStatus( 200 ))
 						.catch( err => next( err ));
+				}).catch( err => next( err ));
+		}).catch( err => next( err ));
+});
+
+Router.post( "/share", ( req, res, next ) => {
+	var
+		userId,
+		token,
+		postId;
+
+	if ( !req.body.postId || !req.body.token ) {
+		return next( errors.blankData());
+	}
+
+	postId = req.body.postId;
+	token = req.body.token;
+
+	try {
+		userId = tokenVerifier( token );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	User.findById( userId )
+		.exec()
+		.then( user => {
+			if ( !user ) {
+				return next( errors.userDoesntExist());
+			}
+
+			new Post({
+				author: user.username,
+				content: req.body.shareComment,
+				sharedPost: postId
+			}).save()
+				.then( newPost => {
+					User.update(
+						{ _id: { $in: user.friends } },
+						{ $push: { "newsfeed": newPost._id } },
+						{ multi: true }
+					)
+						.exec()
+						.catch( err => next( err ));
+
+					user.posts.push( newPost._id );
+					user.newsfeed.push( newPost._id );
+					user.save()
+						.then(() => {
+
+							Post.findById( postId )
+								.exec()
+								.then( sharedPost => {
+									if ( !sharedPost ) {
+										return next( errors.postDoesntExist());
+									}
+									if ( !sharedPost.sharedBy.includes( user.username )) {
+										sharedPost.sharedBy.push( user.username );
+										sharedPost.save();
+									}
+									res.sendStatus( 201 );
+
+								}).catch( err => next( err ));
+						}).catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));
 });
