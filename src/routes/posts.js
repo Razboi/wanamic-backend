@@ -421,24 +421,34 @@ Router.delete( "/delete", ( req, res, next ) => {
 					if ( user.username !== storedPost.author ) {
 						return next( errors.unauthorized());
 					}
+					// if its a shared post remove it from the originalPost sharedBy
+					if ( storedPost.sharedPost ) {
+						Post.findById( storedPost.sharedPost )
+							.then( originalPost => {
+								const
+									sharedByIndex = originalPost.sharedBy.indexOf( user.username );
+								originalPost.sharedBy.splice( sharedByIndex, 1 );
+								originalPost.save().catch( err => console.log( err ));
+							}).catch( err => console.log( err ));
+					}
 
-					storedPost.remove()
+					const
+						postsIndex = user.posts.indexOf( storedPost.id ),
+						newsfeedIndex = user.newsfeed.indexOf( storedPost.id );
+
+					User.update(
+						{ _id: { $in: user.friends } },
+						{ $pull: { "newsfeed": storedPost.id } },
+						{ multi: true }
+					)
+						.exec()
+						.catch( err => next( err ));
+
+					user.posts.splice( postsIndex, 1 );
+					user.newsfeed.splice( newsfeedIndex, 1 );
+					user.save()
 						.then(() => {
-							const
-								postsIndex = user.posts.indexOf( storedPost._id ),
-								newsfeedIndex = user.posts.indexOf( storedPost._id );
-
-							User.update(
-								{ _id: { $in: user.friends } },
-								{ $pull: { "newsfeed": storedPost.id } },
-								{ multi: true }
-							)
-								.exec()
-								.catch( err => next( err ));
-
-							user.posts.splice( postsIndex, 1 );
-							user.newsfeed.splice( newsfeedIndex, 1 );
-							user.save()
+							storedPost.remove()
 								.then(() => res.sendStatus( 200 ))
 								.catch( err => next( err ));
 						}).catch( err => next( err ));
