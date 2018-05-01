@@ -663,3 +663,87 @@ describe( "PATCH posts/update", function() {
 			.catch( err => done( err ));
 	});
 });
+
+
+describe( "POST posts/share", function() {
+	var
+		token,
+		postId;
+
+	// before updating a post we need to create the post and get the user token and postId
+	before( function( done ) {
+		User.findOne({ email: "test@gmail.com" })
+			.exec()
+			.then( user => {
+				token = tokenGenerator( user );
+				new Post({
+					author: user.username,
+					content: "test"
+				}).save()
+					.then( post => {
+						postId = post.id;
+						done();
+					}).catch( err => done( err ));
+			}).catch( err => done( err ));
+	});
+
+	it( "should return 200 and share the post", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/share" )
+			.send({
+				token: token,
+				postId: postId
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 201 );
+				done();
+			});
+	});
+
+	it( "should return 422 Empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/share" )
+			.send({
+				token: token
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 422 Empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/share" )
+			.send({
+				postId: postId
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 401 malformed jwt", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/share" )
+			.send({
+				token: "123213adasdsad21321321",
+				postId: postId
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
+				done();
+			});
+	});
+
+	after( function( done ) {
+		Post.remove({ _id: postId })
+			.exec()
+			.then(() => done())
+			.catch( err => done( err ));
+	});
+});
