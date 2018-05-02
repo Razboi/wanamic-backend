@@ -30,19 +30,105 @@ Router.post( "/create", ( req, res, next ) => {
 			if ( !user ) {
 				return next( errors.userDoesntExist());
 			}
-			new Comment({
-				author: user.username,
-				content: data.comment
-			}).save()
-				.then( newComment => {
-					Post.findById( data.postId )
-						.exec()
-						.then( post => {
+			Post.findById( data.postId )
+				.exec()
+				.then( post => {
+					if ( !post ) {
+						return next( errors.postDoesntExist());
+					}
+					new Comment({
+						author: user.username,
+						content: data.comment,
+						post: post._id
+					}).save()
+						.then( newComment => {
 							post.comments.push( newComment._id );
 							post.save()
-								.then(() => res.sendStatus( 201 ))
-								.catch( err => console.log( err ));
+								.then(() => {
+									res.status( 201 );
+									res.send( newComment );
+								}).catch( err => console.log( err ));
 						}).catch( err => next( err ));
+				}).catch( err => next( err ));
+		}).catch( err => next( err ));
+});
+
+Router.delete( "/delete", ( req, res, next ) => {
+	var
+		userId;
+
+	if ( !req.body.token || !req.body.commentId || !req.body.postId ) {
+		return next( errors.blankData());
+	}
+
+	data = req.body;
+
+	try {
+		userId = tokenVerifier( data.token );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	User.findById( userId )
+		.exec()
+		.then( user => {
+			if ( !user ) {
+				return next( errors.userDoesntExist());
+			}
+			Post.findById( data.postId )
+				.exec()
+				.then( post => {
+					const commentIndex = post.comments.indexOf( data.commentId );
+					post.comments.splice( commentIndex, 1 );
+					post.save().catch( err => next( err ));
+
+					Comment.findById( data.commentId )
+						.then( comment => {
+							if ( user.username !== comment.author ) {
+								return next( errors.unauthorized());
+							}
+							comment.remove()
+								.then(() => res.sendStatus( 200 ))
+								.catch( err => next( err ));
+						}).catch( err => next( err ));
+				}).catch( err => next( err ));
+		}).catch( err => next( err ));
+});
+
+Router.patch( "/update", ( req, res, next ) => {
+	var
+		userId;
+
+	if ( !req.body.token || !req.body.commentId || !req.body.newContent ) {
+		return next( errors.blankData());
+	}
+
+	data = req.body;
+
+	try {
+		userId = tokenVerifier( data.token );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	User.findById( userId )
+		.exec()
+		.then( user => {
+			if ( !user ) {
+				return next( errors.userDoesntExist());
+			}
+			Comment.findById( data.commentId )
+				.then( comment => {
+					if ( !comment ) {
+						return next( errors.commentDoesntExist());
+					}
+					if ( user.username !== comment.author ) {
+						return next( errors.unauthorized());
+					}
+					comment.content = data.newContent;
+					comment.save()
+						.then(() => res.sendStatus( 200 ))
+						.catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));
 });

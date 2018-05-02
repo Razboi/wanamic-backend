@@ -74,7 +74,10 @@ Router.post( "/create", ( req, res, next ) => {
 					user.posts.push( newPost._id );
 					user.newsfeed.push( newPost._id );
 					user.save()
-						.then(() => res.sendStatus( 201 ))
+						.then(() => {
+							res.status( 201 );
+							res.send( newPost );
+						})
 						.catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));
@@ -267,8 +270,10 @@ Router.post( "/mediaLink", ( req, res, next ) => {
 							user.posts.push( newPost._id );
 							user.newsfeed.push( newPost._id );
 							user.save()
-								.then( updatedUser => res.sendStatus( 201 ))
-								.catch( err => next( err ));
+								.then(() => {
+									res.status( 201 );
+									res.send( newPost );
+								}).catch( err => next( err ));
 						}).catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => console.log( err ));
@@ -318,7 +323,7 @@ Router.post( "/mediaPicture", upload.single( "picture" ), ( req, res, next ) => 
 					user.posts.push( newPost._id );
 					user.newsfeed.push( newPost._id );
 					user.save()
-						.then( updatedUser => res.sendStatus( 201 ))
+						.then(() => res.sendStatus( 201 ))
 						.catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));
@@ -425,10 +430,12 @@ Router.delete( "/delete", ( req, res, next ) => {
 					if ( storedPost.sharedPost ) {
 						Post.findById( storedPost.sharedPost )
 							.then( originalPost => {
-								const
-									sharedByIndex = originalPost.sharedBy.indexOf( user.username );
-								originalPost.sharedBy.splice( sharedByIndex, 1 );
-								originalPost.save().catch( err => console.log( err ));
+								if ( originalPost ) {
+									const
+										sharedByIndex = originalPost.sharedBy.indexOf( user.username );
+									originalPost.sharedBy.splice( sharedByIndex, 1 );
+									originalPost.save().catch( err => console.log( err ));
+								}
 							}).catch( err => console.log( err ));
 					}
 
