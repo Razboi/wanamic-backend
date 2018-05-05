@@ -74,11 +74,88 @@ Router.post( "/create", ( req, res, next ) => {
 					user.posts.push( newPost._id );
 					user.newsfeed.push( newPost._id );
 					user.save()
+						.then(() => {
+							res.status( 201 );
+							res.send( newPost );
+						})
+						.catch( err => next( err ));
+				}).catch( err => next( err ));
+		}).catch( err => next( err ));
+});
+
+
+Router.post( "/like", ( req, res, next ) => {
+	var
+		data,
+		userId;
+
+	if ( !req.body.token || !req.body.postId ) {
+		return next( errors.blankData());
+	}
+
+	data = req.body;
+
+	try {
+		userId = tokenVerifier( data.token );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	Post.findById( data.postId )
+		.exec()
+		.then( post => {
+			if ( !post ) {
+				return next( errors.postDoesntExist());
+			}
+			User.findById( userId )
+				.then( user => {
+					if ( !post.likedBy.includes( user.username )) {
+						post.likedBy.push( user.username );
+					}
+					post.save()
 						.then(() => res.sendStatus( 201 ))
 						.catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));
 });
+
+
+Router.patch( "/dislike", ( req, res, next ) => {
+	var
+		data,
+		userId;
+
+	if ( !req.body.token || !req.body.postId ) {
+		return next( errors.blankData());
+	}
+
+	data = req.body;
+
+	try {
+		userId = tokenVerifier( data.token );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	Post.findById( data.postId )
+		.exec()
+		.then( post => {
+			if ( !post ) {
+				return next( errors.postDoesntExist());
+			}
+			User.findById( userId )
+				.then( user => {
+					if ( post.likedBy.includes( user.username )) {
+						const index = post.likedBy.indexOf( user.username );
+						post.likedBy.splice( index, 1 );
+					}
+					post.save()
+						.then(() => res.sendStatus( 200 ))
+						.catch( err => next( err ));
+				}).catch( err => next( err ));
+		}).catch( err => next( err ));
+});
+
 
 Router.post( "/media", ( req, res, next ) => {
 	var
@@ -193,8 +270,10 @@ Router.post( "/mediaLink", ( req, res, next ) => {
 							user.posts.push( newPost._id );
 							user.newsfeed.push( newPost._id );
 							user.save()
-								.then( updatedUser => res.sendStatus( 201 ))
-								.catch( err => next( err ));
+								.then(() => {
+									res.status( 201 );
+									res.send( newPost );
+								}).catch( err => next( err ));
 						}).catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => console.log( err ));
@@ -244,7 +323,7 @@ Router.post( "/mediaPicture", upload.single( "picture" ), ( req, res, next ) => 
 					user.posts.push( newPost._id );
 					user.newsfeed.push( newPost._id );
 					user.save()
-						.then( updatedUser => res.sendStatus( 201 ))
+						.then(() => res.sendStatus( 201 ))
 						.catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));
@@ -275,6 +354,9 @@ Router.post( "/newsfeed/:skip", ( req, res, next ) => {
 				limit: 10,
 				skip: req.params.skip * 10,
 				sort: { createdAt: -1 }
+			},
+			populate: {
+				path: "sharedPost"
 			}
 		})
 		.exec()
@@ -344,25 +426,36 @@ Router.delete( "/delete", ( req, res, next ) => {
 					if ( user.username !== storedPost.author ) {
 						return next( errors.unauthorized());
 					}
+					// if its a shared post remove it from the originalPost sharedBy
+					if ( storedPost.sharedPost ) {
+						Post.findById( storedPost.sharedPost )
+							.then( originalPost => {
+								if ( originalPost ) {
+									const
+										sharedByIndex = originalPost.sharedBy.indexOf( user.username );
+									originalPost.sharedBy.splice( sharedByIndex, 1 );
+									originalPost.save().catch( err => console.log( err ));
+								}
+							}).catch( err => console.log( err ));
+					}
 
-					Post.remove({ _id: post.id })
+					const
+						postsIndex = user.posts.indexOf( storedPost.id ),
+						newsfeedIndex = user.newsfeed.indexOf( storedPost.id );
+
+					User.update(
+						{ _id: { $in: user.friends } },
+						{ $pull: { "newsfeed": storedPost.id } },
+						{ multi: true }
+					)
 						.exec()
+						.catch( err => next( err ));
+
+					user.posts.splice( postsIndex, 1 );
+					user.newsfeed.splice( newsfeedIndex, 1 );
+					user.save()
 						.then(() => {
-							const
-								postsIndex = user.posts.indexOf( storedPost._id ),
-								newsfeedIndex = user.posts.indexOf( storedPost._id );
-
-							User.update(
-								{ _id: { $in: user.friends } },
-								{ $pull: { "newsfeed": post.id } },
-								{ multi: true }
-							)
-								.exec()
-								.catch( err => next( err ));
-
-							user.posts.splice( postsIndex, 1 );
-							user.newsfeed.splice( newsfeedIndex, 1 );
-							user.save()
+							storedPost.remove()
 								.then(() => res.sendStatus( 200 ))
 								.catch( err => next( err ));
 						}).catch( err => next( err ));
@@ -410,6 +503,69 @@ Router.patch( "/update", ( req, res, next ) => {
 					storedPost.save()
 						.then(() => res.sendStatus( 200 ))
 						.catch( err => next( err ));
+				}).catch( err => next( err ));
+		}).catch( err => next( err ));
+});
+
+Router.post( "/share", ( req, res, next ) => {
+	var
+		userId,
+		token,
+		postId;
+
+	if ( !req.body.postId || !req.body.token ) {
+		return next( errors.blankData());
+	}
+
+	postId = req.body.postId;
+	token = req.body.token;
+
+	try {
+		userId = tokenVerifier( token );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	User.findById( userId )
+		.exec()
+		.then( user => {
+			if ( !user ) {
+				return next( errors.userDoesntExist());
+			}
+
+			new Post({
+				author: user.username,
+				content: req.body.shareComment,
+				sharedPost: postId
+			}).save()
+				.then( newPost => {
+					User.update(
+						{ _id: { $in: user.friends } },
+						{ $push: { "newsfeed": newPost._id } },
+						{ multi: true }
+					)
+						.exec()
+						.catch( err => next( err ));
+
+					user.posts.push( newPost._id );
+					user.newsfeed.push( newPost._id );
+					user.save()
+						.then(() => {
+
+							Post.findById( postId )
+								.exec()
+								.then( sharedPost => {
+									if ( !sharedPost ) {
+										return next( errors.postDoesntExist());
+									}
+									if ( !sharedPost.sharedBy.includes( user.username )) {
+										sharedPost.sharedBy.push( user.username );
+										sharedPost.save();
+									}
+									res.sendStatus( 201 );
+
+								}).catch( err => next( err ));
+						}).catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));
 });

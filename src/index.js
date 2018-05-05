@@ -4,6 +4,7 @@ const
 	mongoose = require( "mongoose" ),
 	dotenv = require( "dotenv" ),
 	posts = require( "./routes/posts" ),
+	comments = require( "./routes/comments" ),
 	friends = require( "./routes/friends" ),
 	followers = require( "./routes/followers" ),
 	user = require( "./routes/user" ),
@@ -20,6 +21,7 @@ app.use( "/posts", posts );
 app.use( "/friends", friends );
 app.use( "/user", user );
 app.use( "/followers", followers );
+app.use( "/comments", comments );
 
 // error middleware
 app.use(( err, req, res, next ) => {
