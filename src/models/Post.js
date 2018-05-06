@@ -12,6 +12,11 @@ const
 		sharedBy: [ { type: String } ],
 		sharedPost: { type: Schema.Types.ObjectId, ref: "Post" },
 		comments: [ { type: Schema.Types.ObjectId, ref: "Comment" } ],
+		alerts: {
+			nsfw: { type: Boolean, default: false },
+			spoiler: { type: Boolean, default: false }
+		},
+		privacyRange: { type: Number, default: 1 },
 		mediaContent: {
 			title: { type: String },
 			artist: { type: String },

@@ -60,7 +60,9 @@ Router.post( "/create", ( req, res, next ) => {
 			}
 			new Post({
 				author: user.username,
-				content: data.post
+				content: data.post,
+				alerts: data.alerts,
+				privacyRange: data.privacyRange
 			}).save()
 				.then( newPost => {
 					User.update(
@@ -70,6 +72,16 @@ Router.post( "/create", ( req, res, next ) => {
 					)
 						.exec()
 						.catch( err => next( err ));
+
+					if ( data.privacyRange >= 2 ) {
+						User.update(
+							{ _id: { $in: user.followers } },
+							{ $push: { "newsfeed": newPost._id } },
+							{ multi: true }
+						)
+							.exec()
+							.catch( err => next( err ));
+					}
 
 					user.posts.push( newPost._id );
 					user.newsfeed.push( newPost._id );
@@ -163,13 +175,14 @@ Router.post( "/media", ( req, res, next ) => {
 		token,
 		userId;
 
-	if ( !req.body.token || !req.body.data ) {
+	if ( !req.body.token || !req.body.data || !req.body.data.privacyRange ||
+			!req.body.data.alerts ) {
 		return next( errors.blankData());
 	}
 
 	data = req.body.data;
 	token = req.body.token;
-
+	console.log( data.alerts );
 	try {
 		userId = tokenVerifier( token );
 	} catch ( err ) {
@@ -187,6 +200,8 @@ Router.post( "/media", ( req, res, next ) => {
 				media: true,
 				link: !!data.link,
 				content: data.content,
+				alerts: data.alerts,
+				privacyRange: data.privacyRange,
 				mediaContent: {
 					title: data.title,
 					artist: data.artist,
@@ -202,11 +217,23 @@ Router.post( "/media", ( req, res, next ) => {
 						.exec()
 						.catch( err => next( err ));
 
+					if ( data.privacyRange >= 2 ) {
+						User.update(
+							{ _id: { $in: user.followers } },
+							{ $push: { "newsfeed": newPost._id } },
+							{ multi: true }
+						)
+							.exec()
+							.catch( err => next( err ));
+					}
+
 					user.posts.push( newPost._id );
 					user.newsfeed.push( newPost._id );
 					user.save()
-						.then( updatedUser => res.sendStatus( 201 ))
-						.catch( err => next( err ));
+						.then( updatedUser => {
+							res.status( 201 );
+							res.send( newPost );
+						}).catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));
 });
@@ -249,6 +276,8 @@ Router.post( "/mediaLink", ( req, res, next ) => {
 						media: true,
 						link: true,
 						content: data.content,
+						alerts: data.alerts,
+						privacyRange: data.privacyRange,
 						linkContent: {
 							url: previewData.url,
 							embeddedUrl: embeddedUrl,
@@ -266,6 +295,16 @@ Router.post( "/mediaLink", ( req, res, next ) => {
 							)
 								.exec()
 								.catch( err => next( err ));
+
+							if ( data.privacyRange >= 2 ) {
+								User.update(
+									{ _id: { $in: user.followers } },
+									{ $push: { "newsfeed": newPost._id } },
+									{ multi: true }
+								)
+									.exec()
+									.catch( err => next( err ));
+							}
 
 							user.posts.push( newPost._id );
 							user.newsfeed.push( newPost._id );
@@ -307,6 +346,8 @@ Router.post( "/mediaPicture", upload.single( "picture" ), ( req, res, next ) => 
 				media: true,
 				picture: true,
 				content: data.content,
+				alerts: data.alerts,
+				privacyRange: data.privacyRange,
 				mediaContent: {
 					image: req.file.filename,
 				}
@@ -320,11 +361,23 @@ Router.post( "/mediaPicture", upload.single( "picture" ), ( req, res, next ) => 
 						.exec()
 						.catch( err => next( err ));
 
+					if ( data.privacyRange >= 2 ) {
+						User.update(
+							{ _id: { $in: user.followers } },
+							{ $push: { "newsfeed": newPost._id } },
+							{ multi: true }
+						)
+							.exec()
+							.catch( err => next( err ));
+					}
+
 					user.posts.push( newPost._id );
 					user.newsfeed.push( newPost._id );
 					user.save()
-						.then(() => res.sendStatus( 201 ))
-						.catch( err => next( err ));
+						.then(() => {
+							res.status( 201 );
+							res.send( newPost );
+						}).catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));
 });
@@ -395,7 +448,9 @@ Router.get( "/:username/:skip", ( req, res, next ) => {
 
 
 Router.delete( "/delete", ( req, res, next ) => {
-	var post;
+	var
+		updatedOriginalPost,
+		post;
 
 	if ( !req.body.post || !req.body.post.id ) {
 		return next( errors.blankData());
@@ -434,7 +489,9 @@ Router.delete( "/delete", ( req, res, next ) => {
 									const
 										sharedByIndex = originalPost.sharedBy.indexOf( user.username );
 									originalPost.sharedBy.splice( sharedByIndex, 1 );
-									originalPost.save().catch( err => console.log( err ));
+									originalPost.save()
+										.then( originalPost => updatedOriginalPost = originalPost )
+										.catch( err => console.log( err ));
 								}
 							}).catch( err => console.log( err ));
 					}
@@ -456,8 +513,13 @@ Router.delete( "/delete", ( req, res, next ) => {
 					user.save()
 						.then(() => {
 							storedPost.remove()
-								.then(() => res.sendStatus( 200 ))
-								.catch( err => next( err ));
+								.then(() => {
+									if ( updatedOriginalPost ) {
+										res.send({ updatedOriginalPost: updatedOriginalPost });
+									} else {
+										res.sendStatus( 200 );
+									}
+								}).catch( err => next( err ));
 						}).catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));
@@ -492,6 +554,7 @@ Router.patch( "/update", ( req, res, next ) => {
 			}
 
 			Post.findById( updatedPost.id )
+				.populate({ path: "sharedPost" })
 				.exec()
 				.then( storedPost => {
 					if ( user.username !== storedPost.author ) {
@@ -501,7 +564,7 @@ Router.patch( "/update", ( req, res, next ) => {
 						storedPost.content = updatedPost.content;
 					};
 					storedPost.save()
-						.then(() => res.sendStatus( 200 ))
+						.then(() => res.send( storedPost ))
 						.catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));
@@ -562,8 +625,9 @@ Router.post( "/share", ( req, res, next ) => {
 										sharedPost.sharedBy.push( user.username );
 										sharedPost.save();
 									}
-									res.sendStatus( 201 );
-
+									res.status( 201 );
+									newPost.sharedPost = sharedPost;
+									res.send( newPost );
 								}).catch( err => next( err ));
 						}).catch( err => next( err ));
 				}).catch( err => next( err ));

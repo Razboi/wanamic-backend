@@ -31,6 +31,7 @@ Router.post( "/create", ( req, res, next ) => {
 				return next( errors.userDoesntExist());
 			}
 			Post.findById( data.postId )
+				.populate({ path: "sharedPost" })
 				.exec()
 				.then( post => {
 					if ( !post ) {
@@ -46,7 +47,7 @@ Router.post( "/create", ( req, res, next ) => {
 							post.save()
 								.then(() => {
 									res.status( 201 );
-									res.send( newComment );
+									res.send({ newComment: newComment, updatedPost: post });
 								}).catch( err => console.log( err ));
 						}).catch( err => next( err ));
 				}).catch( err => next( err ));
@@ -88,7 +89,7 @@ Router.delete( "/delete", ( req, res, next ) => {
 								return next( errors.unauthorized());
 							}
 							comment.remove()
-								.then(() => res.sendStatus( 200 ))
+								.then(() => res.send( post ))
 								.catch( err => next( err ));
 						}).catch( err => next( err ));
 				}).catch( err => next( err ));
