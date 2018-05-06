@@ -174,7 +174,7 @@ describe( "POST posts/media", function() {
 		chai.request( "localhost:8000" )
 			.post( "/posts/media" )
 			.send({
-				token: token, data: {}
+				token: token, data: { privacyRange: 1, alerts: {} }
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 201 );
@@ -212,7 +212,7 @@ describe( "POST posts/media", function() {
 		chai.request( "localhost:8000" )
 			.post( "/posts/media" )
 			.send({
-				token: "1232312sadasd213213", data: {}
+				token: "1232312sadasd213213", data: { privacyRange: 1, alerts: {} }
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
