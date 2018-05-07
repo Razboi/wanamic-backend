@@ -151,6 +151,170 @@ describe( "POST posts/create", function() {
 });
 
 
+describe( "POST posts/like", function() {
+	var token;
+
+	// before running tests create a token
+	before( function( done ) {
+		User.findOne({ email: "test@gmail.com" })
+			.exec()
+			.then( user => {
+				token = tokenGenerator( user );
+				new Post({
+					author: user.username,
+					content: "Like me"
+				})
+					.save()
+					.then( post => {
+						postId = post.id;
+						done();
+					}).catch( err => done( err ));
+			}).catch( err => done( err ));
+	});
+
+	after( function( done ) {
+		Post.remove({ id: postId })
+			.then(() => done())
+			.catch( err => done( err ));
+	});
+
+	it( "creates adds a new like, should return 201", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/like" )
+			.send({
+				token: token,
+				postId: postId
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 201 );
+				done();
+			});
+	});
+
+	it( "should return 422 for empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/like" )
+			.send({
+				token: token
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 422 for empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/like" )
+			.send({
+				postId: postId
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 401 for invalid token", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/like" )
+			.send({
+				token: "1232312sadasd213213",
+				postId: postId
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
+				done();
+			});
+	});
+});
+
+
+describe( "POST posts/dislike", function() {
+	var token;
+
+	// before running tests create a token
+	before( function( done ) {
+		User.findOne({ email: "test@gmail.com" })
+			.exec()
+			.then( user => {
+				token = tokenGenerator( user );
+				new Post({
+					author: user.username,
+					content: "Like me"
+				})
+					.save()
+					.then( post => {
+						postId = post.id;
+						done();
+					}).catch( err => done( err ));
+			}).catch( err => done( err ));
+	});
+
+	after( function( done ) {
+		Post.remove({ id: postId })
+			.then(() => done())
+			.catch( err => done( err ));
+	});
+
+	it( "removes a like, should return 200", function( done ) {
+		chai.request( "localhost:8000" )
+			.patch( "/posts/dislike" )
+			.send({
+				token: token,
+				postId: postId
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 200 );
+				done();
+			});
+	});
+
+	it( "should return 422 for empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.patch( "/posts/dislike" )
+			.send({
+				token: token
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 422 for empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.patch( "/posts/dislike" )
+			.send({
+				postId: postId
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 401 for invalid token", function( done ) {
+		chai.request( "localhost:8000" )
+			.patch( "/posts/dislike" )
+			.send({
+				token: "1232312sadasd213213",
+				postId: postId
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
+				done();
+			});
+	});
+});
+
+
 describe( "POST posts/media", function() {
 	var token;
 

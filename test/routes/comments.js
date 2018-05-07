@@ -7,6 +7,7 @@ const
 	dotenv = require( "dotenv" ),
 	tokenGenerator = require( "../../src/utils/tokenGenerator" ),
 	User = require( "../../src/models/User" ),
+	Comment = require( "../../src/models/Comment" ),
 	Post = require( "../../src/models/Post" );
 
 
@@ -111,6 +112,232 @@ describe( "POST comments/create", function() {
 			.exec()
 			.then(() => done())
 			.catch( err => done( err ));
+	});
+});
+
+
+describe( "DELETE comments/delete", function() {
+	var
+		token,
+		commentId,
+		postId;
+
+	before( function( done ) {
+		User.findOne({ email: "test@gmail.com" })
+			.exec()
+			.then( user => {
+				token = tokenGenerator( user );
+				new Post({
+					author: user.username,
+					content: "test"
+				}).save()
+					.then( post => {
+						postId = post.id;
+						new Comment({
+							author: user.username,
+							content: "test",
+							post: post.id
+						}).save()
+							.then( comment => {
+								commentId = comment.id;
+								done();
+							}).catch( err => done( err ));
+					}).catch( err => done( err ));
+			}).catch( err => done( err ));
+	});
+
+	it( "deletes a comment, should return 200", function( done ) {
+		chai.request( "localhost:8000" )
+			.delete( "/comments/delete" )
+			.send({
+				token: token,
+				postId: postId,
+				commentId: commentId
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 200 );
+				done();
+			});
+	});
+
+	it( "should return 422 Empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.delete( "/comments/delete" )
+			.send({
+				token: token,
+				postId: postId
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 422 Empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.delete( "/comments/delete" )
+			.send({
+				token: token,
+				commentId: commentId
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 422 Empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.delete( "/comments/delete" )
+			.send({
+				postId: postId,
+				commentId: commentId
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 401 malformed jwt", function( done ) {
+		chai.request( "localhost:8000" )
+			.delete( "/comments/delete" )
+			.send({
+				token: "123213adasdsad21321321",
+				postId: postId,
+				commentId: commentId
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
+				done();
+			});
+	});
+
+	after( function( done ) {
+		Post.remove({ _id: postId })
+			.exec()
+			.then(() => {
+				Comment.remove({ _id: commentId })
+					.then(() => done())
+					.catch( err => done( err ));
+			}).catch( err => done( err ));
+	});
+});
+
+
+describe( "PATCH comments/delete", function() {
+	var
+		token,
+		commentId,
+		postId;
+
+	before( function( done ) {
+		User.findOne({ email: "test@gmail.com" })
+			.exec()
+			.then( user => {
+				token = tokenGenerator( user );
+				new Post({
+					author: user.username,
+					content: "test"
+				}).save()
+					.then( post => {
+						postId = post.id;
+						new Comment({
+							author: user.username,
+							content: "test",
+							post: post.id
+						}).save()
+							.then( comment => {
+								commentId = comment.id;
+								done();
+							}).catch( err => done( err ));
+					}).catch( err => done( err ));
+			}).catch( err => done( err ));
+	});
+
+	it( "deletes a comment, should return 200", function( done ) {
+		chai.request( "localhost:8000" )
+			.patch( "/comments/update" )
+			.send({
+				token: token,
+				newContent: "updated",
+				commentId: commentId
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 200 );
+				done();
+			});
+	});
+
+	it( "should return 422 Empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.patch( "/comments/update" )
+			.send({
+				token: token,
+				newContent: "updated"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 422 Empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.patch( "/comments/update" )
+			.send({
+				token: token,
+				commentId: commentId
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 422 Empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.patch( "/comments/update" )
+			.send({
+				newContent: "updated",
+				commentId: commentId
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 401 malformed jwt", function( done ) {
+		chai.request( "localhost:8000" )
+			.patch( "/comments/update" )
+			.send({
+				token: "123213adasdsad21321321",
+				newContent: "updated",
+				commentId: commentId
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
+				done();
+			});
+	});
+
+	after( function( done ) {
+		Post.remove({ _id: postId })
+			.exec()
+			.then(() => {
+				Comment.remove({ _id: commentId })
+					.then(() => done())
+					.catch( err => done( err ));
+			}).catch( err => done( err ));
 	});
 });
 
