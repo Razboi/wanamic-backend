@@ -9,10 +9,12 @@ const
 	followers = require( "./routes/followers" ),
 	user = require( "./routes/user" ),
 	auth = require( "./routes/auth" ),
+	notifications = require( "./routes/notifications" ),
 	Notification = require( "./models/Notification" ),
 	User = require( "./models/User" ),
 	socketIo = require( "socket.io" );
 
+var oldNotifications = [];
 // apply env variables
 dotenv.config();
 
@@ -26,6 +28,7 @@ app.use( "/friends", friends );
 app.use( "/user", user );
 app.use( "/followers", followers );
 app.use( "/comments", comments );
+app.use( "/notifications", notifications );
 
 // error middleware
 app.use(( err, req, res, next ) => {
@@ -43,21 +46,49 @@ const
 		console.log( "App listening" )),
 	io = socketIo( server );
 
+
 function getNotifiacionsAndEmit( socket, userId ) {
+	var
+		areEqual = true,
+		i;
 	User.findById( userId )
 		.populate({
-			path: "notifications",
-			match: { checked: false }
+			path: "notifications"
 		})
 		.exec()
 		.then( user => {
-			if ( user.notifications.length > 0 ) {
-				console.log( "there are new notifications" );
-				try {
-					socket.emit( "notifications", user.notifications );
-				} catch ( err ) {
-					console.log( err );
+			if ( oldNotifications.length > 0 ) {
+				if ( oldNotifications.length !== user.notifications.length ) {
+					areEqual = false;
+				} else {
+					for ( i = 0; i < user.notifications.length; i++ ) {
+						if ( String( user.notifications[ i ]._id )
+								!==
+								String( oldNotifications[ i ]._id )) {
+							areEqual = false;
+							break;
+						}
+					}
 				}
+
+				if ( user.notifications.length > 0 && !areEqual ) {
+					console.log( "there are new notifications" );
+					const newNotifications = user.notifications.filter( notification => {
+						return notification.checked === false;
+					});
+					try {
+						socket.emit( "notifications", {
+							notifications: user.notifications,
+							newNotifications: newNotifications
+						});
+						oldNotifications = user.notifications;
+					} catch ( err ) {
+						console.log( err );
+					}
+				}
+			} else {
+				console.log( "setup" );
+				oldNotifications = user.notifications;
 			}
 		}).catch( err => console.log( err ));
 }
@@ -75,7 +106,7 @@ io.on( "connection", socket => {
 			return err;
 		}
 
-		setInterval(() => getNotifiacionsAndEmit( socket, userId ), 10000 );
+		setInterval(() => getNotifiacionsAndEmit( socket, userId ), 5000 );
 	});
 
 	socket.on( "disconnect", () => {
