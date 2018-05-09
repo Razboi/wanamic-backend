@@ -7,6 +7,7 @@ const
 	extractHostname = require( "../utils/extractHostname" ),
 	multer = require( "multer" ),
 	upload = multer({ dest: "../wanamic-frontend/src/images" }),
+	Notification = require( "../models/Notification" ),
 	errors = require( "../utils/errors" );
 
 Router.post( "/explore/:skip", ( req, res, next ) => {
@@ -125,8 +126,25 @@ Router.post( "/like", ( req, res, next ) => {
 						post.likedBy.push( user.username );
 					}
 					post.save()
-						.then(() => res.sendStatus( 201 ))
-						.catch( err => next( err ));
+
+						.then( post => {
+							User.findOne({ username: post.author })
+								.exec()
+								.then( postAuthor => {
+									new Notification({
+										author: user.username,
+										receiver: postAuthor.username,
+										content: "liked your post",
+										url: "post/" + post._id
+									}).save()
+										.then( newNotification => {
+											postAuthor.notifications.push( newNotification );
+											postAuthor.save();
+											res.sendStatus( 201 );
+
+										}).catch( err => next( err ));
+								}).catch( err => next( err ));
+						}).catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));
 });
@@ -182,7 +200,7 @@ Router.post( "/media", ( req, res, next ) => {
 
 	data = req.body.data;
 	token = req.body.token;
-	console.log( data.alerts );
+
 	try {
 		userId = tokenVerifier( token );
 	} catch ( err ) {
