@@ -79,7 +79,7 @@ function getNotifiacionsAndEmit( socket, userId ) {
 					try {
 						socket.emit( "notifications", {
 							notifications: user.notifications,
-							newNotifications: newNotifications
+							newNotifications: newNotifications.length
 						});
 						oldNotifications = user.notifications;
 					} catch ( err ) {

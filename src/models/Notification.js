@@ -6,7 +6,7 @@ const
 		author: { type: String, required: true },
 		receiver: { type: String, required: true },
 		content: { type: String },
-		url: { type: String },
+		object: { type: String },
 		checked: { type: Boolean, default: false }
 	}, { timestamps: true }),
 

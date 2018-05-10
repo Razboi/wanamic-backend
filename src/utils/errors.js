@@ -19,6 +19,11 @@ module.exports = {
 		err.statusCode = 404;
 		return err;
 	},
+	notificationDoesntExist: () => {
+		var err = new Error( "Notification doesn't exist" );
+		err.statusCode = 404;
+		return err;
+	},
 	registeredUsername: () => {
 		var err = new Error( "Username already registered" );
 		err.statusCode = 422;

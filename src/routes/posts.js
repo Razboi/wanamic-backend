@@ -35,6 +35,17 @@ Router.post( "/explore/:skip", ( req, res, next ) => {
 		.catch( err => next( err ));
 });
 
+Router.post( "/getPost", ( req, res, next ) => {
+
+	if ( !req.body.postId ) {
+		return next( errors.blankData());
+	}
+
+	Post.findById( req.body.postId )
+		.exec()
+		.then( post => res.send( post ))
+		.catch( err => next( err ));
+});
 
 Router.post( "/create", ( req, res, next ) => {
 	var
@@ -135,7 +146,7 @@ Router.post( "/like", ( req, res, next ) => {
 										author: user.username,
 										receiver: postAuthor.username,
 										content: "liked your post",
-										url: "post/" + post._id
+										object: post._id
 									}).save()
 										.then( newNotification => {
 											postAuthor.notifications.push( newNotification );
