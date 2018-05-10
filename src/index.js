@@ -14,7 +14,6 @@ const
 	User = require( "./models/User" ),
 	socketIo = require( "socket.io" );
 
-var oldNotifications = [];
 // apply env variables
 dotenv.config();
 
@@ -49,15 +48,24 @@ const
 
 function getNotifiacionsAndEmit( socket, userId ) {
 	var
-		areEqual = true,
+		interval,
+		areEqual,
+		oldNotifications = undefined,
 		i;
-	User.findById( userId )
-		.populate({
-			path: "notifications"
-		})
-		.exec()
-		.then( user => {
-			if ( oldNotifications.length > 0 ) {
+
+	interval = setInterval(() => {
+		areEqual = true;
+		User.findById( userId )
+			.populate({
+				path: "notifications"
+			})
+			.exec()
+			.then( user => {
+				if ( !oldNotifications ) {
+					console.log( "setup" );
+					oldNotifications = user.notifications;
+					return;
+				}
 				if ( oldNotifications.length !== user.notifications.length ) {
 					areEqual = false;
 				} else {
@@ -76,26 +84,25 @@ function getNotifiacionsAndEmit( socket, userId ) {
 					const newNotifications = user.notifications.filter( notification => {
 						return notification.checked === false;
 					});
-					try {
-						socket.emit( "notifications", {
-							notifications: user.notifications,
-							newNotifications: newNotifications.length
-						});
-						oldNotifications = user.notifications;
-					} catch ( err ) {
-						console.log( err );
-					}
+
+					socket.emit( "notifications", {
+						notifications: user.notifications,
+						newNotifications: newNotifications.length
+					});
+					oldNotifications = user.notifications;
 				}
-			} else {
-				console.log( "setup" );
-				oldNotifications = user.notifications;
-			}
-		}).catch( err => console.log( err ));
+			}).catch( err => console.log( err ));
+	}, 5000 );
+
+	socket.on( "disconnect", () => {
+		clearInterval( interval );
+		socket.disconnect();
+		console.log( "Client disconnected" );
+	});
 }
 
 io.on( "connection", socket => {
 	console.log( "New client" );
-	// register event saves the userId and writes the socketId to the user schema
 	socket.on( "register", token => {
 		var userId;
 
@@ -105,12 +112,6 @@ io.on( "connection", socket => {
 			console.log( err );
 			return err;
 		}
-
-		setInterval(() => getNotifiacionsAndEmit( socket, userId ), 5000 );
-	});
-
-	socket.on( "disconnect", () => {
-		socket.disconnect();
-		console.log( "Client disconnected" );
+		getNotifiacionsAndEmit( socket, userId );
 	});
 });

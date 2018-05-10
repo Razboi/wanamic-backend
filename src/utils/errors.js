@@ -48,5 +48,10 @@ module.exports = {
 		var err = new Error( "Unauthorized" );
 		err.statusCode = 401;
 		return err;
+	},
+	duplicatedNotification: () => {
+		var err = new Error( "Duplicated notification" );
+		err.statusCode = 422;
+		return err;
 	}
 };
