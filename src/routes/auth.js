@@ -34,7 +34,11 @@ Router.post( "/signup", ( req, res, next ) => {
 						.save()
 						.then( user => {
 							res.status( 201 );
-							res.send({ token: tokenGenerator( user ), username: user.username });
+							res.send({
+								token: tokenGenerator( user ),
+								username: user.username,
+								id: user._id
+							});
 						}).catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));
@@ -57,7 +61,11 @@ Router.post( "/login", ( req, res, next ) => {
 			if ( !user.isValidPassword( credentials.password )) {
 				return next( errors.invalidPassword());
 			}
-			res.send({ token: tokenGenerator( user ), username: user.username });
+			res.send({
+				token: tokenGenerator( user ),
+				username: user.username,
+				id: user._id
+			});
 		}).catch( err => next( err ));
 });
 

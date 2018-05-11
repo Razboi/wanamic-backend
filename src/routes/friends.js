@@ -59,6 +59,7 @@ Router.post( "/add", ( req, res, next ) => {
 								friendRequest: true
 							}).save()
 								.then( newNotification => {
+									user.pendingRequests.push( friend.username );
 									friend.notifications.push( newNotification );
 									Promise.all([ user.save(), friend.save() ])
 										.then(() => res.sendStatus( 201 ))
@@ -109,10 +110,10 @@ Router.delete( "/delete", ( req, res, next ) => {
 		}).catch( err => next( err ));
 });
 
-Router.post( "/accept", ( req, res, next ) => {
+Router.post( "/isRequested", ( req, res, next ) => {
 	var userId;
 
-	if ( !req.body.token || !req.body.friendUsername || !req.body.notificationId ) {
+	if ( !req.body.token || !req.body.targetUsername ) {
 		return next( errors.blankData());
 	}
 
@@ -122,29 +123,59 @@ Router.post( "/accept", ( req, res, next ) => {
 		return next( err );
 	}
 
-	Notification.findById( req.body.notificationId )
+	User.findById( userId )
 		.exec()
-		.then( notification => {
-			if ( !notification ) {
-				return next( errors.notificationDoesntExist());
+		.then( user => {
+			if ( !user ) {
+				return next( errors.userDoesntExist());
 			}
 
-			User.findById( userId )
+			User.findOne({ username: req.body.targetUsername })
 				.exec()
-				.then( user => {
-					if ( !user ) {
+				.then( target => {
+					if ( !target ) {
 						return next( errors.userDoesntExist());
 					}
+					res.send( target.pendingRequests.includes( user.username ));
+				}).catch( err => next( err ));
+		}).catch( err => next( err ));
+});
 
-					User.findOne({ username: req.body.friendUsername })
+Router.post( "/accept", ( req, res, next ) => {
+	var userId;
+
+	if ( !req.body.token || !req.body.friendUsername ) {
+		return next( errors.blankData());
+	}
+
+	try {
+		userId = tokenVerifier( req.body.token );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	User.findById( userId )
+		.exec()
+		.then( user => {
+			if ( !user ) {
+				return next( errors.userDoesntExist());
+			}
+
+			User.findOne({ username: req.body.friendUsername })
+				.exec()
+				.then( friend => {
+					if ( !friend ) {
+						return next( errors.userDoesntExist());
+					}
+					Notification.findOne({
+						receiver: user.username,
+						author: friend.username,
+						friendRequest: true
+					})
 						.exec()
-						.then( friend => {
-							if ( !friend ) {
-								return next( errors.userDoesntExist());
-							}
-							if ( notification.receiver !== user.username ||
-									notification.author !== friend.username ) {
-								return next( errors.unauthorized());
+						.then( notification => {
+							if ( !notification ) {
+								return next( errors.notificationDoesntExist());
 							}
 
 							if ( !user.friends.includes( friend._id )) {
@@ -153,6 +184,8 @@ Router.post( "/accept", ( req, res, next ) => {
 							if ( !friend.friends.includes( user._id )) {
 								friend.friends.push( user._id );
 							}
+							const requestIndex = friend.pendingRequests.indexOf( user.username );
+							friend.pendingRequests.splice( requestIndex, 1 );
 							Promise.all([ user.save(), friend.save() ])
 								.then(() => res.sendStatus( 201 ))
 

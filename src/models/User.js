@@ -14,6 +14,7 @@ const
 		followers: [ { type: Schema.Types.ObjectId, ref: "User" } ],
 		following: [ { type: Schema.Types.ObjectId, ref: "User" } ],
 		notifications: [ { type: Schema.Types.ObjectId, ref: "Notification" } ],
+		pendingRequests: [ { type: String } ],
 		description: { type: String },
 		keywords: [ { type: String } ],
 		profileImage: { type: String },
