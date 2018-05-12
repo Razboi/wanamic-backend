@@ -187,7 +187,55 @@ Router.post( "/accept", ( req, res, next ) => {
 							const requestIndex = friend.pendingRequests.indexOf( user.username );
 							friend.pendingRequests.splice( requestIndex, 1 );
 							Promise.all([ user.save(), friend.save() ])
-								.then(() => res.sendStatus( 201 ))
+								.then(() => {
+									notification.remove();
+									res.sendStatus( 201 );
+								}).catch( err => next( err ));
+						}).catch( err => next( err ));
+				}).catch( err => next( err ));
+		}).catch( err => next( err ));
+});
+
+
+Router.post( "/deleteReq", ( req, res, next ) => {
+	var userId;
+
+	if ( !req.body.token || !req.body.friendUsername ) {
+		return next( errors.blankData());
+	}
+
+	try {
+		userId = tokenVerifier( req.body.token );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	User.findById( userId )
+		.exec()
+		.then( user => {
+			if ( !user ) {
+				return next( errors.userDoesntExist());
+			}
+
+			User.findOne({ username: req.body.friendUsername })
+				.exec()
+				.then( friend => {
+					if ( !friend ) {
+						return next( errors.userDoesntExist());
+					}
+					Notification.findOne({
+						receiver: user.username,
+						author: friend.username,
+						friendRequest: true
+					})
+						.exec()
+						.then( notification => {
+							if ( !notification ) {
+								return next( errors.notificationDoesntExist());
+							}
+
+							notification.remove()
+								.then(() => res.sendStatus( 200 ))
 
 								.catch( err => next( err ));
 						}).catch( err => next( err ));
