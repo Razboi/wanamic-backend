@@ -7,6 +7,7 @@ const
 	dotenv = require( "dotenv" ),
 	bcrypt = require( "bcrypt" ),
 	tokenGenerator = require( "../../src/utils/tokenGenerator" ),
+	Notification = require( "../../src/models/Notification" ),
 	User = require( "../../src/models/User" );
 
 dotenv.config();
@@ -54,6 +55,19 @@ describe( "POST followers/follow", function() {
 			.exec()
 			.then( user => {
 				token = tokenGenerator( user );
+				done();
+			}).catch( err => done( err ));
+	});
+
+	after( function( done ) {
+		Notification.findOne({
+			author: "signuptestuser",
+			receiver: "testuser2",
+			follow: true
+		})
+			.exec()
+			.then( notification => {
+				notification.remove();
 				done();
 			}).catch( err => done( err ));
 	});

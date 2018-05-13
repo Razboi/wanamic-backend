@@ -7,6 +7,7 @@ const
 	dotenv = require( "dotenv" ),
 	bcrypt = require( "bcrypt" ),
 	tokenGenerator = require( "../../src/utils/tokenGenerator" ),
+	Notification = require( "../../src/models/Notification" ),
 	User = require( "../../src/models/User" );
 
 dotenv.config();
@@ -54,6 +55,19 @@ describe( "POST friends/add", function() {
 			.exec()
 			.then( user => {
 				token = tokenGenerator( user );
+				done();
+			}).catch( err => done( err ));
+	});
+
+	after( function( done ) {
+		Notification.findOne({
+			author: "signuptestuser",
+			receiver: "testuser2",
+			friendRequest: true
+		})
+			.exec()
+			.then( notification => {
+				notification.remove();
 				done();
 			}).catch( err => done( err ));
 	});
@@ -196,6 +210,257 @@ describe( "DELETE friends/delete", function() {
 	it( "should return 404 User doesn't exist", function( done ) {
 		chai.request( "localhost:8000" )
 			.delete( "/friends/delete" )
+			.send({
+				token: token,
+				friendUsername: "inexistingusername"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 404 );
+				res.text.should.equal( "User doesn't exist" );
+				done();
+			});
+	});
+});
+
+describe( "POST friends/isRequested", function() {
+	var token;
+
+	before( function( done ) {
+		User.findOne({ email: "test@gmail.com" })
+			.exec()
+			.then( user => {
+				token = tokenGenerator( user );
+				done();
+			}).catch( err => done( err ));
+	});
+
+	it( "should return 200", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/friends/isRequested" )
+			.send({
+				token: token,
+				targetUsername: "testuser2"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 200 );
+				done();
+			});
+	});
+
+	it( "should return 422 Empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/friends/isRequested" )
+			.send({
+				token: token
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 422 Empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/friends/isRequested" )
+			.send({
+				targetUsername: "testuser2"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 401 malformed jwt", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/friends/isRequested" )
+			.send({
+				token: "123213adasdsad21321321",
+				targetUsername: "testuser2"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
+				done();
+			});
+	});
+
+	it( "should return 404 User doesn't exist", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/friends/isRequested" )
+			.send({
+				token: token,
+				targetUsername: "inexistingusername"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 404 );
+				res.text.should.equal( "User doesn't exist" );
+				done();
+			});
+	});
+});
+
+describe( "POST friends/accept", function() {
+	var token;
+
+	before( function( done ) {
+		User.findOne({ email: "test@gmail.com" })
+			.exec()
+			.then( user => {
+				token = tokenGenerator( user );
+				new Notification({
+					receiver: user.username,
+					author: "testuser2",
+					friendRequest: true
+				}).save()
+					.then(() => done());
+			}).catch( err => done( err ));
+	});
+
+	it( "should return 201", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/friends/accept" )
+			.send({
+				token: token,
+				friendUsername: "testuser2"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 201 );
+				done();
+			});
+	});
+
+	it( "should return 422 Empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/friends/accept" )
+			.send({
+				token: token
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 422 Empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/friends/accept" )
+			.send({
+				friendUsername: "testuser2"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 401 malformed jwt", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/friends/accept" )
+			.send({
+				token: "123213adasdsad21321321",
+				friendUsername: "testuser2"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
+				done();
+			});
+	});
+
+	it( "should return 404 User doesn't exist", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/friends/accept" )
+			.send({
+				token: token,
+				friendUsername: "inexistingusername"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 404 );
+				res.text.should.equal( "User doesn't exist" );
+				done();
+			});
+	});
+});
+
+
+describe( "DELETE friends/deleteReq", function() {
+	var token;
+
+	before( function( done ) {
+		User.findOne({ email: "test@gmail.com" })
+			.exec()
+			.then( user => {
+				token = tokenGenerator( user );
+				new Notification({
+					receiver: user.username,
+					author: "testuser2",
+					friendRequest: true
+				}).save()
+					.then(() => done());
+			}).catch( err => done( err ));
+	});
+
+	it( "should return 200", function( done ) {
+		chai.request( "localhost:8000" )
+			.delete( "/friends/deleteReq" )
+			.send({
+				token: token,
+				friendUsername: "testuser2"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 200 );
+				done();
+			});
+	});
+
+	it( "should return 422 Empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.delete( "/friends/deleteReq" )
+			.send({
+				token: token
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 422 Empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.delete( "/friends/deleteReq" )
+			.send({
+				friendUsername: "testuser2"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 401 malformed jwt", function( done ) {
+		chai.request( "localhost:8000" )
+			.delete( "/friends/deleteReq" )
+			.send({
+				token: "123213adasdsad21321321",
+				friendUsername: "testuser2"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
+				done();
+			});
+	});
+
+	it( "should return 404 User doesn't exist", function( done ) {
+		chai.request( "localhost:8000" )
+			.delete( "/friends/deleteReq" )
 			.send({
 				token: token,
 				friendUsername: "inexistingusername"

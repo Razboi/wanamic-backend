@@ -197,7 +197,7 @@ Router.post( "/accept", ( req, res, next ) => {
 });
 
 
-Router.post( "/deleteReq", ( req, res, next ) => {
+Router.delete( "/deleteReq", ( req, res, next ) => {
 	var userId;
 
 	if ( !req.body.token || !req.body.friendUsername ) {

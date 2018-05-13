@@ -8,6 +8,7 @@ const
 	tokenGenerator = require( "../../src/utils/tokenGenerator" ),
 	User = require( "../../src/models/User" ),
 	Comment = require( "../../src/models/Comment" ),
+	Notification = require( "../../src/models/Notification" ),
 	Post = require( "../../src/models/Post" );
 
 
@@ -20,6 +21,7 @@ describe( "POST comments/create", function() {
 	var
 		token,
 		postId;
+
 	before( function( done ) {
 		User.findOne({ email: "test@gmail.com" })
 			.exec()
@@ -31,6 +33,22 @@ describe( "POST comments/create", function() {
 				}).save()
 					.then( post => {
 						postId = post.id;
+						done();
+					}).catch( err => done( err ));
+			}).catch( err => done( err ));
+	});
+
+	after( function( done ) {
+		Notification.findOne({
+			author: "signuptestuser",
+			receiver: "signuptestuser",
+			comment: true
+		})
+			.exec()
+			.then( notification => {
+				notification.remove();
+				Comment.remove({ author: "signuptestuser" })
+					.then(() => {
 						done();
 					}).catch( err => done( err ));
 			}).catch( err => done( err ));
