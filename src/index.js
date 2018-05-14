@@ -13,6 +13,7 @@ const
 	messages = require( "./routes/messages" ),
 	Notification = require( "./models/Notification" ),
 	User = require( "./models/User" ),
+	Message = require( "./models/Message" ),
 	socketIo = require( "socket.io" );
 
 // apply env variables
@@ -48,7 +49,7 @@ const
 	io = socketIo( server );
 
 
-function getNotifiacionsAndEmit( socket, userId ) {
+function watchNotifications( socket, userId ) {
 	var
 		interval,
 		areEqual,
@@ -103,17 +104,23 @@ function getNotifiacionsAndEmit( socket, userId ) {
 	});
 }
 
-io.on( "connection", socket => {
-	console.log( "New client" );
-	socket.on( "register", token => {
-		var userId;
 
+io.on( "connection", socket => {
+	var userId;
+	console.log( "New client" );
+	socket.on( "register", data => {
+		socket.join( data.username );
 		try {
-			userId = tokenVerifier( token );
+			userId = tokenVerifier( data.token );
 		} catch ( err ) {
 			console.log( err );
 			return err;
 		}
-		getNotifiacionsAndEmit( socket, userId );
+		watchNotifications( socket, userId );
+	});
+
+	socket.on( "sendMessage", data => {
+		console.log( "new message" );
+		socket.to( data.receiver ).emit( "message", data );
 	});
 });

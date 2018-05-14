@@ -33,7 +33,6 @@ Router.post( "/retrieve", ( req, res, next ) => {
 					{ $or: [ { receiver: user.username }, { receiver: data.friendUsername } ] }
 				]
 			})
-				.sort({ createdAt: -1 })
 				.exec()
 				.then( messages => res.send( messages ))
 				.catch( err => next( err ));
