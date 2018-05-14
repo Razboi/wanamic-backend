@@ -10,6 +10,7 @@ const
 	user = require( "./routes/user" ),
 	auth = require( "./routes/auth" ),
 	notifications = require( "./routes/notifications" ),
+	messages = require( "./routes/messages" ),
 	Notification = require( "./models/Notification" ),
 	User = require( "./models/User" ),
 	socketIo = require( "socket.io" );
@@ -28,6 +29,7 @@ app.use( "/user", user );
 app.use( "/followers", followers );
 app.use( "/comments", comments );
 app.use( "/notifications", notifications );
+app.use( "/messages", messages );
 
 // error middleware
 app.use(( err, req, res, next ) => {
