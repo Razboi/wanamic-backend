@@ -15,6 +15,7 @@ const
 		following: [ { type: Schema.Types.ObjectId, ref: "User" } ],
 		notifications: [ { type: Schema.Types.ObjectId, ref: "Notification" } ],
 		pendingRequests: [ { type: String } ],
+		openConversations: [ { type: Schema.Types.ObjectId, ref: "User" } ],
 		description: { type: String },
 		keywords: [ { type: String } ],
 		profileImage: { type: String },

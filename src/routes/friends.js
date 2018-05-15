@@ -6,6 +6,37 @@ const
 	errors = require( "../utils/errors" );
 
 
+Router.post( "/getFriends", ( req, res, next ) => {
+	var userId;
+
+	if ( !req.body.token ) {
+		return next( errors.blankData());
+	}
+
+	try {
+		userId = tokenVerifier( req.body.token );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	User.findById( userId )
+		.populate({
+			path: "friends",
+			options: {
+				select: "username",
+				sort: { createdAt: -1 }
+			}
+		})
+		.select( "friends" )
+		.exec()
+		.then( user => {
+			if ( !user ) {
+				return next( errors.userDoesntExist());
+			}
+			res.send( user.friends );
+		}).catch( err => next( err ));
+});
+
 Router.post( "/add", ( req, res, next ) => {
 	var userId;
 

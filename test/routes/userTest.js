@@ -437,3 +437,39 @@ describe( "post user/setUserKw", function() {
 			});
 	});
 });
+
+
+describe( "post user/getChats", function() {
+
+	it( "should return 200", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/user/getChats" )
+			.send({ token: token })
+			.end(( err, res ) => {
+				res.should.have.status( 200 );
+				done();
+			});
+	});
+
+	it( "should return 422", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/user/getChats" )
+			.send({})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 401 invalid jwt", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/user/getChats" )
+			.send({ token: "123123sadasda1231312" })
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
+				done();
+			});
+	});
+});

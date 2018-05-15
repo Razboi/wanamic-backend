@@ -235,4 +235,28 @@ Router.post( "/setUserKw", ( req, res, next ) => {
 });
 
 
+Router.post( "/getChats", ( req, res, next ) => {
+	var userId;
+
+	if ( !req.body.token ) {
+		return next( errors.blankData());
+	}
+
+	try {
+		userId = tokenVerifier( req.body.token );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	User.findById( userId )
+		.populate({ path: "openConversations" })
+		.exec()
+		.then( user => {
+			if ( !user ) {
+				return next( errors.userDoesntExist());
+			}
+			res.send( user.openConversations );
+		}).catch( err => next( err ));
+});
+
 module.exports = Router;
