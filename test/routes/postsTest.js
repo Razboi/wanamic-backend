@@ -8,6 +8,7 @@ const
 	bcrypt = require( "bcrypt" ),
 	tokenGenerator = require( "../../src/utils/tokenGenerator" ),
 	Post = require( "../../src/models/Post" ),
+	Notification = require( "../../src/models/Notification" ),
 	User = require( "../../src/models/User" );
 
 dotenv.config();
@@ -173,9 +174,17 @@ describe( "POST posts/like", function() {
 	});
 
 	after( function( done ) {
-		Post.remove({ id: postId })
-			.then(() => done())
-			.catch( err => done( err ));
+		Notification.findOne({
+			author: "signuptestuser",
+			receiver: "signuptestuser",
+		})
+			.exec()
+			.then( notification => {
+				notification.remove();
+				Post.remove({ id: postId })
+					.then(() => done())
+					.catch( err => done( err ));
+			}).catch( err => done( err ));
 	});
 
 	it( "creates adds a new like, should return 201", function( done ) {

@@ -3,6 +3,7 @@ const
 	User = require( "../models/User" ),
 	tokenVerifier = require( "../utils/tokenVerifier" ),
 	async = require( "async" ),
+	Notification = require( "../models/Notification" ),
 	errors = require( "../utils/errors" );
 
 Router.post( "/follow", ( req, res, next ) => {
@@ -36,9 +37,19 @@ Router.post( "/follow", ( req, res, next ) => {
 					if ( !user.following.includes( userToFollow._id )) {
 						user.following.push( userToFollow._id );
 					}
-					Promise.all([ userToFollow.save(), user.save() ])
-						.then(() => res.sendStatus( 201 ))
-						.catch( err => next( err ));
+					new Notification({
+						author: user.username,
+						receiver: userToFollow.username,
+						content: "started following you",
+						follow: true
+					}).save()
+						.then( newNotification => {
+							userToFollow.notifications.push( newNotification );
+							Promise.all([ userToFollow.save(), user.save() ])
+								.then(() => res.sendStatus( 201 ))
+								.catch( err => next( err ));
+
+						}).catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));
 });

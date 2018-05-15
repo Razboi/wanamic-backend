@@ -5,6 +5,7 @@ const
 	User = require( "../models/User" ),
 	Post = require( "../models/Post" ),
 	Comment = require( "../models/Comment" ),
+	Notification = require( "../models/Notification" ),
 	errors = require( "../utils/errors" );
 
 Router.post( "/create", ( req, res, next ) => {
@@ -44,11 +45,25 @@ Router.post( "/create", ( req, res, next ) => {
 					}).save()
 						.then( newComment => {
 							post.comments.push( newComment._id );
-							post.save()
-								.then(() => {
-									res.status( 201 );
-									res.send({ newComment: newComment, updatedPost: post });
-								}).catch( err => console.log( err ));
+							post.save();
+							User.findOne({ username: post.author })
+								.exec()
+								.then( postAuthor => {
+									new Notification({
+										author: user.username,
+										receiver: postAuthor.username,
+										content: "commented on your post",
+										object: post._id,
+										comment: true
+									}).save()
+										.then( newNotification => {
+											postAuthor.notifications.push( newNotification );
+											postAuthor.save();
+											res.status( 201 );
+											res.send({ newComment: newComment, updatedPost: post });
+
+										}).catch( err => next( err ));
+								}).catch( err => next( err ));
 						}).catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));

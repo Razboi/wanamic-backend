@@ -19,6 +19,11 @@ module.exports = {
 		err.statusCode = 404;
 		return err;
 	},
+	notificationDoesntExist: () => {
+		var err = new Error( "Notification doesn't exist" );
+		err.statusCode = 404;
+		return err;
+	},
 	registeredUsername: () => {
 		var err = new Error( "Username already registered" );
 		err.statusCode = 422;
@@ -42,6 +47,11 @@ module.exports = {
 	unauthorized: () => {
 		var err = new Error( "Unauthorized" );
 		err.statusCode = 401;
+		return err;
+	},
+	duplicatedNotification: () => {
+		var err = new Error( "Duplicated notification" );
+		err.statusCode = 422;
 		return err;
 	}
 };
