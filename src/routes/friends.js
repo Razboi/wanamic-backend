@@ -93,9 +93,11 @@ Router.post( "/add", ( req, res, next ) => {
 									user.pendingRequests.push( friend.username );
 									friend.notifications.push( newNotification );
 									Promise.all([ user.save(), friend.save() ])
-										.then(() => res.sendStatus( 201 ))
-										.catch( err => next( err ));
+										.then(() => {
+											res.status( 201 );
+											res.send( newNotification );
 
+										}).catch( err => next( err ));
 								}).catch( err => next( err ));
 						}).catch( err => next( err ));
 				}).catch( err => next( err ));

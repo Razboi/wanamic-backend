@@ -46,9 +46,11 @@ Router.post( "/follow", ( req, res, next ) => {
 						.then( newNotification => {
 							userToFollow.notifications.push( newNotification );
 							Promise.all([ userToFollow.save(), user.save() ])
-								.then(() => res.sendStatus( 201 ))
-								.catch( err => next( err ));
+								.then(() => {
+									res.status( 201 );
+									res.send( newNotification );
 
+								}).catch( err => next( err ));
 						}).catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));

@@ -60,7 +60,11 @@ Router.post( "/create", ( req, res, next ) => {
 											postAuthor.notifications.push( newNotification );
 											postAuthor.save();
 											res.status( 201 );
-											res.send({ newComment: newComment, updatedPost: post });
+											res.send({
+												newComment: newComment,
+												updatedPost: post,
+												newNotification: newNotification
+											});
 
 										}).catch( err => next( err ));
 								}).catch( err => next( err ));

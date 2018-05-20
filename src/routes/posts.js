@@ -151,7 +151,8 @@ Router.post( "/like", ( req, res, next ) => {
 										.then( newNotification => {
 											postAuthor.notifications.push( newNotification );
 											postAuthor.save();
-											res.sendStatus( 201 );
+											res.status( 201 );
+											res.send( newNotification );
 
 										}).catch( err => next( err ));
 								}).catch( err => next( err ));

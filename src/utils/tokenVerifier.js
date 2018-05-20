@@ -1,6 +1,6 @@
 const jwt = require( "jsonwebtoken" );
 
-tokenVerifier = token => {
+tokenVerifier = ( token, cb ) => {
 	var err;
 
 	if ( !token ) {
@@ -11,6 +11,9 @@ tokenVerifier = token => {
 	try {
 		// get userId from token
 		userId = jwt.verify( token, process.env.SECRET_JWT );
+		if ( cb ) {
+			return cb( userId );
+		}
 		return userId;
 	} catch ( err ) {
 		err.statusCode = 401;

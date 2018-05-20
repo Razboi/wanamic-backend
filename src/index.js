@@ -49,78 +49,31 @@ const
 	io = socketIo( server );
 
 
-function watchNotifications( socket, userId ) {
-	var
-		interval,
-		areEqual,
-		oldNotifications = undefined,
-		i;
-
-	interval = setInterval(() => {
-		areEqual = true;
-		User.findById( userId )
-			.populate({
-				path: "notifications"
-			})
-			.exec()
-			.then( user => {
-				if ( !oldNotifications ) {
-					console.log( "setup" );
-					oldNotifications = user.notifications;
-					return;
-				}
-				if ( oldNotifications.length !== user.notifications.length ) {
-					areEqual = false;
-				} else {
-					for ( i = 0; i < user.notifications.length; i++ ) {
-						if ( String( user.notifications[ i ]._id )
-								!==
-								String( oldNotifications[ i ]._id )) {
-							areEqual = false;
-							break;
-						}
-					}
-				}
-
-				if ( user.notifications.length > 0 && !areEqual ) {
-					console.log( "there are new notifications" );
-					const newNotifications = user.notifications.filter( notification => {
-						return notification.checked === false;
-					});
-
-					socket.emit( "notifications", {
-						notifications: user.notifications,
-						newNotifications: newNotifications.length
-					});
-					oldNotifications = user.notifications;
-				}
-			}).catch( err => console.log( err ));
-	}, 5000 );
-
-	socket.on( "disconnect", () => {
-		clearInterval( interval );
-		socket.disconnect();
-		console.log( "Client disconnected" );
-	});
-}
-
-
 io.on( "connection", socket => {
-	var userId;
 	console.log( "New client" );
 	socket.on( "register", data => {
-		socket.join( data.username );
 		try {
-			userId = tokenVerifier( data.token );
+			tokenVerifier( data.token, userId => {
+				User.findById( userId )
+					.exec()
+					.then( user => socket.join( user.username ));
+			});
 		} catch ( err ) {
 			console.log( err );
 			return err;
 		}
-		watchNotifications( socket, userId );
 	});
 
 	socket.on( "sendMessage", data => {
-		console.log( "new message" );
 		socket.to( data.receiver ).emit( "message", data );
+	});
+
+	socket.on( "sendNotification", data => {
+		socket.to( data.receiver ).emit( "notifications", data );
+	});
+
+	socket.on( "disconnect", () => {
+		socket.disconnect();
+		console.log( "Client disconnected" );
 	});
 });
