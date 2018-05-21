@@ -46,7 +46,7 @@ describe( "POST comments/create", function() {
 		})
 			.exec()
 			.then( notification => {
-				notification.remove();
+				notification && notification.remove();
 				Comment.remove({ author: "signuptestuser" })
 					.then(() => {
 						done();

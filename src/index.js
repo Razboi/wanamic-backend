@@ -65,11 +65,23 @@ io.on( "connection", socket => {
 	});
 
 	socket.on( "sendMessage", data => {
-		socket.to( data.receiver ).emit( "message", data );
+		if ( data && data.receiver ) {
+			try {
+				socket.to( data.receiver ).emit( "message", data );
+			} catch ( err ) {
+				console.log( err );
+			}
+		}
 	});
 
 	socket.on( "sendNotification", data => {
-		socket.to( data.receiver ).emit( "notifications", data );
+		if ( data && data.receiver ) {
+			try {
+				socket.to( data.receiver ).emit( "notifications", data );
+			} catch ( err ) {
+				console.log( err );
+			}
+		}
 	});
 
 	socket.on( "disconnect", () => {

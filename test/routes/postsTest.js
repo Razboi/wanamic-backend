@@ -180,7 +180,7 @@ describe( "POST posts/like", function() {
 		})
 			.exec()
 			.then( notification => {
-				notification.remove();
+				notification && notification.remove();
 				Post.remove({ id: postId })
 					.then(() => done())
 					.catch( err => done( err ));
