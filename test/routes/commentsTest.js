@@ -150,11 +150,12 @@ describe( "DELETE comments/delete", function() {
 					content: "test"
 				}).save()
 					.then( post => {
+						console.log( post._id );
 						postId = post.id;
 						new Comment({
 							author: user.username,
 							content: "test",
-							post: post.id
+							post: postId
 						}).save()
 							.then( comment => {
 								commentId = comment.id;
@@ -237,7 +238,6 @@ describe( "DELETE comments/delete", function() {
 
 	after( function( done ) {
 		Post.remove({ _id: postId })
-			.exec()
 			.then(() => {
 				Comment.remove({ _id: commentId })
 					.then(() => done())
@@ -247,7 +247,7 @@ describe( "DELETE comments/delete", function() {
 });
 
 
-describe( "PATCH comments/delete", function() {
+describe( "PATCH comments/update", function() {
 	var
 		token,
 		commentId,
@@ -267,7 +267,7 @@ describe( "PATCH comments/delete", function() {
 						new Comment({
 							author: user.username,
 							content: "test",
-							post: post.id
+							post: postId
 						}).save()
 							.then( comment => {
 								commentId = comment.id;
@@ -277,7 +277,7 @@ describe( "PATCH comments/delete", function() {
 			}).catch( err => done( err ));
 	});
 
-	it( "deletes a comment, should return 200", function( done ) {
+	it( "updates a comment, should return 200", function( done ) {
 		chai.request( "localhost:8000" )
 			.patch( "/comments/update" )
 			.send({

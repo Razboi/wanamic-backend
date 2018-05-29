@@ -2,6 +2,7 @@ const
 	Router = require( "express" ).Router(),
 	bcrypt = require( "bcrypt" ),
 	tokenGenerator = require( "../utils/tokenGenerator" ),
+	tokenVerifier = require( "../utils/tokenVerifier" ),
 	User = require( "../models/User" ),
 	errors = require( "../utils/errors" );
 
@@ -66,6 +67,30 @@ Router.post( "/login", ( req, res, next ) => {
 				username: user.username,
 				id: user._id
 			});
+		}).catch( err => next( err ));
+});
+
+
+Router.post( "/verify", ( req, res, next ) => {
+	var userId;
+
+	if ( !req.body.token ) {
+		return next( errors.blankData());
+	}
+
+	try {
+		userId = tokenVerifier( req.body.token );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	User.findById( userId )
+		.exec()
+		.then( user => {
+			if ( !user ) {
+				return next( errors.userDoesntExist());
+			}
+			res.sendStatus( 200 );
 		}).catch( err => next( err ));
 });
 

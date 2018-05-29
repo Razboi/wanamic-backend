@@ -10,12 +10,13 @@ tokenVerifier = ( token, cb ) => {
 	}
 	try {
 		// get userId from token
-		userId = jwt.verify( token, process.env.SECRET_JWT );
+		data = jwt.verify( token, process.env.SECRET_JWT );
 		if ( cb ) {
-			return cb( userId );
+			return cb( data.id );
 		}
-		return userId;
+		return data.id;
 	} catch ( err ) {
+		console.log( err );
 		err.statusCode = 401;
 		throw err;
 	}

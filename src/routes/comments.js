@@ -83,6 +83,7 @@ Router.post( "/create", ( req, res, next ) => {
 
 Router.delete( "/delete", ( req, res, next ) => {
 	var
+		data,
 		userId;
 
 	if ( !req.body.token || !req.body.commentId || !req.body.postId ) {
@@ -106,6 +107,9 @@ Router.delete( "/delete", ( req, res, next ) => {
 			Post.findById( data.postId )
 				.exec()
 				.then( post => {
+					if ( !post ) {
+						return next( errors.postDoesntExist());
+					}
 					const commentIndex = post.comments.indexOf( data.commentId );
 					post.comments.splice( commentIndex, 1 );
 					post.save().catch( err => next( err ));
@@ -125,6 +129,7 @@ Router.delete( "/delete", ( req, res, next ) => {
 
 Router.patch( "/update", ( req, res, next ) => {
 	var
+		data,
 		userId;
 
 	if ( !req.body.token || !req.body.commentId || !req.body.newContent ) {

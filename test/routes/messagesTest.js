@@ -19,8 +19,11 @@ after( function( done ) {
 	User.remove({ email: "test@gmail.com" })
 		.then(() => {
 			User.remove({ email: "test2@gmail.com" })
-				.then(() => done())
-				.catch( err => done( err ));
+				.then(() => {
+					Message.remove({ receiver: "testuser" })
+						.then(() => done())
+						.catch( err => done( err ));
+				}).catch( err => done( err ));
 		}).catch( err => done( err ));
 });
 
