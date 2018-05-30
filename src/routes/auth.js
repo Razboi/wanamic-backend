@@ -2,6 +2,7 @@ const
 	Router = require( "express" ).Router(),
 	bcrypt = require( "bcrypt" ),
 	tokenGenerator = require( "../utils/tokenGenerator" ),
+	refreshTokenGenerator = require( "../utils/refreshTokenGenerator" ),
 	tokenVerifier = require( "../utils/tokenVerifier" ),
 	User = require( "../models/User" ),
 	errors = require( "../utils/errors" );
@@ -62,8 +63,10 @@ Router.post( "/login", ( req, res, next ) => {
 			if ( !user.isValidPassword( credentials.password )) {
 				return next( errors.invalidPassword());
 			}
+
 			res.send({
 				token: tokenGenerator( user ),
+				refreshToken: refreshTokenGenerator( user ),
 				username: user.username,
 				id: user._id
 			});

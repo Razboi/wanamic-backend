@@ -4,10 +4,11 @@ const
 	Schema = mongoose.Schema,
 
 	UserSchema = mongoose.Schema({
-		username: { type: String },
+		username: { type: String, required: true },
 		email: { type: String, required: true },
-		fullname: { type: String },
-		passwordHash: { type: String },
+		fullname: { type: String, required: true },
+		passwordHash: { type: String, required: true },
+		refreshToken: { type: String },
 		posts: [ { type: Schema.Types.ObjectId, ref: "Post" } ],
 		newsfeed: [ { type: Schema.Types.ObjectId, ref: "Post" } ],
 		friends: [ { type: Schema.Types.ObjectId, ref: "User" } ],
