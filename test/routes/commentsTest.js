@@ -150,7 +150,6 @@ describe( "DELETE comments/delete", function() {
 					content: "test"
 				}).save()
 					.then( post => {
-						console.log( post._id );
 						postId = post.id;
 						new Comment({
 							author: user.username,

@@ -20,6 +20,8 @@ describe( "User model", function() {
 	before( function( done ) {
 		new User({
 			email: "test3@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
 			passwordHash: bcrypt.hashSync( "test", 10 )
 		})
 			.save()
