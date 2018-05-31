@@ -16,7 +16,6 @@ tokenVerifier = ( token, cb ) => {
 		}
 		return data.id;
 	} catch ( err ) {
-		console.log( err );
 		err.statusCode = 401;
 		throw err;
 	}
