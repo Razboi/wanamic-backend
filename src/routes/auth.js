@@ -1,6 +1,7 @@
 const
 	Router = require( "express" ).Router(),
 	bcrypt = require( "bcrypt" ),
+	jwt = require( "jsonwebtoken" ),
 	tokenGenerator = require( "../utils/tokenGenerator" ),
 	refreshTokenGenerator = require( "../utils/refreshTokenGenerator" ),
 	tokenVerifier = require( "../utils/tokenVerifier" ),
@@ -95,11 +96,17 @@ Router.post( "/verify", ( req, res, next ) => {
 Router.post( "/token", ( req, res, next ) => {
 	var userId;
 
-	if ( !req.body.userId || !req.body.refreshToken ) {
+	if ( !req.body.refreshToken ) {
 		return next( errors.blankData());
 	}
 
-	userId = req.body.userId;
+	try {
+		data = jwt.verify( req.body.refreshToken, process.env.SECRET_REFRESH );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	userId = data.id;
 
 	User.findById( userId )
 		.exec()

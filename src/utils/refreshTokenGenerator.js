@@ -1,10 +1,10 @@
 const
-	randtoken = require( "rand-token" ),
+	jwt = require( "jsonwebtoken" ),
 	User = require( "../models/User" );
 
 generateRefreshToken = user => {
 	if ( user && user.id ) {
-		const token = randtoken.uid( 256 );
+		const token = jwt.sign({ id: user.id }, process.env.SECRET_REFRESH );
 		User.findById( user.id )
 			.exec()
 			.then( user => {
