@@ -5,6 +5,8 @@ const
 	request = require( "request" ),
 	mongoose = require( "mongoose" ),
 	dotenv = require( "dotenv" ),
+	tokenGenerator = require( "../../src/utils/tokenGenerator" ),
+	refreshTokenGenerator = require( "../../src/utils/refreshTokenGenerator" ),
 	User = require( "../../src/models/User" );
 
 dotenv.config();
@@ -171,6 +173,141 @@ describe( "auth/login", function() {
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
 				res.text.should.equal( "Invalid password" );
+				done();
+			});
+	});
+});
+
+
+describe( "auth/verify", function() {
+	var token;
+
+	before( function( done ) {
+		User.findOne({ email: "test@gmail.com" })
+			.exec()
+			.then( user => {
+				token = tokenGenerator( user );
+				done();
+			}).catch( err => done( err ));
+	});
+
+	it( "should return 200", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/auth/verify" )
+			.send({ token: token })
+			.end(( err, res ) => {
+				res.should.have.status( 200 );
+				done();
+			});
+	});
+
+	it( "should return 422", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/auth/verify" )
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 401 malformed jwt", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/auth/verify" )
+			.send({ token: "123213adasdsad21321321" })
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
+				done();
+			});
+	});
+});
+
+
+describe( "auth/token", function() {
+	var refreshToken;
+
+	before( function( done ) {
+		User.findOne({ email: "test@gmail.com" })
+			.exec()
+			.then( user => {
+				refreshToken = refreshTokenGenerator( user );
+				done();
+			}).catch( err => done( err ));
+	});
+
+	it( "should return 201", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/auth/token" )
+			.send({ refreshToken: refreshToken })
+			.end(( err, res ) => {
+				res.should.have.status( 201 );
+				done();
+			});
+	});
+
+	it( "should return 422", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/auth/token" )
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 401 malformed jwt", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/auth/token" )
+			.send({ refreshToken: "123213adasdsad21321321" })
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
+				done();
+			});
+	});
+});
+
+
+describe( "auth/refreshToken", function() {
+	var token;
+
+	before( function( done ) {
+		User.findOne({ email: "test@gmail.com" })
+			.exec()
+			.then( user => {
+				token = tokenGenerator( user );
+				done();
+			}).catch( err => done( err ));
+	});
+
+	it( "should return 201", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/auth/refreshToken" )
+			.send({ token: token })
+			.end(( err, res ) => {
+				res.should.have.status( 201 );
+				done();
+			});
+	});
+
+	it( "should return 422", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/auth/refreshToken" )
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 401 malformed jwt", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/auth/refreshToken" )
+			.send({ token: "123213adasdsad21321321" })
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
 				done();
 			});
 	});

@@ -103,6 +103,7 @@ Router.post( "/token", ( req, res, next ) => {
 	try {
 		data = jwt.verify( req.body.refreshToken, process.env.SECRET_REFRESH );
 	} catch ( err ) {
+		err.statusCode = 401;
 		return next( err );
 	}
 
@@ -117,6 +118,7 @@ Router.post( "/token", ( req, res, next ) => {
 			if ( user.refreshToken !== req.body.refreshToken ) {
 				return next( errors.unauthorized());
 			}
+			res.status( 201 );
 			res.send({ token: tokenGenerator( user ) });
 		}).catch( err => next( err ));
 });
@@ -141,6 +143,7 @@ Router.post( "/refreshToken", ( req, res, next ) => {
 			if ( !user ) {
 				return next( errors.userDoesntExist());
 			}
+			res.status( 201 );
 			res.send({
 				token: tokenGenerator( user ),
 				refreshToken: refreshTokenGenerator( user ),

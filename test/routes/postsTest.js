@@ -39,56 +39,20 @@ before( function( done ) {
 
 
 describe( "POST posts/explore/:skip", function() {
-	var token;
-
-	// before running tests create a token
-	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				token = tokenGenerator( user );
-				done();
-			}).catch( err => done( err ));
-	});
-
 	it( "gets explore posts, should return 200", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/posts/explore/0" )
-			.send({ token: token })
+			.get( "/posts/explore/0" )
 			.end(( err, res ) => {
 				res.should.have.status( 200 );
 				done();
 			});
 	});
 
-	it( "should return 422 for empty data", function( done ) {
-		chai.request( "localhost:8000" )
-			.post( "/posts/explore/0" )
-			.send({})
-			.end(( err, res ) => {
-				res.should.have.status( 422 );
-				res.text.should.equal( "Required data not found" );
-				done();
-			});
-	});
-
 	it( "should return 404 for invalid route", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/posts/explore/" )
-			.send({})
+			.get( "/posts/explore/" )
 			.end(( err, res ) => {
 				res.should.have.status( 404 );
-				done();
-			});
-	});
-
-	it( "should return 401 for invalid token", function( done ) {
-		chai.request( "localhost:8000" )
-			.post( "/posts/explore/0" )
-			.send({ token: "1232312sadasd213213" })
-			.end(( err, res ) => {
-				res.should.have.status( 401 );
-				res.text.should.equal( "jwt malformed" );
 				done();
 			});
 	});

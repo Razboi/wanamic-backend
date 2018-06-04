@@ -10,19 +10,10 @@ const
 	Notification = require( "../models/Notification" ),
 	errors = require( "../utils/errors" );
 
-Router.post( "/explore/:skip", ( req, res, next ) => {
-	var userId;
+Router.get( "/explore/:skip", ( req, res, next ) => {
 
-	if ( !req.body.token || !req.params.skip ) {
+	if ( !req.params.skip ) {
 		return next( errors.blankData());
-	}
-
-	data = req.body;
-
-	try {
-		userId = tokenVerifier( data.token );
-	} catch ( err ) {
-		return next( err );
 	}
 
 	Post.find()
