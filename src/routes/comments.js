@@ -6,6 +6,7 @@ const
 	Post = require( "../models/Post" ),
 	Comment = require( "../models/Comment" ),
 	Notification = require( "../models/Notification" ),
+	notifyMentions = require( "../utils/notifyMentions" ),
 	errors = require( "../utils/errors" );
 
 Router.post( "/create", ( req, res, next ) => {
@@ -75,6 +76,7 @@ Router.post( "/create", ( req, res, next ) => {
 											updatedPost: post
 										});
 									}
+									notifyMentions( req.body.mentions, "comment", post, user );
 								}).catch( err => next( err ));
 						}).catch( err => next( err ));
 				}).catch( err => next( err ));

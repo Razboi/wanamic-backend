@@ -4,6 +4,7 @@ const
 	multer = require( "multer" ),
 	upload = multer({ dest: "../wanamic-frontend/src/images" }),
 	findRandomUser = require( "../utils/findRandomUser" ),
+	removeDuplicates = require( "../utils/removeDuplicatesArrOfObj" ),
 	async = require( "async" ),
 	errors = require( "../utils/errors" );
 
@@ -256,6 +257,58 @@ Router.post( "/getChats", ( req, res, next ) => {
 				return next( errors.userDoesntExist());
 			}
 			res.send( user.openConversations );
+		}).catch( err => next( err ));
+});
+
+
+Router.post( "/getSocialCircle", ( req, res, next ) => {
+	var
+		i,
+		friend = {},
+		follower = {},
+		userFollowing = {},
+		userId,
+		socialCircle = [];
+
+	if ( !req.body.token ) {
+		return next( errors.blankData());
+	}
+
+	try {
+		userId = tokenVerifier( req.body.token );
+	} catch ( err ) {
+		return next( err );
+	}
+
+	User.findById( userId )
+		.populate( "friends followers following", "username fullname" )
+		.select( "friends followers following" )
+		.exec()
+		.then( user => {
+			if ( !user ) {
+				return next( errors.userDoesntExist());
+			}
+
+			for ( i = 0; i < user.friends.length; i++ ) {
+				friend.id = user.friends[ i ].username;
+				friend.display = user.friends[ i ].fullname;
+				socialCircle.push( friend );
+			}
+
+			for ( i = 0; i < user.following.length; i++ ) {
+				userFollowing.id = user.following[ i ].username;
+				userFollowing.display = user.following[ i ].fullname;
+				socialCircle.push( userFollowing );
+			}
+
+			for ( i = 0; i < user.followers.length; i++ ) {
+				follower.id = user.followers[ i ].username;
+				follower.display = user.followers[ i ].fullname;
+				socialCircle.push( follower );
+			}
+
+			socialCircle = removeDuplicates( socialCircle, "id" );
+			res.send( socialCircle );
 		}).catch( err => next( err ));
 });
 
