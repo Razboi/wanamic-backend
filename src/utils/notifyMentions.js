@@ -3,30 +3,38 @@ const
 	Notification = require( "../models/Notification" );
 
 notifyMentions = ( mentions, type, object, user ) => {
-	var i;
+	var
+		notifications = [],
+		i;
 
-	if ( !mentions || !mentions.length > 0 ) {
-		return;
-	}
+	return new Promise( async function( resolve, reject ) {
+		if ( !mentions || !mentions.length > 0 ) {
+			resolve( undefined );
+		}
 
-	for ( i = 0; i < mentions.length; i++ ) {
-		new Notification({
-			author: user.username,
-			receiver: mentions[ i ],
-			content: "mentioned you in a " + type,
-			object: object._id,
-			comment: type === "comment"
-		}).save()
-			.then( notification => {
-				User.findOne({ username: notification.receiver })
-					.exec()
-					.then( targetUser => {
-						targetUser.notifications.push( notification );
-						targetUser.save();
-					})
-					.catch( err => console.log( err ));
-			}).catch( err => console.log( err ));
-	}
+		const mentionsLength = mentions.length;
+
+		for ( i = 0; i < mentionsLength; i++ ) {
+			await new Notification({
+				author: user.username,
+				receiver: mentions[ i ],
+				content: "mentioned you in a " + type,
+				object: object._id,
+				comment: type === "comment"
+			}).save()
+				.then( notification => {
+					notifications.push( notification );
+					User.findOne({ username: notification.receiver })
+						.exec()
+						.then( targetUser => {
+							targetUser.notifications.push( notification );
+							targetUser.save();
+						})
+						.catch( err => console.log( err ));
+				}).catch( err => console.log( err ));
+		}
+		resolve( notifications );
+	});
 };
 
 module.exports = notifyMentions;

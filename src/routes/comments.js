@@ -39,6 +39,7 @@ Router.post( "/create", ( req, res, next ) => {
 					if ( !post ) {
 						return next( errors.postDoesntExist());
 					}
+
 					new Comment({
 						author: user.username,
 						content: data.comment,
@@ -47,36 +48,44 @@ Router.post( "/create", ( req, res, next ) => {
 						.then( newComment => {
 							post.comments.push( newComment._id );
 							post.save();
-							User.findOne({ username: post.author })
-								.exec()
-								.then( postAuthor => {
-									if ( postAuthor.username !== user.username ) {
-										new Notification({
-											author: user.username,
-											receiver: postAuthor.username,
-											content: "commented on your post",
-											object: post._id,
-											comment: true
-										}).save()
-											.then( newNotification => {
-												postAuthor.notifications.push( newNotification );
-												postAuthor.save();
+
+							notifyMentions( req.body.mentions, "comment", post, user )
+								.then( mentionsNotifications => {
+
+									User.findOne({ username: post.author })
+										.exec()
+										.then( postAuthor => {
+											if ( postAuthor.username !== user.username ) {
+												new Notification({
+													author: user.username,
+													receiver: postAuthor.username,
+													content: "commented on your post",
+													object: post._id,
+													comment: true
+												}).save()
+
+													.then( commentNotification => {
+														postAuthor.notifications.push( commentNotification );
+														postAuthor.save();
+														res.status( 201 );
+														res.send({
+															newComment: newComment,
+															updatedPost: post,
+															commentNotification: commentNotification,
+															mentionsNotifications: mentionsNotifications
+														});
+													}).catch( err => next( err ));
+
+											} else {
 												res.status( 201 );
 												res.send({
 													newComment: newComment,
 													updatedPost: post,
-													newNotification: newNotification
+													mentionsNotifications: mentionsNotifications
 												});
+											}
 
-											}).catch( err => next( err ));
-									} else {
-										res.status( 201 );
-										res.send({
-											newComment: newComment,
-											updatedPost: post
-										});
-									}
-									notifyMentions( req.body.mentions, "comment", post, user );
+										}).catch( err => next( err ));
 								}).catch( err => next( err ));
 						}).catch( err => next( err ));
 				}).catch( err => next( err ));
