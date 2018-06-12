@@ -15,22 +15,24 @@ notifyMentions = ( mentions, type, object, user ) => {
 		const mentionsLength = mentions.length;
 
 		for ( i = 0; i < mentionsLength; i++ ) {
-			await new Notification({
-				author: user.username,
-				receiver: mentions[ i ],
-				content: "mentioned you in a " + type,
-				object: object._id,
-				comment: type === "comment"
-			}).save()
-				.then( notification => {
-					notifications.push( notification );
-					User.findOne({ username: notification.receiver })
-						.exec()
-						.then( targetUser => {
-							targetUser.notifications.push( notification );
-							targetUser.save();
-						})
-						.catch( err => console.log( err ));
+			await User.findOne({ username: mentions[ i ] })
+				.exec()
+				.then( targetUser => {
+					if ( targetUser && targetUser.username !== user.username ) {
+						new Notification({
+							author: user.username,
+							receiver: targetUser.username,
+							content: "mentioned you in a " + type,
+							object: object._id,
+							comment: type === "comment"
+						}).save()
+							.then( notification => {
+								notifications.push( notification );
+								targetUser.notifications.push( notification );
+								targetUser.save();
+
+							}).catch( err => console.log( err ));
+					}
 				}).catch( err => console.log( err ));
 		}
 		resolve( notifications );
