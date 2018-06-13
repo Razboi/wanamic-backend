@@ -263,10 +263,6 @@ Router.post( "/getChats", ( req, res, next ) => {
 
 Router.post( "/getSocialCircle", ( req, res, next ) => {
 	var
-		i,
-		friend = {},
-		follower = {},
-		userFollowing = {},
 		userId,
 		socialCircle = [];
 
@@ -289,25 +285,12 @@ Router.post( "/getSocialCircle", ( req, res, next ) => {
 				return next( errors.userDoesntExist());
 			}
 
-			for ( i = 0; i < user.friends.length; i++ ) {
-				friend.id = user.friends[ i ].username;
-				friend.display = user.friends[ i ].fullname;
-				socialCircle.push( friend );
-			}
+			socialCircle = socialCircle.concat(
+				user.friends, user.following, user.followers
+			);
 
-			for ( i = 0; i < user.following.length; i++ ) {
-				userFollowing.id = user.following[ i ].username;
-				userFollowing.display = user.following[ i ].fullname;
-				socialCircle.push( userFollowing );
-			}
+			socialCircle = removeDuplicates( socialCircle, "username" );
 
-			for ( i = 0; i < user.followers.length; i++ ) {
-				follower.id = user.followers[ i ].username;
-				follower.display = user.followers[ i ].fullname;
-				socialCircle.push( follower );
-			}
-
-			socialCircle = removeDuplicates( socialCircle, "id" );
 			res.send( socialCircle );
 		}).catch( err => next( err ));
 });
