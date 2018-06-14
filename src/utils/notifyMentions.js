@@ -31,11 +31,13 @@ notifyMentions = ( mentions, type, object, user ) => {
 								targetUser.notifications.push( notification );
 								targetUser.save();
 
+								if ( i === mentionsLength ) {
+									resolve( notifications );
+								}
 							}).catch( err => console.log( err ));
 					}
 				}).catch( err => console.log( err ));
 		}
-		resolve( notifications );
 	});
 };
 

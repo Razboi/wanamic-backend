@@ -8,6 +8,7 @@ const
 	multer = require( "multer" ),
 	upload = multer({ dest: "../wanamic-frontend/src/images" }),
 	Notification = require( "../models/Notification" ),
+	notifyMentions = require( "../utils/notifyMentions" ),
 	errors = require( "../utils/errors" );
 
 Router.get( "/explore/:skip", ( req, res, next ) => {
@@ -226,6 +227,7 @@ Router.post( "/media", ( req, res, next ) => {
 				link: !!data.link,
 				content: data.content,
 				alerts: data.alerts,
+				hashtags: data.hashtags,
 				privacyRange: data.privacyRange,
 				mediaContent: {
 					title: data.title,
@@ -255,9 +257,15 @@ Router.post( "/media", ( req, res, next ) => {
 					user.posts.push( newPost._id );
 					user.newsfeed.push( newPost._id );
 					user.save()
-						.then( updatedUser => {
-							res.status( 201 );
-							res.send( newPost );
+						.then(() => {
+							notifyMentions( data.mentions, "post", newPost, user )
+								.then( mentionsNotifications => {
+									res.status( 201 );
+									res.send({
+										newPost: newPost,
+										mentionsNotifications: mentionsNotifications
+									});
+								}).catch( err => next( err ));
 						}).catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));
