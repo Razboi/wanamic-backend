@@ -82,7 +82,7 @@ describe( "POST posts/create", function() {
 		chai.request( "localhost:8000" )
 			.post( "/posts/create" )
 			.send({
-				token: token, post: "test2"
+				token: token, userInput: "test2"
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 201 );
@@ -105,7 +105,7 @@ describe( "POST posts/create", function() {
 		chai.request( "localhost:8000" )
 			.post( "/posts/create" )
 			.send({
-				token: "1232312sadasd213213", post: "test2"
+				token: "1232312sadasd213213", userInput: "test2"
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );

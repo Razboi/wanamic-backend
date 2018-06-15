@@ -44,7 +44,7 @@ Router.post( "/create", ( req, res, next ) => {
 		data,
 		userId;
 
-	if ( !req.body.token || !req.body.post ) {
+	if ( !req.body.token || !req.body.userInput ) {
 		return next( errors.blankData());
 	}
 
@@ -64,8 +64,9 @@ Router.post( "/create", ( req, res, next ) => {
 			}
 			new Post({
 				author: user.username,
-				content: data.post,
+				content: data.userInput,
 				alerts: data.alerts,
+				hashtags: data.hashtags,
 				privacyRange: data.privacyRange
 			}).save()
 				.then( newPost => {
@@ -91,10 +92,15 @@ Router.post( "/create", ( req, res, next ) => {
 					user.newsfeed.push( newPost._id );
 					user.save()
 						.then(() => {
-							res.status( 201 );
-							res.send( newPost );
-						})
-						.catch( err => next( err ));
+							notifyMentions( data.mentions, "post", newPost, user )
+								.then( mentionsNotifications => {
+									res.status( 201 );
+									res.send({
+										newPost: newPost,
+										mentionsNotifications: mentionsNotifications
+									});
+								}).catch( err => next( err ));
+						}).catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));
 });
