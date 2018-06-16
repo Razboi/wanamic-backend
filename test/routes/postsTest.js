@@ -382,7 +382,7 @@ describe( "POST posts/mediaLink", function() {
 		chai.request( "localhost:8000" )
 			.post( "/posts/mediaLink" )
 			.send({
-				token: token, data: { link: "https://www.youtube.com/watch?v=B58OBfM-8A4" }
+				token: token, link: "https://www.youtube.com/watch?v=B58OBfM-8A4"
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 201 );
@@ -407,7 +407,7 @@ describe( "POST posts/mediaLink", function() {
 		chai.request( "localhost:8000" )
 			.post( "/posts/mediaLink" )
 			.send({
-				data: { link: "https://www.youtube.com/watch?v=B58OBfM-8A4" }
+				link: "https://www.youtube.com/watch?v=B58OBfM-8A4"
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
@@ -420,7 +420,8 @@ describe( "POST posts/mediaLink", function() {
 		chai.request( "localhost:8000" )
 			.post( "/posts/mediaLink" )
 			.send({
-				token: "1232312sadasd213213", data: { link: "https://www.youtube.com/watch?v=B58OBfM-8A4" }
+				token: "1232312sadasd213213",
+				link: "https://www.youtube.com/watch?v=B58OBfM-8A4"
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );

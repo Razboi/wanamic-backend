@@ -473,3 +473,38 @@ describe( "post user/getChats", function() {
 			});
 	});
 });
+
+describe( "post user/getSocialCircle", function() {
+
+	it( "should return 200", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/user/getSocialCircle" )
+			.send({ token: token })
+			.end(( err, res ) => {
+				res.should.have.status( 200 );
+				done();
+			});
+	});
+
+	it( "should return 422", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/user/getSocialCircle" )
+			.send({})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 401 invalid jwt", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/user/getSocialCircle" )
+			.send({ token: "123123sadasda1231312" })
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
+				done();
+			});
+	});
+});

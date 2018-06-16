@@ -285,15 +285,14 @@ Router.post( "/mediaLink", ( req, res, next ) => {
 		hostname,
 		embeddedUrl;
 
-	if ( !req.body.token || !req.body.data || !req.body.data.link ) {
+	if ( !req.body.token || !req.body.link ) {
 		return next( errors.blankData());
 	}
 
-	data = req.body.data;
-	token = req.body.token;
+	data = req.body;
 
 	try {
-		userId = tokenVerifier( token );
+		userId = tokenVerifier( data.token );
 	} catch ( err ) {
 		return next( err );
 	}
@@ -316,6 +315,7 @@ Router.post( "/mediaLink", ( req, res, next ) => {
 						link: true,
 						content: data.content,
 						alerts: data.alerts,
+						hashtags: data.hashtags,
 						privacyRange: data.privacyRange,
 						linkContent: {
 							url: previewData.url,
@@ -349,8 +349,14 @@ Router.post( "/mediaLink", ( req, res, next ) => {
 							user.newsfeed.push( newPost._id );
 							user.save()
 								.then(() => {
-									res.status( 201 );
-									res.send( newPost );
+									notifyMentions( data.mentions, "post", newPost, user )
+										.then( mentionsNotifications => {
+											res.status( 201 );
+											res.send({
+												newPost: newPost,
+												mentionsNotifications: mentionsNotifications
+											});
+										}).catch( err => next( err ));
 								}).catch( err => next( err ));
 						}).catch( err => next( err ));
 				}).catch( err => next( err ));
