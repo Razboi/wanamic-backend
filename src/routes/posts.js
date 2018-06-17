@@ -365,6 +365,8 @@ Router.post( "/mediaLink", ( req, res, next ) => {
 
 Router.post( "/mediaPicture", upload.single( "picture" ), ( req, res, next ) => {
 	var
+		mentions = [],
+		hashtags = [],
 		data,
 		userId;
 
@@ -373,6 +375,18 @@ Router.post( "/mediaPicture", upload.single( "picture" ), ( req, res, next ) => 
 	}
 
 	data = req.body;
+
+	if ( data.mentions.length > 1 ) {
+		mentions = data.mentions.split( "," );
+	} else if ( data.mentions.length === 1 ) {
+		mentions = data.mentions.split();
+	}
+
+	if ( data.hashtags.length > 1 ) {
+		hashtags = data.hashtags.split( "," );
+	} else if ( data.mentions.length === 1 ) {
+		hashtags = data.hashtags.split();
+	}
 
 	try {
 		userId = tokenVerifier( data.token );
@@ -392,6 +406,7 @@ Router.post( "/mediaPicture", upload.single( "picture" ), ( req, res, next ) => 
 				picture: true,
 				content: data.content,
 				alerts: data.alerts,
+				hashtags: hashtags,
 				privacyRange: data.privacyRange,
 				mediaContent: {
 					image: req.file.filename,
@@ -420,8 +435,14 @@ Router.post( "/mediaPicture", upload.single( "picture" ), ( req, res, next ) => 
 					user.newsfeed.push( newPost._id );
 					user.save()
 						.then(() => {
-							res.status( 201 );
-							res.send( newPost );
+							notifyMentions( mentions, "post", newPost, user	)
+								.then( mentionsNotifications => {
+									res.status( 201 );
+									res.send({
+										newPost: newPost,
+										mentionsNotifications: mentionsNotifications
+									});
+								}).catch( err => next( err ));
 						}).catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));
