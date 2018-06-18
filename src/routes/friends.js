@@ -66,11 +66,13 @@ Router.post( "/add", ( req, res, next ) => {
 					if ( !friend ) {
 						return next( errors.userDoesntExist());
 					}
+
 					// check if already are friends
-					if ( user.friends.some( f => friend._id.equals( f )) ||
-							friend.friends.some( f => user._id.equals( f ))) {
+					if ( user.friends.some( id => friend._id.equals( id )) ||
+							friend.friends.some( id => user._id.equals( id ))) {
 						return next( errors.blankData());
 					}
+
 
 					Notification.findOne({
 						author: user.username,
@@ -211,11 +213,29 @@ Router.post( "/accept", ( req, res, next ) => {
 								return next( errors.notificationDoesntExist());
 							}
 
-							if ( !user.friends.includes( friend._id )) {
-								user.friends.push( friend._id );
+							if ( user.friends.some( id => friend._id.equals( id )) ||
+									friend.friends.some( id => user._id.equals( id ))) {
+								return next( errors.blankData());
 							}
-							if ( !friend.friends.includes( user._id )) {
-								friend.friends.push( user._id );
+
+							user.friends.push( friend._id );
+							friend.friends.push( user._id );
+
+							if ( friend.following.some( id => user._id.equals( id ))) {
+								const
+									indexUser = friend.following.indexOf( user._id ),
+									indexFriend = user.followers.indexOf( friend._id );
+
+								friend.following.splice( indexUser, 1 );
+								user.followers.splice( indexFriend, 1 );
+							}
+							if ( user.following.some( id => friend._id.equals( id ))) {
+								const
+									indexFriend = user.following.indexOf( friend._id ),
+									indexUser = friend.followers.indexOf( user._id );
+
+								user.following.splice( indexFriend, 1 );
+								friend.followers.splice( indexUser, 1 );
 							}
 							const requestIndex = friend.pendingRequests.indexOf( user.username );
 							friend.pendingRequests.splice( requestIndex, 1 );

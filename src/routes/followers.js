@@ -31,11 +31,14 @@ Router.post( "/follow", ( req, res, next ) => {
 					if ( !userToFollow ) {
 						return next( errors.userDoesntExist());
 					}
-					if ( !userToFollow.followers.includes( user._id )) {
-						userToFollow.followers.push( user._id );
+
+					if ( userToFollow.followers.some( id => user._id.equals( id )) ||
+							user.following.some( id => userToFollow._id.equals( id ))) {
+						return next( errors.blankData());
 					}
-					if ( !user.following.includes( userToFollow._id )) {
-						user.following.push( userToFollow._id );
+					if ( userToFollow.friends.some( id => user._id.equals( id )) ||
+							user.friends.some( id => userToFollow._id.equals( id ))) {
+						return next( errors.blankData());
 					}
 					new Notification({
 						author: user.username,
