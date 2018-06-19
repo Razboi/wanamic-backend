@@ -19,8 +19,11 @@ mongoose.connect( process.env.MONGODB_URL );
 // after running tests delete the testing posts
 after( function( done ) {
 	User.remove({ email: "usertest@gmail.com" })
-		.then(() => done())
-		.catch( err => done( err ));
+		.then(() => {
+			User.remove({ email: "usertest2@gmail.com" })
+				.then(() => done())
+				.catch( err => done( err ));
+		}).catch( err => done( err ));
 });
 
 before( function( done ) {
@@ -33,9 +36,18 @@ before( function( done ) {
 		.save()
 		.then( user => {
 			token = tokenGenerator( user );
-			done();
-		})
-		.catch( err => done( err ));
+			new User({
+				email: "usertest2@gmail.com",
+				username: "testuser2",
+				fullname: "Test User2",
+				keywords: [ "test" ],
+				passwordHash: bcrypt.hashSync( "test2", 10 )
+			})
+				.save()
+				.then( user => {
+					done();
+				}).catch( err => done( err ));
+		}).catch( err => done( err ));
 });
 
 

@@ -152,10 +152,15 @@ Router.post( "/sugestedUsers", ( req, res, next ) => {
 				.skip( req.body.skip )
 				.where( "_id" ).ne( user.id )
 				.select(
-					"username fullname description keywords profileImage headerImage"
+					"username fullname description keywords profileImage headerImage " +
+					"friends followers"
 				)
 				.exec()
 				.then( user => {
+					if ( !user ) {
+						return next( errors.userDoesntExist());
+					}
+					user.keywords = "#" + user.keywords.toString().replace( /,/g, " #" );
 					res.send( user );
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));
@@ -178,8 +183,10 @@ Router.post( "/randomUser", ( req, res, next ) => {
 	}
 
 	findRandomUser( userId )
-		.then( user => res.send( user ))
-		.catch( err => next( err ));
+		.then( user => {
+			user.keywords = "#" + user.keywords.toString().replace( /,/g, " #" );
+			res.send( user );
+		}).catch( err => next( err ));
 });
 
 // get one user with one or more common keywords
@@ -200,10 +207,15 @@ Router.post( "/matchKwUsers", ( req, res, next ) => {
 		.skip( req.body.skip )
 		.where( "_id" ).ne( userId )
 		.select(
-			"username fullname description keywords profileImage headerImage"
+			"username fullname description keywords profileImage headerImage " +
+			"friends followers"
 		)
 		.exec()
 		.then( user => {
+			if ( !user ) {
+				return next( errors.userDoesntExist());
+			}
+			user.keywords = "#" + user.keywords.toString().replace( /,/g, " #" );
 			res.send( user );
 		}).catch( err => next( err ));
 });

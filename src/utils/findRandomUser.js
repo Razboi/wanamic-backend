@@ -10,7 +10,8 @@ findRandomUser = userId => {
 					User.findOne()
 						.skip( randomNum )
 						.select(
-							"username fullname description posts keywords profileImage headerImage"
+							"username fullname description posts keywords profileImage " +
+							"headerImage friends followers"
 						)
 						.exec()
 						.then( user => {
