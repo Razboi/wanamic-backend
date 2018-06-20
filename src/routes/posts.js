@@ -487,11 +487,20 @@ Router.post( "/newsfeed/:skip", ( req, res, next ) => {
 		}).catch( err => next( err ));
 });
 
+// user timeline
+Router.post( "/:username/:skip", ( req, res, next ) => {
+	var
+		relationLvl,
+		visitorId;
 
-Router.get( "/:username/:skip", ( req, res, next ) => {
-
-	if ( !req.params.username || !req.params.skip ) {
+	if ( !req.params.username || !req.params.skip || !req.body.token ) {
 		return next( errors.blankData());
+	}
+
+	try {
+		visitorId = tokenVerifier( req.body.token );
+	} catch ( err ) {
+		return next( err );
 	}
 
 	User.findOne({ username: req.params.username })
@@ -504,11 +513,23 @@ Router.get( "/:username/:skip", ( req, res, next ) => {
 			}
 		})
 		.exec()
-		.then( user => {
+		.then( async user => {
 			if ( !user ) {
 				return next( errors.userDoesntExist());
 			}
-			res.send( user.posts );
+
+			if ( user.friends.some( id => id.equals( visitorId ))) {
+				relationLvl = 1;
+			} else if ( user.followers.some( id => id.equals( visitorId ))) {
+				relationLvl = 2;
+			} else {
+				relationLvl = 3;
+			}
+
+			const filteredPosts = await user.posts.filter( post =>
+				post.privacyRange >= relationLvl
+			);
+			res.send( filteredPosts );
 		}).catch( err => next( err ));
 });
 

@@ -493,9 +493,12 @@ describe( "GET posts/:username/:skip", function() {
 			}).catch( err => done( err ));
 	});
 
-	it( "should get the user  posts", function( done ) {
+	it( "should get the user posts", function( done ) {
 		chai.request( "localhost:8000" )
-			.get( "/posts/testuser/0" )
+			.post( "/posts/testuser/0" )
+			.send({
+				token: token
+			})
 			.end(( err, res ) => {
 				res.should.have.status( 200 );
 				done();

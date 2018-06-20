@@ -157,10 +157,9 @@ Router.post( "/sugestedUsers", ( req, res, next ) => {
 				)
 				.exec()
 				.then( user => {
-					if ( !user ) {
-						return next( errors.userDoesntExist());
+					if ( user ) {
+						user.keywords = "#" + user.keywords.toString().replace( /,/g, " #" );
 					}
-					user.keywords = "#" + user.keywords.toString().replace( /,/g, " #" );
 					res.send( user );
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));
@@ -184,7 +183,9 @@ Router.post( "/randomUser", ( req, res, next ) => {
 
 	findRandomUser( userId )
 		.then( user => {
-			user.keywords = "#" + user.keywords.toString().replace( /,/g, " #" );
+			if ( user ) {
+				user.keywords = "#" + user.keywords.toString().replace( /,/g, " #" );
+			}
 			res.send( user );
 		}).catch( err => next( err ));
 });
@@ -212,10 +213,9 @@ Router.post( "/matchKwUsers", ( req, res, next ) => {
 		)
 		.exec()
 		.then( user => {
-			if ( !user ) {
-				return next( errors.userDoesntExist());
+			if ( user ) {
+				user.keywords = "#" + user.keywords.toString().replace( /,/g, " #" );
 			}
-			user.keywords = "#" + user.keywords.toString().replace( /,/g, " #" );
 			res.send( user );
 		}).catch( err => next( err ));
 });
