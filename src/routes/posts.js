@@ -9,7 +9,8 @@ const
 	upload = multer({ dest: "../wanamic-frontend/src/images" }),
 	Notification = require( "../models/Notification" ),
 	notifyMentions = require( "../utils/notifyMentions" ),
-	errors = require( "../utils/errors" );
+	errors = require( "../utils/errors" ),
+	fs = require( "fs" );
 
 Router.get( "/explore/:skip", ( req, res, next ) => {
 
@@ -535,9 +536,7 @@ Router.post( "/:username/:skip", ( req, res, next ) => {
 
 
 Router.delete( "/delete", ( req, res, next ) => {
-	var
-		updatedOriginalPost,
-		post;
+	var post;
 
 	if ( !req.body.post || !req.body.post.id ) {
 		return next( errors.blankData());
@@ -585,6 +584,16 @@ Router.delete( "/delete", ( req, res, next ) => {
 					user.newsfeed.splice( newsfeedIndex, 1 );
 					user.save()
 						.then(() => {
+							if ( storedPost.picture ) {
+								const
+									picPath = "../wanamic-frontend/src/images/",
+									picFile = storedPost.mediaContent.image;
+								fs.unlink( picPath + picFile, err => {
+									if ( err ) {
+										next( err );
+									}
+								});
+							}
 							storedPost.remove()
 								.then(() => res.sendStatus( 200 ))
 								.catch( err => next( err ));
