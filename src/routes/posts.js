@@ -568,20 +568,6 @@ Router.delete( "/delete", ( req, res, next ) => {
 					if ( user.username !== storedPost.author ) {
 						return next( errors.unauthorized());
 					}
-					// if its a shared post remove it from the originalPost sharedBy
-					if ( storedPost.sharedPost ) {
-						Post.findById( storedPost.sharedPost )
-							.then( originalPost => {
-								if ( originalPost ) {
-									const
-										sharedByIndex = originalPost.sharedBy.indexOf( user.username );
-									originalPost.sharedBy.splice( sharedByIndex, 1 );
-									originalPost.save()
-										.then( originalPost => updatedOriginalPost = originalPost )
-										.catch( err => console.log( err ));
-								}
-							}).catch( err => console.log( err ));
-					}
 
 					const
 						postsIndex = user.posts.indexOf( storedPost.id ),
@@ -600,13 +586,8 @@ Router.delete( "/delete", ( req, res, next ) => {
 					user.save()
 						.then(() => {
 							storedPost.remove()
-								.then(() => {
-									if ( updatedOriginalPost ) {
-										res.send({ updatedOriginalPost: updatedOriginalPost });
-									} else {
-										res.sendStatus( 200 );
-									}
-								}).catch( err => next( err ));
+								.then(() => res.sendStatus( 200 ))
+								.catch( err => next( err ));
 						}).catch( err => next( err ));
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));
@@ -660,18 +641,16 @@ Router.patch( "/update", ( req, res, next ) => {
 Router.post( "/share", ( req, res, next ) => {
 	var
 		userId,
-		token,
-		postId;
+		clickedPostId;
 
 	if ( !req.body.postId || !req.body.token ) {
 		return next( errors.blankData());
 	}
 
-	postId = req.body.postId;
-	token = req.body.token;
+	clickedPostId = req.body.postId;
 
 	try {
-		userId = tokenVerifier( token );
+		userId = tokenVerifier( req.body.token );
 	} catch ( err ) {
 		return next( err );
 	}
@@ -682,39 +661,46 @@ Router.post( "/share", ( req, res, next ) => {
 			if ( !user ) {
 				return next( errors.userDoesntExist());
 			}
+			Post.findById( clickedPostId )
+				.populate( "sharedPost" )
+				.exec()
+				.then( clickedPost => {
+					var originalPost;
+					if ( !clickedPost ) {
+						return next( errors.postDoesntExist());
+					}
 
-			new Post({
-				author: user.username,
-				content: req.body.shareComment,
-				sharedPost: postId
-			}).save()
-				.then( newPost => {
-					User.update(
-						{ _id: { $in: user.friends } },
-						{ $push: { "newsfeed": newPost._id } },
-						{ multi: true }
-					)
-						.exec()
-						.catch( err => next( err ));
+					if ( clickedPost.sharedPost ) {
+						originalPost = clickedPost.sharedPost;
+					} else {
+						originalPost = clickedPost;
+					}
 
-					user.posts.push( newPost._id );
-					user.newsfeed.push( newPost._id );
-					user.save()
-						.then(() => {
-
-							Post.findById( postId )
+					new Post({
+						author: user.username,
+						content: req.body.shareComment,
+						sharedPost: originalPost._id
+					}).save()
+						.then( newPost => {
+							User.update(
+								{ _id: { $in: user.friends } },
+								{ $push: { "newsfeed": newPost._id } },
+								{ multi: true }
+							)
 								.exec()
-								.then( sharedPost => {
-									if ( !sharedPost ) {
-										return next( errors.postDoesntExist());
+								.catch( err => next( err ));
+
+							user.posts.push( newPost._id );
+							user.newsfeed.push( newPost._id );
+							user.save()
+								.then(() => {
+									if ( !clickedPost.sharedBy.includes( user.username )) {
+										clickedPost.sharedBy.push( user.username );
+										clickedPost.save();
 									}
-									if ( !sharedPost.sharedBy.includes( user.username )) {
-										sharedPost.sharedBy.push( user.username );
-										sharedPost.save();
-									}
+									newPost.sharedPost = originalPost;
 									res.status( 201 );
-									newPost.sharedPost = sharedPost;
-									res.send( newPost );
+									res.send({ newPost: newPost, clickedPost: clickedPost });
 								}).catch( err => next( err ));
 						}).catch( err => next( err ));
 				}).catch( err => next( err ));
