@@ -4,6 +4,7 @@ const
 
 	PostSchema = mongoose.Schema({
 		author: { type: String, required: true },
+		authorImg: { type: String },
 		content: { type: String },
 		media: { type: Boolean, default: false },
 		link: { type: Boolean, default: false },
