@@ -40,6 +40,7 @@ Router.post( "/signup", ( req, res, next ) => {
 							res.send({
 								token: tokenGenerator( user ),
 								refreshToken: refreshTokenGenerator( user ),
+								profileImage: user.profileImage && user.profileImage,
 								username: user.username,
 								id: user._id
 							});
@@ -69,6 +70,7 @@ Router.post( "/login", ( req, res, next ) => {
 			res.send({
 				token: tokenGenerator( user ),
 				refreshToken: user.refreshToken,
+				profileImage: user.profileImage && user.profileImage,
 				username: user.username,
 				id: user._id
 			});
@@ -145,10 +147,7 @@ Router.post( "/refreshToken", ( req, res, next ) => {
 			}
 			res.status( 201 );
 			res.send({
-				token: tokenGenerator( user ),
-				refreshToken: refreshTokenGenerator( user ),
-				username: user.username,
-				id: user._id
+				refreshToken: refreshTokenGenerator( user )
 			});
 		}).catch( err => next( err ));
 });
