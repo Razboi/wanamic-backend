@@ -65,6 +65,7 @@ Router.post( "/create", ( req, res, next ) => {
 			}
 			new Post({
 				author: user.username,
+				authorFullname: user.fullname,
 				authorImg: user.profileImage,
 				content: data.userInput,
 				alerts: data.alerts,
@@ -231,6 +232,7 @@ Router.post( "/media", ( req, res, next ) => {
 			}
 			new Post({
 				author: user.username,
+				authorFullname: user.fullname,
 				authorImg: user.profileImage,
 				media: true,
 				link: !!data.link,
@@ -314,6 +316,7 @@ Router.post( "/mediaLink", ( req, res, next ) => {
 					}
 					new Post({
 						author: user.username,
+						authorFullname: user.fullname,
 						authorImg: user.profileImage,
 						media: true,
 						link: true,
@@ -406,6 +409,7 @@ Router.post( "/mediaPicture", upload.single( "picture" ), ( req, res, next ) => 
 			}
 			new Post({
 				author: user.username,
+				authorFullname: user.fullname,
 				authorImg: user.profileImage,
 				media: true,
 				picture: true,
@@ -691,6 +695,7 @@ Router.post( "/share", ( req, res, next ) => {
 
 					new Post({
 						author: user.username,
+						authorFullname: user.fullname,
 						content: req.body.shareComment,
 						sharedPost: originalPost._id
 					}).save()

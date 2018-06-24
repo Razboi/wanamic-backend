@@ -127,6 +127,7 @@ describe( "POST posts/like", function() {
 				token = tokenGenerator( user );
 				new Post({
 					author: user.username,
+					authorFullname: user.fullname,
 					content: "Like me"
 				})
 					.save()
@@ -217,6 +218,7 @@ describe( "POST posts/dislike", function() {
 				token = tokenGenerator( user );
 				new Post({
 					author: user.username,
+					authorFullname: user.fullname,
 					content: "Like me"
 				})
 					.save()
@@ -572,6 +574,7 @@ describe( "DELETE posts/delete", function() {
 				token = tokenGenerator( user );
 				new Post({
 					author: user.username,
+					authorFullname: user.fullname,
 					content: "Delete me"
 				})
 					.save()
@@ -698,6 +701,7 @@ describe( "PATCH posts/update", function() {
 				token = tokenGenerator( user );
 				new Post({
 					author: user.username,
+					authorFullname: user.fullname,
 					content: "update test"
 				}).save()
 					.then( post => {
@@ -819,6 +823,7 @@ describe( "POST posts/share", function() {
 				token = tokenGenerator( user );
 				new Post({
 					author: user.username,
+					authorFullname: user.fullname,
 					content: "test"
 				}).save()
 					.then( post => {
