@@ -320,7 +320,7 @@ Router.post( "/mediaLink", ( req, res, next ) => {
 						authorImg: user.profileImage,
 						media: true,
 						link: true,
-						content: data.content,
+						content: data.description,
 						alerts: data.alerts,
 						hashtags: data.hashtags,
 						privacyRange: data.privacyRange,
