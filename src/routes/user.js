@@ -289,7 +289,7 @@ Router.post( "/getSocialCircle", ( req, res, next ) => {
 	}
 
 	User.findById( userId )
-		.populate( "friends followers following", "username fullname" )
+		.populate( "friends followers following", "username fullname profileImage" )
 		.select( "friends followers following" )
 		.exec()
 		.then( user => {
