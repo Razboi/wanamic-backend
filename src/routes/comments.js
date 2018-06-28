@@ -42,6 +42,8 @@ Router.post( "/create", ( req, res, next ) => {
 
 					new Comment({
 						author: user.username,
+						authorFullname: user.fullname,
+						authorImg: user.profileImage,
 						content: data.comment,
 						post: post._id
 					}).save()

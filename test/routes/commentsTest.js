@@ -155,6 +155,7 @@ describe( "DELETE comments/delete", function() {
 						postId = post.id;
 						new Comment({
 							author: user.username,
+							authorFullname: user.fullname,
 							content: "test",
 							post: postId
 						}).save()
@@ -268,6 +269,7 @@ describe( "PATCH comments/update", function() {
 						postId = post.id;
 						new Comment({
 							author: user.username,
+							authorFullname: user.fullname,
 							content: "test",
 							post: postId
 						}).save()
