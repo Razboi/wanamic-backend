@@ -42,6 +42,8 @@ Router.post( "/follow", ( req, res, next ) => {
 					}
 					new Notification({
 						author: user.username,
+						authorFullname: user.fullname,
+						authorImg: user.profileImage,
 						receiver: userToFollow.username,
 						content: "started following you",
 						follow: true

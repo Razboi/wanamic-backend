@@ -60,6 +60,8 @@ Router.post( "/create", ( req, res, next ) => {
 											if ( postAuthor.username !== user.username ) {
 												new Notification({
 													author: user.username,
+													authorFullname: user.fullname,
+													authorImg: user.profileImage,
 													receiver: postAuthor.username,
 													content: "commented on your post",
 													object: post._id,

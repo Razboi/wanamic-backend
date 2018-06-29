@@ -87,6 +87,8 @@ Router.post( "/add", ( req, res, next ) => {
 
 							new Notification({
 								author: user.username,
+								authorFullname: user.fullname,
+								authorImg: user.profileImage,
 								receiver: friend.username,
 								content: "sent you a friend request",
 								friendRequest: true

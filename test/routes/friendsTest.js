@@ -313,6 +313,7 @@ describe( "POST friends/accept", function() {
 				new Notification({
 					receiver: user.username,
 					author: "testuser2",
+					authorFullname: "Test User",
 					friendRequest: true
 				}).save()
 					.then(() => done());
@@ -399,6 +400,7 @@ describe( "DELETE friends/deleteReq", function() {
 				new Notification({
 					receiver: user.username,
 					author: "testuser2",
+					authorFullname: "Test User",
 					friendRequest: true
 				}).save()
 					.then(() => done());

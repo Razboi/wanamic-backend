@@ -4,6 +4,8 @@ const
 
 	NotificationSchema = mongoose.Schema({
 		author: { type: String, required: true },
+		authorFullname: { type: String, required: true },
+		authorImg: { type: String },
 		receiver: { type: String, required: true },
 		content: { type: String },
 		object: { type: String },
