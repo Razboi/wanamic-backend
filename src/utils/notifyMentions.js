@@ -5,11 +5,17 @@ const
 notifyMentions = ( mentions, type, object, user ) => {
 	var
 		notifications = [],
+		mediaImg,
 		i;
 
 	return new Promise( async function( resolve, reject ) {
 		if ( !mentions || !mentions.length > 0 ) {
 			resolve( undefined );
+		}
+		if ( object.link ) {
+			mediaImg = object.linkContent.image;
+		} else {
+			mediaImg = object.mediaContent.image;
 		}
 
 		const mentionsLength = mentions.length;
@@ -21,8 +27,12 @@ notifyMentions = ( mentions, type, object, user ) => {
 					if ( targetUser && targetUser.username !== user.username ) {
 						new Notification({
 							author: user.username,
+							authorFullname: user.fullname,
+							authorImg: user.profileImage,
 							receiver: targetUser.username,
 							content: "mentioned you in a " + type,
+							mediaImg: mediaImg,
+							externalImg: !post.picture,
 							object: object._id,
 							comment: type === "comment"
 						}).save()

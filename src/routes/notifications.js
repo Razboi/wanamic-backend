@@ -23,7 +23,10 @@ Router.post( "/retrieve", ( req, res, next ) => {
 
 	User.findById( userId )
 		.populate({
-			path: "notifications"
+			path: "notifications",
+			options: {
+				sort: { createdAt: -1 }
+			},
 		})
 		.exec()
 		.then( user => {

@@ -8,6 +8,8 @@ const
 		authorImg: { type: String },
 		receiver: { type: String, required: true },
 		content: { type: String },
+		mediaImg: { type: String },
+		externalImg: { type: Boolean, default: false },
 		object: { type: String },
 		checked: { type: Boolean, default: false },
 		comment: { type: Boolean, default: false },

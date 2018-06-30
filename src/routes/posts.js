@@ -111,6 +111,7 @@ Router.post( "/create", ( req, res, next ) => {
 
 Router.post( "/like", ( req, res, next ) => {
 	var
+		mediaImg,
 		data,
 		userId;
 
@@ -132,6 +133,12 @@ Router.post( "/like", ( req, res, next ) => {
 			if ( !post ) {
 				return next( errors.postDoesntExist());
 			}
+			if ( post.link ) {
+				mediaImg = post.linkContent.image;
+			} else {
+				mediaImg = post.mediaContent.image;
+			}
+
 			User.findById( userId )
 				.then( user => {
 					if ( !post.likedBy.includes( user.username )) {
@@ -150,6 +157,8 @@ Router.post( "/like", ( req, res, next ) => {
 											authorImg: user.profileImage,
 											receiver: postAuthor.username,
 											content: "liked your post",
+											mediaImg: mediaImg,
+											externalImg: !post.picture,
 											object: post._id
 										}).save()
 											.then( newNotification => {

@@ -12,6 +12,7 @@ const
 Router.post( "/create", ( req, res, next ) => {
 	var
 		data,
+		mediaImg,
 		userId;
 
 	if ( !req.body.token || !req.body.comment || !req.body.postId ) {
@@ -39,6 +40,11 @@ Router.post( "/create", ( req, res, next ) => {
 					if ( !post ) {
 						return next( errors.postDoesntExist());
 					}
+					if ( post.link ) {
+						mediaImg = post.linkContent.image;
+					} else {
+						mediaImg = post.mediaContent.image;
+					}
 
 					new Comment({
 						author: user.username,
@@ -64,6 +70,8 @@ Router.post( "/create", ( req, res, next ) => {
 													authorImg: user.profileImage,
 													receiver: postAuthor.username,
 													content: "commented on your post",
+													mediaImg: mediaImg,
+													externalImg: !post.picture,
 													object: post._id,
 													comment: true
 												}).save()
