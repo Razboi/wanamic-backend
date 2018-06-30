@@ -262,13 +262,19 @@ Router.post( "/getChats", ( req, res, next ) => {
 	}
 
 	User.findById( userId )
-		.populate({ path: "openConversations" })
+		.populate({
+			path: "openConversations",
+			populate: {
+				path: "author target",
+				select: "fullname profileImage"
+			},
+		})
 		.exec()
-		.then( user => {
-			if ( !user ) {
-				return next( errors.userDoesntExist());
+		.then( conversations => {
+			if ( !conversations ) {
+				return next( errors.conversationDoesntExist());
 			}
-			res.send( user.openConversations );
+			res.send( conversations );
 		}).catch( err => next( err ));
 });
 

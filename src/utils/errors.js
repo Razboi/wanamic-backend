@@ -19,6 +19,11 @@ module.exports = {
 		err.statusCode = 404;
 		return err;
 	},
+	conversationDoesntExist: () => {
+		var err = new Error( "Conversation doesn't exist" );
+		err.statusCode = 404;
+		return err;
+	},
 	notificationDoesntExist: () => {
 		var err = new Error( "Notification doesn't exist" );
 		err.statusCode = 404;

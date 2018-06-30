@@ -4,6 +4,7 @@ const
 	tokenGenerator = require( "../utils/tokenGenerator" ),
 	User = require( "../models/User" ),
 	Message = require( "../models/Message" ),
+	Conversation = require( "../models/Conversation" ),
 	errors = require( "../utils/errors" );
 
 Router.post( "/retrieve", ( req, res, next ) => {
@@ -27,12 +28,13 @@ Router.post( "/retrieve", ( req, res, next ) => {
 			if ( !user ) {
 				return next( errors.userDoesntExist());
 			}
-			Message.find({
+			Conversation.find({
 				$and: [
 					{ $or: [ { author: user.username }, { author: data.friendUsername } ] },
-					{ $or: [ { receiver: user.username }, { receiver: data.friendUsername } ] }
+					{ $or: [ { target: user.username }, { target: data.friendUsername } ] }
 				]
 			})
+				.populate( "messages" )
 				.exec()
 				.then( messages => res.send( messages ))
 				.catch( err => next( err ));
