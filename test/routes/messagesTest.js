@@ -49,69 +49,6 @@ before( function( done ) {
 });
 
 
-describe( "POST messages/retrieve", function() {
-	var token;
-
-	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				token = tokenGenerator( user );
-				done();
-			}).catch( err => done( err ));
-	});
-
-	it( "returns messages, should return 200", function( done ) {
-		chai.request( "localhost:8000" )
-			.post( "/messages/retrieve" )
-			.send({
-				token: token,
-				friendUsername: "testuser"
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 200 );
-				done();
-			});
-	});
-
-	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
-			.post( "/messages/retrieve" )
-			.send({ token: token })
-			.end(( err, res ) => {
-				res.should.have.status( 422 );
-				res.text.should.equal( "Required data not found" );
-				done();
-			});
-	});
-
-	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
-			.post( "/messages/retrieve" )
-			.send({ friendUsername: "testuser" })
-			.end(( err, res ) => {
-				res.should.have.status( 422 );
-				res.text.should.equal( "Required data not found" );
-				done();
-			});
-	});
-
-	it( "should return 401 malformed jwt", function( done ) {
-		chai.request( "localhost:8000" )
-			.post( "/messages/retrieve" )
-			.send({
-				token: "123213adasdsad21321321",
-				friendUsername: "testuser"
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 401 );
-				res.text.should.equal( "jwt malformed" );
-				done();
-			});
-	});
-});
-
-
 describe( "POST messages/add", function() {
 	var token;
 

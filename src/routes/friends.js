@@ -23,7 +23,7 @@ Router.post( "/getFriends", ( req, res, next ) => {
 		.populate({
 			path: "friends",
 			options: {
-				select: "username",
+				select: "username fullname profileImage",
 				sort: { createdAt: -1 }
 			}
 		})

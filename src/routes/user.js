@@ -248,7 +248,7 @@ Router.post( "/setUserKw", ( req, res, next ) => {
 });
 
 
-Router.post( "/getChats", ( req, res, next ) => {
+Router.post( "/getChats", async( req, res, next ) => {
 	var userId;
 
 	if ( !req.body.token ) {
@@ -265,16 +265,29 @@ Router.post( "/getChats", ( req, res, next ) => {
 		.populate({
 			path: "openConversations",
 			populate: {
-				path: "author target",
-				select: "fullname profileImage"
+				path: "author target messages",
+				select: "fullname username profileImage"
 			},
 		})
+		.select( "openConversations" )
 		.exec()
-		.then( conversations => {
+		.then( async conversations => {
+			var
+				chats = conversations.openConversations,
+				finalChats = [];
 			if ( !conversations ) {
 				return next( errors.conversationDoesntExist());
 			}
-			res.send( conversations );
+
+			await chats.forEach( chat => {
+				if ( chat.target._id === userId ) {
+					chat.target === chat.author;
+				}
+				delete chat.author;
+				finalChats.push( chat );
+			});
+
+			res.send( finalChats );
 		}).catch( err => next( err ));
 });
 
