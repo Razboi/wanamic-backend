@@ -49,7 +49,7 @@ before( function( done ) {
 });
 
 
-describe( "POST messages/add", function() {
+describe( "POST conversations/add", function() {
 	var token;
 
 	before( function( done ) {
@@ -61,9 +61,9 @@ describe( "POST messages/add", function() {
 			}).catch( err => done( err ));
 	});
 
-	it( "returns messages, should return 200", function( done ) {
+	it( "returns conversations, should return 200", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/messages/add" )
+			.post( "/conversations/add" )
 			.send({
 				token: token,
 				friendUsername: "testuser",
@@ -77,7 +77,7 @@ describe( "POST messages/add", function() {
 
 	it( "should return 422 Empty data", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/messages/add" )
+			.post( "/conversations/add" )
 			.send({
 				token: token,
 				friendUsername: "testuser"
@@ -91,7 +91,7 @@ describe( "POST messages/add", function() {
 
 	it( "should return 422 Empty data", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/messages/add" )
+			.post( "/conversations/add" )
 			.send({
 				friendUsername: "testuser",
 				content: "sup"
@@ -105,7 +105,7 @@ describe( "POST messages/add", function() {
 
 	it( "should return 422 Empty data", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/messages/add" )
+			.post( "/conversations/add" )
 			.send({
 				token: token,
 				content: "sup"
@@ -119,7 +119,7 @@ describe( "POST messages/add", function() {
 
 	it( "should return 401 malformed jwt", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/messages/add" )
+			.post( "/conversations/add" )
 			.send({
 				token: "123213adasdsad21321321",
 				friendUsername: "testuser",

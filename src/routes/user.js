@@ -249,46 +249,50 @@ Router.post( "/setUserKw", ( req, res, next ) => {
 
 
 Router.post( "/getChats", async( req, res, next ) => {
-	var userId;
+	var
+		userId,
+		user = {},
+		chat = {},
+		finalChats = [];
 
 	if ( !req.body.token ) {
 		return next( errors.blankData());
 	}
 
 	try {
-		userId = tokenVerifier( req.body.token );
+		userId = await tokenVerifier( req.body.token );
+		user = await User.findById( userId )
+			.populate({
+				path: "openConversations",
+				populate: {
+					path: "author target messages",
+					select: "fullname username profileImage author receiver content",
+					options: {
+						sort: { createdAt: -1 }
+					}
+				}
+			})
+			.select( "openConversations" )
+			.exec();
 	} catch ( err ) {
 		return next( err );
 	}
 
-	User.findById( userId )
-		.populate({
-			path: "openConversations",
-			populate: {
-				path: "author target messages",
-				select: "fullname username profileImage"
-			},
-		})
-		.select( "openConversations" )
-		.exec()
-		.then( async conversations => {
-			var
-				chats = conversations.openConversations,
-				finalChats = [];
-			if ( !conversations ) {
-				return next( errors.conversationDoesntExist());
-			}
+	if ( !user ) {
+		return next( errors.userDoesntExist());
+	}
 
-			await chats.forEach( chat => {
-				if ( chat.target._id === userId ) {
-					chat.target === chat.author;
-				}
-				delete chat.author;
-				finalChats.push( chat );
-			});
+	for ( chat of user.openConversations ) {
+		chat = chat.toObject();
 
-			res.send( finalChats );
-		}).catch( err => next( err ));
+		if ( chat.target._id.equals( user._id )) {
+			delete chat.target;
+			chat.target = chat.author;
+		}
+		delete chat.author;
+		finalChats.push( chat );
+	}
+	res.send( finalChats );
 });
 
 
