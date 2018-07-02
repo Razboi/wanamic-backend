@@ -67,7 +67,6 @@ io.on( "connection", socket => {
 	socket.on( "sendMessage", data => {
 		if ( data && data.receiver ) {
 			try {
-				console.log( data.receiver );
 				socket.to( data.receiver ).emit( "message", data );
 			} catch ( err ) {
 				console.log( err );

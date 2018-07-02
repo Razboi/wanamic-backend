@@ -45,6 +45,11 @@ Router.post( "/retrieve", async( req, res, next ) => {
 	} catch ( err ) {
 		return next( err );
 	}
+	conversation = conversation.toObject();
+	if ( conversation.target._id.equals( user._id )) {
+		conversation.target = conversation.author;
+	}
+	delete conversation.author;
 	res.send( conversation );
 });
 

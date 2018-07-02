@@ -286,7 +286,6 @@ Router.post( "/getChats", async( req, res, next ) => {
 		chat = chat.toObject();
 
 		if ( chat.target._id.equals( user._id )) {
-			delete chat.target;
 			chat.target = chat.author;
 		}
 		delete chat.author;
