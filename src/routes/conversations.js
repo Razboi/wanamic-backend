@@ -53,69 +53,75 @@ Router.post( "/retrieve", async( req, res, next ) => {
 	res.send( conversation );
 });
 
-Router.post( "/add", ( req, res, next ) => {
-	var userId;
+
+Router.post( "/add", async( req, res, next ) => {
+	var
+		userId,
+		user,
+		friend,
+		newMessage,
+		oldConversation,
+		newConversation;
 
 	if ( !req.body.token || !req.body.friendUsername || !req.body.content ) {
 		return next( errors.blankData());
 	}
 
+	const { token, friendUsername, content } = req.body;
+
 	try {
-		userId = tokenVerifier( req.body.token );
+		userId = await tokenVerifier( token );
+		user = await User.findById( userId ).exec(),
+		friend = await User.findOne({ username: friendUsername }).exec();
+
+		if ( !user || !friend ) {
+			return next( errors.userDoesntExist());
+		}
+		newMessage = await new Message({
+			author: user.username,
+			receiver: friend.username,
+			content: content
+		}).save(),
+		oldConversation = await Conversation.findOne({
+			$and: [
+				{ $or: [ { author: user._id }, { author: friend._id } ] },
+				{ $or: [ { target: user._id }, { target: friend._id } ] }
+			]
+		}).exec();
 	} catch ( err ) {
 		return next( err );
 	}
 
-	User.findById( userId )
-		.exec()
-		.then( user => {
-			if ( !user ) {
-				return next( errors.userDoesntExist());
-			}
-			User.findOne({ username: req.body.friendUsername })
-				.exec()
-				.then( friend => {
-					if ( !friend ) {
-						return next( errors.userDoesntExist());
-					}
-					new Message({
-						author: user.username,
-						receiver: friend.username,
-						content: req.body.content
-					}).save()
-						.then( newMessage => {
-							Conversation.findOne({
-								$and: [
-									{ $or: [ { author: user._id }, { author: friend._id } ] },
-									{ $or: [ { target: user._id }, { target: friend._id } ] }
-								]
-							}).exec()
-								.then( oldConversation => {
-									if ( oldConversation ) {
-										oldConversation.messages.push( newMessage );
-										oldConversation.save().catch( err => next( err ));
-										if ( !user.openConversations.some( id =>
-											oldConversation._id.equals( id ))) {
-											user.openConversations.push( oldConversation._id );
-											user.save();
-										}
-									} else {
-										new Conversation({
-											author: user._id,
-											target: friend._id,
-											messages: [ newMessage._id ]
-										}).save()
-											.then( newConversation => {
-												user.openConversations.push( newConversation._id );
-												friend.openConversations.push( newConversation._id );
-												Promise.all([ user.save(), friend.save() ]);
-											}).catch( err => next( err ));
-									}
-									res.sendStatus( 201 );
-								}).catch( err => next( err ));
-						}).catch( err => next( err ));
-				}).catch( err => next( err ));
-		}).catch( err => next( err ));
+	if ( oldConversation ) {
+		oldConversation.messages.push( newMessage );
+		oldConversation.save();
+	} else {
+		try {
+			newConversation = await new Conversation({
+				author: user._id,
+				target: friend._id,
+				messages: [ newMessage._id ]
+			}).save();
+
+			newConversation = await newConversation
+				.populate({
+					path: "author target messages",
+					select: "fullname username profileImage author receiver content",
+					options: { sort: { createdAt: -1 } }
+				}).execPopulate();
+		} catch ( err ) {
+			return next( err );
+		}
+		user.openConversations.push( newConversation._id );
+		friend.openConversations.push( newConversation._id );
+		Promise.all([ user.save(), friend.save() ]);
+	}
+
+	res.status( 201 );
+	res.send({
+		newMessage: newMessage,
+		newConversation: newConversation
+	});
 });
 
 module.exports = Router;

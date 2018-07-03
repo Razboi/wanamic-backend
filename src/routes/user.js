@@ -266,7 +266,8 @@ Router.post( "/getChats", async( req, res, next ) => {
 				path: "openConversations",
 				populate: {
 					path: "author target messages",
-					select: "fullname username profileImage author receiver content",
+					select: "fullname username profileImage author receiver content" +
+					" createdAt",
 					options: {
 						sort: { createdAt: -1 }
 					}
