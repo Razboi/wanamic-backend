@@ -117,6 +117,10 @@ Router.post( "/add", async( req, res, next ) => {
 			friend.openConversations.push( friendConversation._id );
 		}
 
+		if ( !friend.chatNotifications.includes( user.username )) {
+			friend.chatNotifications.push( user.username );
+		}
+
 		Promise.all([ user.save(), friend.save() ]);
 	} catch ( err ) {
 		return next( err );

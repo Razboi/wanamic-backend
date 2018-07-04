@@ -8,36 +8,35 @@ const
 	Notification = require( "../models/Notification" ),
 	errors = require( "../utils/errors" );
 
-Router.post( "/retrieve", ( req, res, next ) => {
-	var userId;
+Router.post( "/retrieve", async( req, res, next ) => {
+	var
+		userId,
+		user,
+		newMessagesCount = 0;
 
 	if ( !req.body.token ) {
 		return next( errors.blankData());
 	}
-
 	try {
-		userId = tokenVerifier( req.body.token );
+		userId = await tokenVerifier( req.body.token );
+		user = await User.findById( userId )
+			.populate({
+				path: "notifications openConversations",
+				options: { sort: { createdAt: -1 } },
+			}).exec();
 	} catch ( err ) {
 		return next( err );
 	}
 
-	User.findById( userId )
-		.populate({
-			path: "notifications",
-			options: {
-				sort: { createdAt: -1 }
-			},
-		})
-		.exec()
-		.then( user => {
-			const newNotifications = user.notifications.filter( notification => {
-				return notification.checked === false;
-			});
-			res.send({
-				notifications: user.notifications,
-				newNotifications: newNotifications.length
-			});
-		}).catch( err => next( err ));
+	const newNotifications = user.notifications.filter( notification => {
+		return notification.checked === false;
+	});
+
+	res.send({
+		notifications: user.notifications,
+		newNotifications: newNotifications.length,
+		chatNotifications: user.chatNotifications
+	});
 });
 
 Router.post( "/check", ( req, res, next ) => {

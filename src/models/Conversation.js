@@ -9,6 +9,7 @@ const
 			{ type: Schema.Types.ObjectId, required: true, ref: "Message" }
 		],
 		bothOpen: { type: Boolean, default: true },
+		newMessagesCount: { type: Number, default: 0 },
 	}, { timestamps: true }),
 
 

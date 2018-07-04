@@ -17,6 +17,7 @@ const
 		notifications: [ { type: Schema.Types.ObjectId, ref: "Notification" } ],
 		pendingRequests: [ { type: String } ],
 		openConversations: [ { type: Schema.Types.ObjectId, ref: "Conversation" } ],
+		chatNotifications: [ { type: String } ],
 		description: { type: String },
 		keywords: [ { type: String } ],
 		profileImage: { type: String },

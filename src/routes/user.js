@@ -251,9 +251,7 @@ Router.post( "/setUserKw", ( req, res, next ) => {
 Router.post( "/getChats", async( req, res, next ) => {
 	var
 		userId,
-		user = {},
-		chat = {},
-		finalChats = [];
+		user = {};
 
 	if ( !req.body.token ) {
 		return next( errors.blankData());
@@ -283,16 +281,7 @@ Router.post( "/getChats", async( req, res, next ) => {
 		return next( errors.userDoesntExist());
 	}
 
-	for ( chat of user.openConversations ) {
-		chat = chat.toObject();
-
-		if ( chat.target._id.equals( user._id )) {
-			chat.target = chat.author;
-		}
-		delete chat.author;
-		finalChats.push( chat );
-	}
-	res.send( finalChats );
+	res.send( user.openConversations );
 });
 
 
