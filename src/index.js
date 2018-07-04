@@ -50,7 +50,6 @@ const
 
 
 io.on( "connection", socket => {
-	console.log( "New client" );
 	socket.on( "register", data => {
 		try {
 			tokenVerifier( data.token, userId => {

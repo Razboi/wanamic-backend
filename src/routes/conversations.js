@@ -29,10 +29,7 @@ Router.post( "/retrieve", async( req, res, next ) => {
 			return next( errors.userDoesntExist());
 		}
 		conversation = await Conversation.findOne({
-			$and: [
-				{ $or: [ { author: user._id }, { author: friend._id } ] },
-				{ $or: [ { target: user._id }, { target: friend._id } ] }
-			]
+			$and: [ { author: user._id }, { target: friend._id } ]
 		})
 			.populate({
 				path: "author target messages",
@@ -45,11 +42,6 @@ Router.post( "/retrieve", async( req, res, next ) => {
 	} catch ( err ) {
 		return next( err );
 	}
-	conversation = conversation.toObject();
-	if ( conversation.target._id.equals( user._id )) {
-		conversation.target = conversation.author;
-	}
-	delete conversation.author;
 	res.send( conversation );
 });
 
@@ -60,8 +52,8 @@ Router.post( "/add", async( req, res, next ) => {
 		user,
 		friend,
 		newMessage,
-		oldConversation,
-		newConversation;
+		userConversation,
+		friendConversation;
 
 	if ( !req.body.token || !req.body.friendUsername || !req.body.content ) {
 		return next( errors.blankData());
@@ -82,45 +74,58 @@ Router.post( "/add", async( req, res, next ) => {
 			receiver: friend.username,
 			content: content
 		}).save(),
-		oldConversation = await Conversation.findOne({
-			$and: [
-				{ $or: [ { author: user._id }, { author: friend._id } ] },
-				{ $or: [ { target: user._id }, { target: friend._id } ] }
-			]
+		userConversation = await Conversation.findOne({
+			$and: [ { author: user._id }, { target: friend._id } ]
 		}).exec();
-	} catch ( err ) {
-		return next( err );
-	}
+		friendConversation = await Conversation.findOne({
+			$and: [ { author: friend._id }, { target: user._id } ]
+		}).exec();
 
-	if ( oldConversation ) {
-		oldConversation.messages.push( newMessage );
-		oldConversation.save();
-	} else {
-		try {
-			newConversation = await new Conversation({
+		if ( userConversation ) {
+			userConversation.messages.push( newMessage );
+			userConversation.save();
+		} else {
+			userConversation = await new Conversation({
 				author: user._id,
 				target: friend._id,
 				messages: [ newMessage._id ]
 			}).save();
-
-			newConversation = await newConversation
+			userConversation = await userConversation
 				.populate({
 					path: "author target messages",
 					select: "fullname username profileImage author receiver content",
 					options: { sort: { createdAt: -1 } }
 				}).execPopulate();
-		} catch ( err ) {
-			return next( err );
+			user.openConversations.push( userConversation._id );
 		}
-		user.openConversations.push( newConversation._id );
-		friend.openConversations.push( newConversation._id );
+
+		if ( friendConversation ) {
+			friendConversation.messages.push( newMessage );
+			friendConversation.save();
+		} else {
+			friendConversation = await new Conversation({
+				author: friend._id,
+				target: user._id,
+				messages: [ newMessage._id ]
+			}).save();
+			friendConversation = await friendConversation
+				.populate({
+					path: "author target messages",
+					select: "fullname username profileImage author receiver content",
+					options: { sort: { createdAt: -1 } }
+				}).execPopulate();
+			friend.openConversations.push( friendConversation._id );
+		}
+
 		Promise.all([ user.save(), friend.save() ]);
+	} catch ( err ) {
+		return next( err );
 	}
 
 	res.status( 201 );
 	res.send({
 		newMessage: newMessage,
-		newConversation: newConversation
+		newConversation: userConversation
 	});
 });
 
