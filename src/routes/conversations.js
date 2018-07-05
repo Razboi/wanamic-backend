@@ -63,7 +63,7 @@ Router.post( "/add", async( req, res, next ) => {
 
 	try {
 		userId = await tokenVerifier( token );
-		user = await User.findById( userId ).exec(),
+		user = await User.findById( userId ).exec();
 		friend = await User.findOne({ username: friendUsername }).exec();
 
 		if ( !user || !friend ) {
@@ -101,12 +101,14 @@ Router.post( "/add", async( req, res, next ) => {
 
 		if ( friendConversation ) {
 			friendConversation.messages.push( newMessage );
+			friendConversation.newMessagesCount += 1;
 			friendConversation.save();
 		} else {
 			friendConversation = await new Conversation({
 				author: friend._id,
 				target: user._id,
-				messages: [ newMessage._id ]
+				messages: [ newMessage._id ],
+				newMessagesCount: 1
 			}).save();
 			friendConversation = await friendConversation
 				.populate({
@@ -131,6 +133,42 @@ Router.post( "/add", async( req, res, next ) => {
 		newMessage: newMessage,
 		newConversation: userConversation
 	});
+});
+
+Router.post( "/clearNotifications", async( req, res, next ) => {
+	var
+		userId,
+		user,
+		conversation;
+
+	if ( !req.body.token || !req.body.targetUsername ) {
+		return next( errors.blankData());
+	}
+
+	const { token, targetUsername } = req.body;
+
+	try {
+		userId = await tokenVerifier( token );
+		user = await User.findById( userId ).exec();
+		target = await User.findOne({ username: targetUsername }).exec();
+		if ( !user || !target ) {
+			return next( errors.userDoesntExist());
+		}
+		conversation = await Conversation.findOne({
+			$and: [ { author: user._id }, { target: target._id } ]
+		}).exec();
+		user.chatNotifications = user.chatNotifications.filter( author =>
+			author !== targetUsername
+		);
+		conversation.newMessagesCount = 0;
+		console.log( conversation );
+
+		Promise.all([ user.save(), conversation.save() ]);
+	} catch ( err ) {
+		return next( err );
+	}
+
+	res.sendStatus( 200 );
 });
 
 module.exports = Router;
