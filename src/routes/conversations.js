@@ -161,13 +161,63 @@ Router.post( "/clearNotifications", async( req, res, next ) => {
 			author !== targetUsername
 		);
 		conversation.newMessagesCount = 0;
-		console.log( conversation );
-
 		Promise.all([ user.save(), conversation.save() ]);
 	} catch ( err ) {
 		return next( err );
 	}
 
+	res.sendStatus( 200 );
+});
+
+
+Router.delete( "/delete", async( req, res, next ) => {
+	var
+		userId,
+		user,
+		target,
+		conversationToRemove,
+		partnerConversation,
+		messages;
+
+	if ( !req.body.token || !req.body.targetUsername ) {
+		return next( errors.blankData());
+	}
+
+	const { token, targetUsername } = req.body;
+
+	try {
+		userId = await tokenVerifier( token );
+		user = await User.findById( userId ).exec();
+		target = await User.findOne({ username: targetUsername }).exec();
+		if ( !user || !target ) {
+			return next( errors.userDoesntExist());
+		}
+		conversationToRemove = await Conversation.findOne({
+			$and: [ { author: user._id }, { target: target._id } ]
+		}).exec();
+		partnerConversation = await Conversation.findOne({
+			$and: [ { author: target._id }, { target: user._id } ]
+		}).exec();
+		if ( !conversationToRemove ) {
+			return next( errors.conversationDoesntExist());
+		}
+		user.openConversations = user.openConversations.filter( converId =>
+			!converId.equals( conversationToRemove._id )
+		);
+		user.save();
+
+		if ( !partnerConversation ) {
+			messages = await Message.find({
+				$or: [
+					{ $and: [ { author: user.username }, { receiver: target.username } ] },
+					{ $and: [ { author: target.username }, { receiver: user.username } ] }
+				]
+			}).remove();
+		}
+		conversationToRemove.remove();
+	} catch ( err ) {
+		return next( err );
+	}
 	res.sendStatus( 200 );
 });
 
