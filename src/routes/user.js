@@ -1,6 +1,7 @@
 const
 	Router = require( "express" ).Router(),
 	User = require( "../models/User" ),
+	bcrypt = require( "bcrypt" ),
 	multer = require( "multer" ),
 	upload = multer({ dest: "../wanamic-frontend/src/images" }),
 	findRandomUser = require( "../utils/findRandomUser" ),
@@ -265,10 +266,7 @@ Router.post( "/getChats", async( req, res, next ) => {
 				populate: {
 					path: "author target messages",
 					select: "fullname username profileImage author receiver content" +
-					" createdAt",
-					options: {
-						sort: { createdAt: -1 }
-					}
+					" createdAt"
 				}
 			})
 			.select( "openConversations" )
@@ -318,5 +316,68 @@ Router.post( "/getSocialCircle", ( req, res, next ) => {
 			res.send( socialCircle );
 		}).catch( err => next( err ));
 });
+
+
+Router.patch( "/updatePassword", async( req, res, next ) => {
+	var
+		userId,
+		user,
+		isValid;
+
+	if ( !req.body.token || !req.body.currentPassword ||
+			!req.body.newPassword ) {
+		return next( errors.blankData());
+	}
+	const { token, currentPassword, newPassword } = req.body;
+
+	try {
+		userId = await tokenVerifier( token );
+		user = await User.findById( userId ).exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+		isValid = await user.isValidPassword( currentPassword );
+		if ( !isValid ) {
+			return next( errors.invalidPassword());
+		}
+		user.passwordHash = await bcrypt.hashSync( newPassword, 10 );
+		user.save();
+	} catch ( err ) {
+		return next( err );
+	}
+	res.sendStatus( 201 );
+});
+
+
+Router.patch( "/updateEmail", async( req, res, next ) => {
+	var
+		userId,
+		user;
+
+	if ( !req.body.token || !req.body.currentEmail ||
+			!req.body.newEmail ) {
+		return next( errors.blankData());
+	}
+
+	const { token, currentEmail, newEmail } = req.body;
+
+	try {
+		userId = await tokenVerifier( token );
+		user = await User.findById( userId ).exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+		if ( user.email !== currentEmail ) {
+			return next( errors.invalidEmail());
+		}
+		user.email = newEmail;
+		user.save();
+	} catch ( err ) {
+		return next( err );
+	}
+
+	res.sendStatus( 201 );
+});
+
 
 module.exports = Router;
