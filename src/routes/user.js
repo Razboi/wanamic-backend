@@ -1,6 +1,7 @@
 const
 	Router = require( "express" ).Router(),
 	User = require( "../models/User" ),
+	Ticket = require( "../models/Ticket" ),
 	bcrypt = require( "bcrypt" ),
 	multer = require( "multer" ),
 	upload = multer({ dest: "../wanamic-frontend/src/images" }),
@@ -92,41 +93,28 @@ Router.post( "/match", ( req, res, next ) => {
 });
 
 // add new interests
-Router.post( "/addInterests", ( req, res, next ) => {
+Router.post( "/addInterests", async( req, res, next ) => {
 	var
 		userId,
-		newInterests;
+		user;
 
-	if ( !req.body.data || !req.body.token ) {
+	if ( !req.body.newInterests || !req.body.token ) {
 		return next( errors.blankData());
 	}
-
-	newInterests = req.body.data;
+	const { newInterests, token } = req.body;
 
 	try {
-		userId = tokenVerifier( req.body.token );
+		userId = await tokenVerifier( token );
+		user = await User.findById( userId ).exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+		user.interests = newInterests;
+		await user.save();
 	} catch ( err ) {
 		return next( err );
 	}
-
-	User.findById( userId )
-		.exec()
-		.then( user => {
-			if ( !user ) {
-				return next( errors.userDoesntExist());
-			}
-
-			async.eachSeries( newInterests, function( newInterest, done ) {
-				if ( !user.interests.includes( newInterest )) {
-					user.interests.push( newInterest );
-					done();
-				}
-			});
-
-			user.save()
-				.then(() => res.sendStatus( 201 ))
-				.catch( err => next( err ));
-		}).catch( err => next( err ));
+	res.sendStatus( 201 );
 });
 
 // get one user with the same general interests
@@ -377,6 +365,42 @@ Router.patch( "/updateEmail", async( req, res, next ) => {
 	}
 
 	res.sendStatus( 201 );
+});
+
+
+Router.delete( "/deleteAccount", async( req, res, next ) => {
+	var
+		userId,
+		user,
+		isValid;
+
+	if ( !req.body.token || !req.body.password ) {
+		return next( errors.blankData());
+	}
+	const { token, password } = req.body;
+
+	try {
+		userId = await tokenVerifier( token );
+		user = await User.findById( userId ).exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+		isValid = await user.isValidPassword( password );
+		if ( !isValid ) {
+			return next( errors.invalidPassword());
+		}
+		if ( req.body.feedback ) {
+			await new Ticket({
+				author: user.username,
+				content: req.body.feedback,
+				fromDeletedAccount: true
+			}).save();
+		}
+		await user.remove();
+	} catch ( err ) {
+		return next( err );
+	}
+	res.sendStatus( 200 );
 });
 
 

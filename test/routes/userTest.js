@@ -167,7 +167,7 @@ describe( "post user/addInterests", function() {
 			.post( "/user/addInterests" )
 			.send({
 				token: token,
-				data: [ "Technology", "Art", "Science" ]
+				newInterests: [ "Technology", "Art", "Science" ]
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 201 );
@@ -192,7 +192,7 @@ describe( "post user/addInterests", function() {
 		chai.request( "localhost:8000" )
 			.post( "/user/addInterests" )
 			.send({
-				data: []
+				newInterests: []
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
@@ -206,7 +206,7 @@ describe( "post user/addInterests", function() {
 			.post( "/user/addInterests" )
 			.send({
 				token: "123123sadasda1231312",
-				data: [ "Technology", "Art", "Science" ]
+				newInterests: [ "Technology", "Art", "Science" ]
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
