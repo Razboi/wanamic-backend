@@ -7,6 +7,7 @@ const
 	upload = multer({ dest: "../wanamic-frontend/src/images" }),
 	findRandomUser = require( "../utils/findRandomUser" ),
 	removeDuplicates = require( "../utils/removeDuplicatesArrOfObj" ),
+	validateEmail = require( "../utils/validateEmail" ),
 	async = require( "async" ),
 	errors = require( "../utils/errors" );
 
@@ -32,9 +33,10 @@ Router.get( "/:username", ( req, res, next ) => {
 
 // set user info
 Router.post( "/info", upload.fields([ { name: "userImage", maxCount: 1 },
-	{ name: "headerImage", maxCount: 1 } ]), ( req, res, next ) => {
+	{ name: "headerImage", maxCount: 1 } ]), async( req, res, next ) => {
 	var
 		newInfo,
+		user,
 		userId;
 
 	if ( !req.body.token ) {
@@ -44,36 +46,37 @@ Router.post( "/info", upload.fields([ { name: "userImage", maxCount: 1 },
 	newInfo = req.body;
 
 	try {
-		userId = tokenVerifier( req.body.token );
+		userId = await tokenVerifier( req.body.token );
+		user = await User.findById( userId ).exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+		if ( newInfo.description ) {
+			user.description = newInfo.description;
+		}
+		if ( newInfo.fullname ) {
+			user.fullname = newInfo.fullname;
+		}
+		if ( newInfo.username ) {
+			const userWithUsername = await User.findOne({
+				username: newInfo.username
+			}).exec();
+			if ( userWithUsername ) {
+				return next( errors.registeredUsername());
+			}
+			user.username = newInfo.username;
+		}
+		if ( req.files && req.files[ "userImage" ]) {
+			user.profileImage = req.files[ "userImage" ][ 0 ].filename;
+		}
+		if ( req.files && req.files[ "headerImage" ]) {
+			user.headerImage = req.files[ "headerImage" ][ 0 ].filename;
+		}
+		await user.save();
 	} catch ( err ) {
 		return next( err );
 	}
-
-	User.findById( userId )
-		.exec()
-		.then( user => {
-			if ( !user ) {
-				return next( errors.userDoesntExist());
-			}
-			if ( newInfo.description ) {
-				user.description = newInfo.description;
-			}
-			if ( newInfo.fullname ) {
-				user.fullname = newInfo.fullname;
-			}
-			if ( newInfo.username ) {
-				user.username = newInfo.username;
-			}
-			if ( req.files && req.files[ "userImage" ]) {
-				user.profileImage = req.files[ "userImage" ][ 0 ].filename;
-			}
-			if ( req.files && req.files[ "headerImage" ]) {
-				user.headerImage = req.files[ "headerImage" ][ 0 ].filename;
-			}
-			user.save()
-				.then( res.sendStatus( 201 ))
-				.catch( err => next( err ));
-		}).catch( err => next( err ));
+	res.sendStatus( 201 );
 });
 
 // get 10 users with the same interests
@@ -93,7 +96,7 @@ Router.post( "/match", ( req, res, next ) => {
 });
 
 // add new interests
-Router.post( "/addInterests", async( req, res, next ) => {
+Router.post( "/updateInterests", async( req, res, next ) => {
 	var
 		userId,
 		user;
@@ -349,6 +352,10 @@ Router.patch( "/updateEmail", async( req, res, next ) => {
 
 	const { token, currentEmail, newEmail } = req.body;
 
+	if ( !validateEmail( newEmail )) {
+		return next( errors.invalidEmailFormat());
+	}
+
 	try {
 		userId = await tokenVerifier( token );
 		user = await User.findById( userId ).exec();
@@ -357,6 +364,10 @@ Router.patch( "/updateEmail", async( req, res, next ) => {
 		}
 		if ( user.email !== currentEmail ) {
 			return next( errors.invalidEmail());
+		}
+		userWithNewEmail = await User.findOne({ email: newEmail }).exec();
+		if ( userWithNewEmail ) {
+			return next( errors.registeredEmail());
 		}
 		user.email = newEmail;
 		user.save();

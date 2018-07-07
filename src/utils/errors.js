@@ -44,6 +44,11 @@ module.exports = {
 		err.statusCode = 404;
 		return err;
 	},
+	invalidEmailFormat: () => {
+		var err = new Error( "Invalid email format" );
+		err.statusCode = 422;
+		return err;
+	},
 	invalidPassword: () => {
 		var err = new Error( "Invalid password" );
 		err.statusCode = 401;

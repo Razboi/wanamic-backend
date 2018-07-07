@@ -159,12 +159,12 @@ describe( "post user/match", function() {
 });
 
 
-// POST addInterests
-describe( "post user/addInterests", function() {
+// POST updateInterests
+describe( "post user/updateInterests", function() {
 
 	it( "should return 201", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/user/addInterests" )
+			.post( "/user/updateInterests" )
 			.send({
 				token: token,
 				newInterests: [ "Technology", "Art", "Science" ]
@@ -177,7 +177,7 @@ describe( "post user/addInterests", function() {
 
 	it( "should return 422", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/user/addInterests" )
+			.post( "/user/updateInterests" )
 			.send({
 				token: token
 			})
@@ -190,7 +190,7 @@ describe( "post user/addInterests", function() {
 
 	it( "should return 422", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/user/addInterests" )
+			.post( "/user/updateInterests" )
 			.send({
 				newInterests: []
 			})
@@ -203,7 +203,7 @@ describe( "post user/addInterests", function() {
 
 	it( "should return 401 invalid jwt", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/user/addInterests" )
+			.post( "/user/updateInterests" )
 			.send({
 				token: "123123sadasda1231312",
 				newInterests: [ "Technology", "Art", "Science" ]
