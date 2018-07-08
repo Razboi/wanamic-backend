@@ -60,7 +60,7 @@ Router.post( "/create", ( req, res, next ) => {
 							notifyMentions( req.body.mentions, "comment", post, user )
 								.then( mentionsNotifications => {
 
-									User.findOne({ username: post.author })
+									User.findById( post.author )
 										.exec()
 										.then( postAuthor => {
 											if ( postAuthor.username !== user.username ) {

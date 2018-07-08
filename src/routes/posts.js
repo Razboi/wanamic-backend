@@ -12,20 +12,27 @@ const
 	errors = require( "../utils/errors" ),
 	fs = require( "fs" );
 
-Router.get( "/explore/:skip", ( req, res, next ) => {
+Router.get( "/explore/:skip", async( req, res, next ) => {
+	var posts;
 
 	if ( !req.params.skip ) {
 		return next( errors.blankData());
 	}
-
-	Post.find()
-		.where( "media" ).equals( true )
-		.limit( 10 )
-		.skip( req.params.skip * 10 )
-		.sort( "-createdAt" )
-		.exec()
-		.then( posts => res.send( posts ))
-		.catch( err => next( err ));
+	try {
+		posts = await Post.find()
+			.populate({
+				path: "author",
+				select: "fullname username profileImage"
+			})
+			.where( "media" ).equals( true )
+			.limit( 10 )
+			.skip( req.params.skip * 10 )
+			.sort( "-createdAt" )
+			.exec();
+	} catch ( err ) {
+		return next( err );
+	}
+	res.send( posts );
 });
 
 Router.post( "/getPost", ( req, res, next ) => {
@@ -35,77 +42,74 @@ Router.post( "/getPost", ( req, res, next ) => {
 	}
 
 	Post.findById( req.body.postId )
+		.populate({
+			path: "sharedPost author",
+			select: "fullname username profileImage"
+		})
 		.exec()
 		.then( post => res.send( post ))
 		.catch( err => next( err ));
 });
 
-Router.post( "/create", ( req, res, next ) => {
+Router.post( "/create", async( req, res, next ) => {
 	var
-		data,
-		userId;
+		userId,
+		user,
+		newPost,
+		mentionsNotifications;
 
 	if ( !req.body.token || !req.body.userInput ) {
 		return next( errors.blankData());
 	}
-
-	data = req.body;
+	const {
+		token, userInput, alerts, hashtags, privacyRange, mentions
+	} = req.body;
 
 	try {
-		userId = tokenVerifier( data.token );
+		userId = await tokenVerifier( token );
+		user = await User.findById( userId ).exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+		newPost = await new Post({
+			author: user._id,
+			content: userInput,
+			alerts: alerts,
+			hashtags: hashtags,
+			privacyRange: privacyRange
+		}).save();
+		newPost = await newPost.populate({
+			path: "author",
+			select: "fullname username profileImage"
+		}).execPopulate();
+
+		User.update(
+			{ _id: { $in: user.friends } },
+			{ $push: { "newsfeed": newPost._id } },
+			{ multi: true }
+		).exec();
+
+		if ( privacyRange >= 2 ) {
+			User.update(
+				{ _id: { $in: user.followers } },
+				{ $push: { "newsfeed": newPost._id } },
+				{ multi: true }
+			).exec();
+		}
+		user.posts.push( newPost._id );
+		user.newsfeed.push( newPost._id );
+		await user.save();
+
+		mentionsNotifications = await notifyMentions(
+			mentions, "post", newPost, user );
+		res.status( 201 );
+		res.send({
+			newPost: newPost,
+			mentionsNotifications: mentionsNotifications
+		});
 	} catch ( err ) {
 		return next( err );
 	}
-
-	User.findById( userId )
-		.exec()
-		.then( user => {
-			if ( !user ) {
-				return next( errors.userDoesntExist());
-			}
-			new Post({
-				author: user.username,
-				authorFullname: user.fullname,
-				authorImg: user.profileImage,
-				content: data.userInput,
-				alerts: data.alerts,
-				hashtags: data.hashtags,
-				privacyRange: data.privacyRange
-			}).save()
-				.then( newPost => {
-					User.update(
-						{ _id: { $in: user.friends } },
-						{ $push: { "newsfeed": newPost._id } },
-						{ multi: true }
-					)
-						.exec()
-						.catch( err => next( err ));
-
-					if ( data.privacyRange >= 2 ) {
-						User.update(
-							{ _id: { $in: user.followers } },
-							{ $push: { "newsfeed": newPost._id } },
-							{ multi: true }
-						)
-							.exec()
-							.catch( err => next( err ));
-					}
-
-					user.posts.push( newPost._id );
-					user.newsfeed.push( newPost._id );
-					user.save()
-						.then(() => {
-							notifyMentions( data.mentions, "post", newPost, user )
-								.then( mentionsNotifications => {
-									res.status( 201 );
-									res.send({
-										newPost: newPost,
-										mentionsNotifications: mentionsNotifications
-									});
-								}).catch( err => next( err ));
-						}).catch( err => next( err ));
-				}).catch( err => next( err ));
-		}).catch( err => next( err ));
 });
 
 
@@ -147,7 +151,7 @@ Router.post( "/like", ( req, res, next ) => {
 					post.save()
 
 						.then( post => {
-							User.findOne({ username: post.author })
+							User.findById( post.author )
 								.exec()
 								.then( postAuthor => {
 									if ( postAuthor.username !== user.username ) {
@@ -242,9 +246,7 @@ Router.post( "/media", ( req, res, next ) => {
 				return next( errors.userDoesntExist());
 			}
 			new Post({
-				author: user.username,
-				authorFullname: user.fullname,
-				authorImg: user.profileImage,
+				author: user._id,
 				media: true,
 				link: !!data.link,
 				content: data.content,
@@ -326,9 +328,7 @@ Router.post( "/mediaLink", ( req, res, next ) => {
 						return next( errors.userDoesntExist());
 					}
 					new Post({
-						author: user.username,
-						authorFullname: user.fullname,
-						authorImg: user.profileImage,
+						author: user._id,
 						media: true,
 						link: true,
 						content: data.description,
@@ -419,9 +419,7 @@ Router.post( "/mediaPicture", upload.single( "picture" ), ( req, res, next ) => 
 				return next( errors.userDoesntExist());
 			}
 			new Post({
-				author: user.username,
-				authorFullname: user.fullname,
-				authorImg: user.profileImage,
+				author: user._id,
 				media: true,
 				picture: true,
 				content: data.content,
@@ -495,7 +493,8 @@ Router.post( "/newsfeed/:skip", ( req, res, next ) => {
 				sort: { createdAt: -1 }
 			},
 			populate: {
-				path: "sharedPost"
+				path: "sharedPost author",
+				select: "fullname username profileImage"
 			}
 		})
 		.exec()
@@ -582,8 +581,7 @@ Router.delete( "/delete", ( req, res, next ) => {
 					if ( !storedPost ) {
 						return next( errors.postDoesntExist());
 					}
-
-					if ( user.username !== storedPost.author ) {
+					if ( !user._id.equals( storedPost.author )) {
 						return next( errors.unauthorized());
 					}
 
@@ -653,7 +651,7 @@ Router.patch( "/update", ( req, res, next ) => {
 				.populate({ path: "sharedPost" })
 				.exec()
 				.then( storedPost => {
-					if ( user.username !== storedPost.author ) {
+					if ( !user._id.equals( storedPost.author )) {
 						return next( errors.unauthorized());
 					}
 					if ( updatedPost.content ) {
@@ -705,8 +703,7 @@ Router.post( "/share", ( req, res, next ) => {
 					}
 
 					new Post({
-						author: user.username,
-						authorFullname: user.fullname,
+						author: user._id,
 						content: req.body.shareComment,
 						sharedPost: originalPost._id
 					}).save()

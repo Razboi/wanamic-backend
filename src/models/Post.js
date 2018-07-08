@@ -3,9 +3,7 @@ const
 	Schema = mongoose.Schema,
 
 	PostSchema = mongoose.Schema({
-		author: { type: String, required: true },
-		authorFullname: { type: String, required: true },
-		authorImg: { type: String },
+		author: { type: Schema.Types.ObjectId, ref: "User", required: true },
 		content: { type: String },
 		media: { type: Boolean, default: false },
 		link: { type: Boolean, default: false },

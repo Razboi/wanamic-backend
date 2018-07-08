@@ -15,15 +15,6 @@ dotenv.config();
 chai.use( chaiHttp );
 mongoose.connect( process.env.MONGODB_URL );
 
-// after running tests delete the testing posts
-after( function( done ) {
-	User.remove({ email: "test@gmail.com" })
-		.then(() => {
-			Post.remove({ author: "signuptestuser" })
-				.then(() => done())
-				.catch( err => done( err ));
-		}).catch( err => done( err ));
-});
 
 before( function( done ) {
 	new User({
@@ -60,20 +51,23 @@ describe( "POST posts/explore/:skip", function() {
 
 
 describe( "POST posts/create", function() {
-	var token;
+	var
+		token,
+		userId;
 
 	// before running tests create a token
 	before( function( done ) {
 		User.findOne({ email: "test@gmail.com" })
 			.exec()
 			.then( user => {
+				userId = user._id;
 				token = tokenGenerator( user );
 				done();
 			}).catch( err => done( err ));
 	});
 
 	after( function( done ) {
-		Post.remove({ author: "testuser" })
+		Post.remove({ author: userId })
 			.then(() => done())
 			.catch( err => done( err ));
 	});
@@ -126,8 +120,7 @@ describe( "POST posts/like", function() {
 			.then( user => {
 				token = tokenGenerator( user );
 				new Post({
-					author: user.username,
-					authorFullname: user.fullname,
+					author: user._id,
 					content: "Like me"
 				})
 					.save()
@@ -217,8 +210,7 @@ describe( "POST posts/dislike", function() {
 			.then( user => {
 				token = tokenGenerator( user );
 				new Post({
-					author: user.username,
-					authorFullname: user.fullname,
+					author: user._id,
 					content: "Like me"
 				})
 					.save()
@@ -291,20 +283,23 @@ describe( "POST posts/dislike", function() {
 
 
 describe( "POST posts/media", function() {
-	var token;
+	var
+		token,
+		userId;
 
 	// before running tests create a token
 	before( function( done ) {
 		User.findOne({ email: "test@gmail.com" })
 			.exec()
 			.then( user => {
+				userId = user._id;
 				token = tokenGenerator( user );
 				done();
 			}).catch( err => done( err ));
 	});
 
 	after( function( done ) {
-		Post.remove({ author: "testuser" })
+		Post.remove({ author: userId })
 			.then(() => done())
 			.catch( err => done( err ));
 	});
@@ -362,20 +357,23 @@ describe( "POST posts/media", function() {
 });
 
 describe( "POST posts/mediaLink", function() {
-	var token;
+	var
+		token,
+		userId;
 
 	// before running tests create a token
 	before( function( done ) {
 		User.findOne({ email: "test@gmail.com" })
 			.exec()
 			.then( user => {
+				userId = user._id;
 				token = tokenGenerator( user );
 				done();
 			}).catch( err => done( err ));
 	});
 
 	after( function( done ) {
-		Post.remove({ author: "testuser" })
+		Post.remove({ author: userId })
 			.then(() => done())
 			.catch( err => done( err ));
 	});
@@ -436,20 +434,22 @@ describe( "POST posts/mediaLink", function() {
 
 describe( "POST posts/mediaPicture", function() {
 	var
-		token;
+		token,
+		userId;
 
 	// before running tests create a token
 	before( function( done ) {
 		User.findOne({ email: "test@gmail.com" })
 			.exec()
 			.then( user => {
+				userId = user._id;
 				token = tokenGenerator( user );
 				done();
 			}).catch( err => done( err ));
 	});
 
 	after( function( done ) {
-		Post.remove({ author: "testuser" })
+		Post.remove({ author: userId })
 			.then(() => done())
 			.catch( err => done( err ));
 	});
@@ -573,8 +573,7 @@ describe( "DELETE posts/delete", function() {
 			.then( user => {
 				token = tokenGenerator( user );
 				new Post({
-					author: user.username,
-					authorFullname: user.fullname,
+					author: user._id,
 					content: "Delete me"
 				})
 					.save()
@@ -680,6 +679,7 @@ describe( "DELETE posts/delete", function() {
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 200 );
+				console.log( err );
 				done();
 			});
 	});
@@ -700,8 +700,7 @@ describe( "PATCH posts/update", function() {
 			.then( user => {
 				token = tokenGenerator( user );
 				new Post({
-					author: user.username,
-					authorFullname: user.fullname,
+					author: user._id,
 					content: "update test"
 				}).save()
 					.then( post => {
@@ -822,8 +821,7 @@ describe( "POST posts/share", function() {
 			.then( user => {
 				token = tokenGenerator( user );
 				new Post({
-					author: user.username,
-					authorFullname: user.fullname,
+					author: user._id,
 					content: "test"
 				}).save()
 					.then( post => {

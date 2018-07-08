@@ -28,8 +28,7 @@ describe( "POST comments/create", function() {
 			.then( user => {
 				token = tokenGenerator( user );
 				new Post({
-					author: user.username,
-					authorFullname: user.fullname,
+					author: user._id,
 					content: "test"
 				}).save()
 					.then( post => {
@@ -147,8 +146,7 @@ describe( "DELETE comments/delete", function() {
 			.then( user => {
 				token = tokenGenerator( user );
 				new Post({
-					author: user.username,
-					authorFullname: user.fullname,
+					author: user._id,
 					content: "test"
 				}).save()
 					.then( post => {
@@ -261,8 +259,7 @@ describe( "PATCH comments/update", function() {
 			.then( user => {
 				token = tokenGenerator( user );
 				new Post({
-					author: user.username,
-					authorFullname: user.fullname,
+					author: user._id,
 					content: "test"
 				}).save()
 					.then( post => {
@@ -374,8 +371,7 @@ describe( "POST comments/postComments/:skip", function() {
 			.then( user => {
 				token = tokenGenerator( user );
 				new Post({
-					author: user.username,
-					authorFullname: user.fullname,
+					author: user._id,
 					content: "test"
 				}).save()
 					.then( post => {

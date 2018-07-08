@@ -9,7 +9,8 @@ const
 	removeDuplicates = require( "../utils/removeDuplicatesArrOfObj" ),
 	validateEmail = require( "../utils/validateEmail" ),
 	async = require( "async" ),
-	errors = require( "../utils/errors" );
+	errors = require( "../utils/errors" ),
+	fs = require( "fs" );
 
 // get user info
 Router.get( "/:username", ( req, res, next ) => {
@@ -37,12 +38,13 @@ Router.post( "/info", upload.fields([ { name: "userImage", maxCount: 1 },
 	var
 		newInfo,
 		user,
-		userId;
+		userId,
+		newImage,
+		newUsername;
 
 	if ( !req.body.token ) {
 		return next( errors.blankData());
 	}
-
 	newInfo = req.body;
 
 	try {
@@ -51,13 +53,13 @@ Router.post( "/info", upload.fields([ { name: "userImage", maxCount: 1 },
 		if ( !user ) {
 			return next( errors.userDoesntExist());
 		}
-		if ( newInfo.description ) {
+		if ( newInfo.description && newInfo.description !== user.description ) {
 			user.description = newInfo.description;
 		}
-		if ( newInfo.fullname ) {
+		if ( newInfo.fullname && newInfo.fullname !== user.fullname ) {
 			user.fullname = newInfo.fullname;
 		}
-		if ( newInfo.username ) {
+		if ( newInfo.username && newInfo.username !== user.username ) {
 			const userWithUsername = await User.findOne({
 				username: newInfo.username
 			}).exec();
@@ -65,18 +67,39 @@ Router.post( "/info", upload.fields([ { name: "userImage", maxCount: 1 },
 				return next( errors.registeredUsername());
 			}
 			user.username = newInfo.username;
+			newUsername = newInfo.username;
 		}
-		if ( req.files && req.files[ "userImage" ]) {
-			user.profileImage = req.files[ "userImage" ][ 0 ].filename;
-		}
-		if ( req.files && req.files[ "headerImage" ]) {
-			user.headerImage = req.files[ "headerImage" ][ 0 ].filename;
+		if ( req.files ) {
+			if ( req.files[ "userImage" ]) {
+				const
+					oldPicPath = "../wanamic-frontend/src/images/",
+					oldPicFile = user.profileImage;
+				user.profileImage = req.files[ "userImage" ][ 0 ].filename;
+				newImage = req.files[ "userImage" ][ 0 ].filename;
+				fs.unlink( oldPicPath + oldPicFile, err => {
+					if ( err ) {
+						next( err );
+					}
+				});
+			}
+			if ( req.files[ "headerImage" ]) {
+				const
+					oldPicPath = "../wanamic-frontend/src/images/",
+					oldPicFile = user.headerImage;
+				user.headerImage = req.files[ "headerImage" ][ 0 ].filename;
+				fs.unlink( oldPicPath + oldPicFile, err => {
+					if ( err ) {
+						next( err );
+					}
+				});
+			}
 		}
 		await user.save();
 	} catch ( err ) {
 		return next( err );
 	}
-	res.sendStatus( 201 );
+	res.status( 201 );
+	res.send({ newImage: newImage, newUsername: newUsername });
 });
 
 // get 10 users with the same interests
@@ -87,7 +110,7 @@ Router.post( "/match", ( req, res, next ) => {
 	}
 
 	User.find({ interests: { $in: req.body.data } })
-		.select( "username fullname description" )
+		.select( "username fullname description profileImage" )
 		.limit( 10 )
 		.exec()
 		.then( users => {
