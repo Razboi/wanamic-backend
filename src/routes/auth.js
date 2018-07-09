@@ -72,6 +72,7 @@ Router.post( "/login", ( req, res, next ) => {
 				refreshToken: user.refreshToken,
 				profileImage: user.profileImage && user.profileImage,
 				username: user.username,
+				fullname: user.fullname,
 				id: user._id
 			});
 		}).catch( err => next( err ));

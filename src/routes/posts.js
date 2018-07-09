@@ -219,80 +219,68 @@ Router.patch( "/dislike", ( req, res, next ) => {
 });
 
 
-Router.post( "/media", ( req, res, next ) => {
+Router.post( "/media", async( req, res, next ) => {
 	var
-		data,
-		token,
-		userId;
+		userId,
+		user,
+		newPost,
+		mentionsNotifications;
 
 	if ( !req.body.token || !req.body.data || !req.body.data.privacyRange ||
 			!req.body.data.alerts ) {
 		return next( errors.blankData());
 	}
-
-	data = req.body.data;
-	token = req.body.token;
+	const { data, token } = req.body;
 
 	try {
-		userId = tokenVerifier( token );
+		userId = await tokenVerifier( token );
+		user = await User.findById( userId ).exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+		newPost = await new Post({
+			author: user._id,
+			media: true,
+			link: !!data.link,
+			content: data.content,
+			alerts: data.alerts,
+			hashtags: data.hashtags,
+			privacyRange: data.privacyRange,
+			mediaContent: {
+				title: data.title,
+				artist: data.artist,
+				image: data.image
+			}
+		}).save();
+		newPost = await newPost.populate({
+			path: "author",
+			select: "fullname username profileImage"
+		}).execPopulate();
+		User.update(
+			{ _id: { $in: user.friends } },
+			{ $push: { "newsfeed": newPost._id } },
+			{ multi: true }
+		).exec();
+		if ( data.privacyRange >= 2 ) {
+			User.update(
+				{ _id: { $in: user.followers } },
+				{ $push: { "newsfeed": newPost._id } },
+				{ multi: true }
+			).exec();
+		}
+		user.posts.push( newPost._id );
+		user.newsfeed.push( newPost._id );
+		await user.save();
+		mentionsNotifications = await notifyMentions(
+			data.mentions, "post", newPost, user );
 	} catch ( err ) {
 		return next( err );
 	}
-
-	User.findById( userId )
-		.exec()
-		.then( user => {
-			if ( !user ) {
-				return next( errors.userDoesntExist());
-			}
-			new Post({
-				author: user._id,
-				media: true,
-				link: !!data.link,
-				content: data.content,
-				alerts: data.alerts,
-				hashtags: data.hashtags,
-				privacyRange: data.privacyRange,
-				mediaContent: {
-					title: data.title,
-					artist: data.artist,
-					image: data.image
-				}
-			}).save()
-				.then( newPost => {
-					User.update(
-						{ _id: { $in: user.friends } },
-						{ $push: { "newsfeed": newPost._id } },
-						{ multi: true }
-					)
-						.exec()
-						.catch( err => next( err ));
-
-					if ( data.privacyRange >= 2 ) {
-						User.update(
-							{ _id: { $in: user.followers } },
-							{ $push: { "newsfeed": newPost._id } },
-							{ multi: true }
-						)
-							.exec()
-							.catch( err => next( err ));
-					}
-
-					user.posts.push( newPost._id );
-					user.newsfeed.push( newPost._id );
-					user.save()
-						.then(() => {
-							notifyMentions( data.mentions, "post", newPost, user )
-								.then( mentionsNotifications => {
-									res.status( 201 );
-									res.send({
-										newPost: newPost,
-										mentionsNotifications: mentionsNotifications
-									});
-								}).catch( err => next( err ));
-						}).catch( err => next( err ));
-				}).catch( err => next( err ));
-		}).catch( err => next( err ));
+	res.status( 201 );
+	res.send({
+		newPost: newPost,
+		mentionsNotifications: mentionsNotifications
+	});
 });
 
 Router.post( "/mediaLink", ( req, res, next ) => {
@@ -507,49 +495,49 @@ Router.post( "/newsfeed/:skip", ( req, res, next ) => {
 });
 
 // user timeline
-Router.post( "/:username/:skip", ( req, res, next ) => {
+Router.post( "/:username/:skip", async( req, res, next ) => {
 	var
 		relationLvl,
-		visitorId;
+		visitorId,
+		user,
+		filteredPosts;
 
 	if ( !req.params.username || !req.params.skip || !req.body.token ) {
 		return next( errors.blankData());
 	}
-
 	try {
-		visitorId = tokenVerifier( req.body.token );
+		visitorId = await tokenVerifier( req.body.token );
+		user = await User.findOne({ username: req.params.username })
+			.populate({
+				path: "posts",
+				options: {
+					limit: 10,
+					skip: req.params.skip * 10,
+					sort: { createdAt: -1 }
+				},
+				populate: {
+					path: "sharedPost author",
+					select: "fullname username profileImage"
+				}
+			})
+			.exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+		if ( user.friends.some( id => id.equals( visitorId ))
+				|| user._id.equals( visitorId )) {
+			relationLvl = 1;
+		} else if ( user.followers.some( id => id.equals( visitorId ))) {
+			relationLvl = 2;
+		} else {
+			relationLvl = 3;
+		}
+		filteredPosts = await user.posts.filter( post =>
+			post.privacyRange >= relationLvl );
 	} catch ( err ) {
 		return next( err );
 	}
-
-	User.findOne({ username: req.params.username })
-		.populate({
-			path: "posts",
-			options: {
-				limit: 10,
-				skip: req.params.skip * 10,
-				sort: { createdAt: -1 }
-			}
-		})
-		.exec()
-		.then( async user => {
-			if ( !user ) {
-				return next( errors.userDoesntExist());
-			}
-
-			if ( user.friends.some( id => id.equals( visitorId ))) {
-				relationLvl = 1;
-			} else if ( user.followers.some( id => id.equals( visitorId ))) {
-				relationLvl = 2;
-			} else {
-				relationLvl = 3;
-			}
-
-			const filteredPosts = await user.posts.filter( post =>
-				post.privacyRange >= relationLvl
-			);
-			res.send( filteredPosts );
-		}).catch( err => next( err ));
+	res.send( filteredPosts );
 });
 
 
