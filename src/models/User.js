@@ -22,7 +22,8 @@ const
 		keywords: [ { type: String } ],
 		profileImage: { type: String },
 		headerImage: { type: String },
-		interests: [ { type: String } ]
+		interests: [ { type: String } ],
+		album: [ { type: String } ],
 	});
 
 UserSchema.methods.isValidPassword = function( password ) {

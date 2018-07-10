@@ -439,6 +439,7 @@ Router.post( "/mediaPicture", upload.single( "picture" ), ( req, res, next ) => 
 
 					user.posts.push( newPost._id );
 					user.newsfeed.push( newPost._id );
+					user.album.push( req.file.filename );
 					user.save()
 						.then(() => {
 							notifyMentions( mentions, "post", newPost, user	)

@@ -438,4 +438,28 @@ Router.delete( "/deleteAccount", async( req, res, next ) => {
 });
 
 
+Router.post( "/getUserAlbum", async( req, res, next ) => {
+	var
+		userId,
+		user,
+		isValid;
+
+	if ( !req.body.token || !req.body.username ) {
+		return next( errors.blankData());
+	}
+	const { token, username } = req.body;
+
+	try {
+		userId = await tokenVerifier( token );
+		user = await User.findOne({ username: username }).exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+	} catch ( err ) {
+		return next( err );
+	}
+	res.send( user.album );
+});
+
+
 module.exports = Router;
