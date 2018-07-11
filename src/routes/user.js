@@ -21,7 +21,7 @@ Router.get( "/:username", ( req, res, next ) => {
 
 	User.findOne({ username: req.params.username })
 		.select( "username fullname description keywords profileImage headerImage" +
-							" interests friends" )
+							" interests friends followers" )
 		.exec()
 		.then( user => {
 			if ( !user ) {
@@ -441,8 +441,7 @@ Router.delete( "/deleteAccount", async( req, res, next ) => {
 Router.post( "/getUserAlbum", async( req, res, next ) => {
 	var
 		userId,
-		user,
-		isValid;
+		user;
 
 	if ( !req.body.token || !req.body.username ) {
 		return next( errors.blankData());
@@ -459,6 +458,46 @@ Router.post( "/getUserAlbum", async( req, res, next ) => {
 		return next( err );
 	}
 	res.send( user.album );
+});
+
+
+Router.post( "/getUserNetwork", async( req, res, next ) => {
+	var
+		requesterId,
+		requester,
+		user;
+
+	if ( !req.body.token || !req.body.username ) {
+		return next( errors.blankData());
+	}
+	const { token, username } = req.body;
+
+	try {
+		requesterId = await tokenVerifier( token );
+		requester = await User.findById( requesterId ).exec();
+		user = await User.findOne({ username: username })
+			.populate({
+				path: "friends followers following",
+				select: "username fullname profileImage description"
+			})
+			.exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+	} catch ( err ) {
+		return next( err );
+	}
+	res.send({
+		user: {
+			friends: user.friends,
+			followers: user.followers,
+			following: user.following
+		},
+		requester: {
+			friends: requester.friends,
+			following: requester.following
+		}
+	});
 });
 
 
