@@ -4,7 +4,6 @@ const
 	tokenGenerator = require( "../utils/tokenGenerator" ),
 	User = require( "../models/User" ),
 	Post = require( "../models/Post" ),
-	Comment = require( "../models/Comment" ),
 	Notification = require( "../models/Notification" ),
 	errors = require( "../utils/errors" );
 
@@ -23,6 +22,10 @@ Router.post( "/retrieve", async( req, res, next ) => {
 			.populate({
 				path: "notifications openConversations",
 				options: { sort: { createdAt: -1 } },
+				populate: {
+					path: "author",
+					select: "fullname username profileImage"
+				}
 			}).exec();
 	} catch ( err ) {
 		return next( err );
@@ -63,7 +66,7 @@ Router.post( "/check", ( req, res, next ) => {
 			User.findById( userId )
 				.exec()
 				.then( user => {
-					if ( user.username !== notification.receiver ) {
+					if ( !user._id.equals( notification.receiver )) {
 						return next( errors.unauthorized());
 					}
 					notification.checked = true;

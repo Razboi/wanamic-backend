@@ -156,10 +156,8 @@ Router.post( "/like", ( req, res, next ) => {
 								.then( postAuthor => {
 									if ( postAuthor.username !== user.username ) {
 										new Notification({
-											author: user.username,
-											authorFullname: user.fullname,
-											authorImg: user.profileImage,
-											receiver: postAuthor.username,
+											author: user._id,
+											receiver: postAuthor._id,
 											content: "liked your post",
 											mediaImg: mediaImg,
 											externalImg: !post.picture,

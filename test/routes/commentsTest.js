@@ -20,12 +20,14 @@ chai.use( chaiHttp );
 describe( "POST comments/create", function() {
 	var
 		token,
+		author,
 		postId;
 
 	before( function( done ) {
 		User.findOne({ email: "test@gmail.com" })
 			.exec()
 			.then( user => {
+				author = user;
 				token = tokenGenerator( user );
 				new Post({
 					author: user._id,
@@ -40,7 +42,7 @@ describe( "POST comments/create", function() {
 
 	after( function( done ) {
 		Notification.findOne({
-			author: "signuptestuser",
+			author: author._id,
 			receiver: "signuptestuser",
 			comment: true
 		})
@@ -152,7 +154,7 @@ describe( "DELETE comments/delete", function() {
 					.then( post => {
 						postId = post.id;
 						new Comment({
-							author: user.username,
+							author: user._id,
 							authorFullname: user.fullname,
 							content: "test",
 							post: postId
@@ -265,7 +267,7 @@ describe( "PATCH comments/update", function() {
 					.then( post => {
 						postId = post.id;
 						new Comment({
-							author: user.username,
+							author: user._id,
 							authorFullname: user.fullname,
 							content: "test",
 							post: postId

@@ -75,8 +75,8 @@ Router.post( "/add", ( req, res, next ) => {
 
 
 					Notification.findOne({
-						author: user.username,
-						receiver: friend.username,
+						author: user._id,
+						receiver: friend._id,
 						friendRequest: true
 					})
 						.exec()
@@ -86,10 +86,8 @@ Router.post( "/add", ( req, res, next ) => {
 							}
 
 							new Notification({
-								author: user.username,
-								authorFullname: user.fullname,
-								authorImg: user.profileImage,
-								receiver: friend.username,
+								author: user._id,
+								receiver: friend._id,
 								content: "sent you a friend request",
 								friendRequest: true
 							}).save()
@@ -147,8 +145,13 @@ Router.delete( "/delete", ( req, res, next ) => {
 		}).catch( err => next( err ));
 });
 
-Router.post( "/isRequested", ( req, res, next ) => {
-	var userId;
+Router.post( "/isRequested", async( req, res, next ) => {
+	var
+		userId,
+		user,
+		target,
+		userRequested,
+		targetRequested;
 
 	if ( !req.body.token || !req.body.targetUsername ) {
 		return next( errors.blankData());
@@ -156,26 +159,21 @@ Router.post( "/isRequested", ( req, res, next ) => {
 
 	try {
 		userId = tokenVerifier( req.body.token );
+		user = await User.findById( userId ).exec();
+		target = await User.findOne({
+			username: req.body.targetUsername
+		}).exec();
+		if ( !user || !target ) {
+			return next( errors.userDoesntExist());
+		}
+		userRequested = user.pendingRequests.includes(
+			target.username );
+		targetRequested = target.pendingRequests.includes(
+			user.username );
 	} catch ( err ) {
 		return next( err );
 	}
-
-	User.findById( userId )
-		.exec()
-		.then( user => {
-			if ( !user ) {
-				return next( errors.userDoesntExist());
-			}
-
-			User.findOne({ username: req.body.targetUsername })
-				.exec()
-				.then( target => {
-					if ( !target ) {
-						return next( errors.userDoesntExist());
-					}
-					res.send( target.pendingRequests.includes( user.username ));
-				}).catch( err => next( err ));
-		}).catch( err => next( err ));
+	res.send({ user: userRequested, target: targetRequested });
 });
 
 Router.post( "/accept", ( req, res, next ) => {
@@ -205,8 +203,8 @@ Router.post( "/accept", ( req, res, next ) => {
 						return next( errors.userDoesntExist());
 					}
 					Notification.findOne({
-						receiver: user.username,
-						author: friend.username,
+						receiver: user._id,
+						author: friend._id,
 						friendRequest: true
 					})
 						.exec()
@@ -279,8 +277,8 @@ Router.delete( "/deleteReq", ( req, res, next ) => {
 						return next( errors.userDoesntExist());
 					}
 					Notification.findOne({
-						receiver: user.username,
-						author: friend.username,
+						receiver: user._id,
+						author: friend._id,
 						friendRequest: true
 					})
 						.exec()

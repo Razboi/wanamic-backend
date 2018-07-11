@@ -107,7 +107,7 @@ describe( "POST notifications/check", function() {
 			.then( user => {
 				token = tokenGenerator( user );
 				new Notification({
-					receiver: user.username,
+					receiver: user._id,
 					author: "testuser2",
 					authorFullname: "Test User",
 				}).save()

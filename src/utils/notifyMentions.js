@@ -26,10 +26,8 @@ notifyMentions = ( mentions, type, object, user ) => {
 				.then( targetUser => {
 					if ( targetUser && targetUser.username !== user.username ) {
 						new Notification({
-							author: user.username,
-							authorFullname: user.fullname,
-							authorImg: user.profileImage,
-							receiver: targetUser.username,
+							author: user._id,
+							receiver: targetUser._id,
 							content: "mentioned you in a " + type,
 							mediaImg: mediaImg,
 							externalImg: !post.picture,

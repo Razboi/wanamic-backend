@@ -47,9 +47,7 @@ Router.post( "/create", ( req, res, next ) => {
 					}
 
 					new Comment({
-						author: user.username,
-						authorFullname: user.fullname,
-						authorImg: user.profileImage,
+						author: user._id,
 						content: data.comment,
 						post: post._id
 					}).save()
@@ -65,10 +63,8 @@ Router.post( "/create", ( req, res, next ) => {
 										.then( postAuthor => {
 											if ( postAuthor.username !== user.username ) {
 												new Notification({
-													author: user.username,
-													authorFullname: user.fullname,
-													authorImg: user.profileImage,
-													receiver: postAuthor.username,
+													author: user._id,
+													receiver: postAuthor._id,
 													content: "commented on your post",
 													mediaImg: mediaImg,
 													externalImg: !post.picture,

@@ -48,12 +48,15 @@ before( function( done ) {
 
 // POST
 describe( "POST followers/follow", function() {
-	var token;
+	var
+		author,
+		token;
 
 	before( function( done ) {
 		User.findOne({ email: "test@gmail.com" })
 			.exec()
 			.then( user => {
+				author = user;
 				token = tokenGenerator( user );
 				done();
 			}).catch( err => done( err ));
@@ -61,7 +64,7 @@ describe( "POST followers/follow", function() {
 
 	after( function( done ) {
 		Notification.findOne({
-			author: "signuptestuser",
+			author: author._id,
 			receiver: "testuser2",
 			follow: true
 		})

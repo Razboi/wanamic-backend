@@ -132,16 +132,19 @@ describe( "POST posts/like", function() {
 	});
 
 	after( function( done ) {
-		Notification.findOne({
-			author: "signuptestuser",
-			receiver: "signuptestuser",
-		})
-			.exec()
-			.then( notification => {
-				notification && notification.remove();
-				Post.remove({ id: postId })
-					.then(() => done())
-					.catch( err => done( err ));
+		User.findOne({ username: "signuptestuser" }).exec()
+			.then( user => {
+				Notification.findOne({
+					author: user._id,
+					receiver: user._id,
+				})
+					.exec()
+					.then( notification => {
+						notification && notification.remove();
+						Post.remove({ id: postId })
+							.then(() => done())
+							.catch( err => done( err ));
+					});
 			}).catch( err => done( err ));
 	});
 
