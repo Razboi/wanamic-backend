@@ -16,43 +16,25 @@ chai.use( chaiHttp );
 mongoose.connect( process.env.MONGODB_URL );
 
 
-// after running tests delete the testing posts
-after( function( done ) {
-	User.remove({ email: "usertest@gmail.com" })
-		.then(() => {
-			User.remove({ email: "usertest2@gmail.com" })
-				.then(() => done())
-				.catch( err => done( err ));
-		}).catch( err => done( err ));
-});
-
-before( function( done ) {
-	new User({
-		email: "usertest@gmail.com",
-		username: "testuser",
-		fullname: "Test User",
-		passwordHash: bcrypt.hashSync( "test", 10 )
-	})
-		.save()
-		.then( user => {
-			token = tokenGenerator( user );
-			new User({
-				email: "usertest2@gmail.com",
-				username: "testuser2",
-				fullname: "Test User2",
-				keywords: [ "test" ],
-				passwordHash: bcrypt.hashSync( "test2", 10 )
-			})
-				.save()
-				.then( user => {
-					done();
-				}).catch( err => done( err ));
-		}).catch( err => done( err ));
-});
 
 
-// GET :username
 describe( "GET user/:username info", function() {
+	var
+		author;
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+	});
+
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			keywords: [ "test" ],
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+	});
 
 	it( "should return 200", function( done ) {
 		chai.request( "localhost:8000" )
@@ -84,10 +66,28 @@ describe( "GET user/:username info", function() {
 });
 
 
-// POST info
-describe( "post user/info", function() {
 
-	it( "should return 200", function( done ) {
+describe( "post user/info", function() {
+	var
+		token,
+		author;
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+	});
+
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			keywords: [ "test" ],
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+	});
+
+	it( "gets the user info, should return 200", function( done ) {
 		chai.request( "localhost:8000" )
 			.post( "/user/info" )
 			.send({
@@ -132,9 +132,8 @@ describe( "post user/info", function() {
 });
 
 
-// POST match
-describe( "post user/match", function() {
 
+describe( "post user/match", function() {
 	it( "should return 200", function( done ) {
 		chai.request( "localhost:8000" )
 			.post( "/user/match" )
@@ -159,8 +158,26 @@ describe( "post user/match", function() {
 });
 
 
-// POST updateInterests
+
 describe( "post user/updateInterests", function() {
+	var
+		token,
+		author;
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+	});
+
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			keywords: [ "test" ],
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+	});
 
 	it( "should return 201", function( done ) {
 		chai.request( "localhost:8000" )
@@ -217,8 +234,26 @@ describe( "post user/updateInterests", function() {
 });
 
 
-// POST sugestedUsers
+
 describe( "post user/sugestedUsers", function() {
+	var
+		token,
+		author;
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+	});
+
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			keywords: [ "test" ],
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+	});
 
 	it( "should return 200", function( done ) {
 		chai.request( "localhost:8000" )
@@ -275,8 +310,26 @@ describe( "post user/sugestedUsers", function() {
 });
 
 
-// POST randomUser
+
 describe( "post user/randomUser", function() {
+	var
+		token,
+		author;
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+	});
+
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			keywords: [ "test" ],
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+	});
 
 	it( "should return 200", function( done ) {
 		chai.request( "localhost:8000" )
@@ -317,8 +370,26 @@ describe( "post user/randomUser", function() {
 });
 
 
-// POST matchKwUsers
+
 describe( "post user/matchKwUsers", function() {
+	var
+		token,
+		author;
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+	});
+
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			keywords: [ "test" ],
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+	});
 
 	it( "should return 200", function( done ) {
 		chai.request( "localhost:8000" )
@@ -393,8 +464,26 @@ describe( "post user/matchKwUsers", function() {
 });
 
 
-// POST setUserKw
+
 describe( "post user/setUserKw", function() {
+	var
+		token,
+		author;
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+	});
+
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			keywords: [ "test" ],
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+	});
 
 	it( "should return 201", function( done ) {
 		chai.request( "localhost:8000" )
@@ -451,7 +540,26 @@ describe( "post user/setUserKw", function() {
 });
 
 
+
 describe( "post user/getChats", function() {
+	var
+		token,
+		author;
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+	});
+
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			keywords: [ "test" ],
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+	});
 
 	it( "should return 200", function( done ) {
 		chai.request( "localhost:8000" )
@@ -486,7 +594,27 @@ describe( "post user/getChats", function() {
 	});
 });
 
+
+
 describe( "post user/getSocialCircle", function() {
+	var
+		token,
+		author;
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+	});
+
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			keywords: [ "test" ],
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+	});
 
 	it( "should return 200", function( done ) {
 		chai.request( "localhost:8000" )

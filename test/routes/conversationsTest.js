@@ -7,6 +7,7 @@ const
 	dotenv = require( "dotenv" ),
 	bcrypt = require( "bcrypt" ),
 	tokenGenerator = require( "../../src/utils/tokenGenerator" ),
+	Conversation = require( "../../src/models/Conversation" ),
 	Message = require( "../../src/models/Message" ),
 	User = require( "../../src/models/User" );
 
@@ -15,58 +16,33 @@ chai.use( chaiHttp );
 mongoose.connect( process.env.MONGODB_URL );
 
 
-after( function( done ) {
-	User.remove({ email: "test@gmail.com" })
-		.then(() => {
-			User.remove({ email: "test2@gmail.com" })
-				.then(() => {
-					Message.remove({ receiver: "testuser" })
-						.then(() => done())
-						.catch( err => done( err ));
-				}).catch( err => done( err ));
-		}).catch( err => done( err ));
-});
-
-before( function( done ) {
-	new User({
-		email: "test@gmail.com",
-		username: "testuser",
-		fullname: "Test User",
-		passwordHash: bcrypt.hashSync( "test", 10 )
-	})
-		.save()
-		.then(() => {
-			new User({
-				email: "test2@gmail.com",
-				username: "testuser2",
-				fullname: "Test User2",
-				passwordHash: bcrypt.hashSync( "test", 10 )
-			})
-				.save()
-				.then(() => done())
-				.catch( err => done( err ));
-		}).catch( err => done( err ));
-});
-
-
 describe( "POST conversations/add", function() {
-	var token;
-
-	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				token = tokenGenerator( user );
-				done();
-			}).catch( err => done( err ));
+	var
+		user,
+		token;
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+		await Conversation.remove({ author: user._id });
+		await Conversation.remove({ target: user._id });
+		await Message.remove({ receiver: "testuser" });
 	});
 
-	it( "returns conversations, should return 200", function( done ) {
+	before( async function() {
+		user = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( user );
+	});
+
+	it( "adds a conversation, should return 200", function( done ) {
 		chai.request( "localhost:8000" )
 			.post( "/conversations/add" )
 			.send({
 				token: token,
-				friendUsername: "testuser",
+				friendUsername: user.username,
 				content: "sup"
 			})
 			.end(( err, res ) => {

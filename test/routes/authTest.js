@@ -5,21 +5,31 @@ const
 	request = require( "request" ),
 	mongoose = require( "mongoose" ),
 	dotenv = require( "dotenv" ),
+	bcrypt = require( "bcrypt" ),
 	tokenGenerator = require( "../../src/utils/tokenGenerator" ),
 	refreshTokenGenerator = require( "../../src/utils/refreshTokenGenerator" ),
 	User = require( "../../src/models/User" );
 
 dotenv.config();
 chai.use( chaiHttp );
+mongoose.connect( process.env.MONGODB_URL );
 
 describe( "auth/signup", function() {
-	// before testing connect to the db and delete the testing account
-	before( function( done ) {
-		mongoose.connect( process.env.MONGODB_URL );
-		User.remove({ email: "test@gmail.com" })
-			.then(() => {
-				done();
-			}).catch( err => done( err ));
+
+	before( async function() {
+		author = await new User({
+			email: "test2@gmail.com",
+			username: "testuser2",
+			fullname: "Test User",
+			keywords: [ "test" ],
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+	});
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+		await User.remove({ email: "test2@gmail.com" });
 	});
 
 	it( "should return 201", function( done ) {
@@ -61,7 +71,7 @@ describe( "auth/signup", function() {
 			.post( "/auth/signup" )
 			.send({
 				credentials: {
-					email: "test@gmail.com",
+					email: "test2@gmail.com",
 					username: "newtestuser",
 					fullname: "Test User",
 					password: "test"
@@ -80,7 +90,7 @@ describe( "auth/signup", function() {
 			.send({
 				credentials: {
 					email: "test2@gmail.com",
-					username: "testuser",
+					username: "testuser2",
 					fullname: "Test User",
 					password: "test"
 				}
@@ -96,6 +106,18 @@ describe( "auth/signup", function() {
 
 
 describe( "auth/login", function() {
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+	});
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+	});
 
 	it( "should return 200", function( done ) {
 		chai.request( "localhost:8000" )
@@ -180,15 +202,22 @@ describe( "auth/login", function() {
 
 
 describe( "auth/verify", function() {
-	var token;
+	var
+		author,
+		token;
 
-	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				token = tokenGenerator( user );
-				done();
-			}).catch( err => done( err ));
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+	});
+
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
 	});
 
 	it( "should return 200", function( done ) {
@@ -225,15 +254,22 @@ describe( "auth/verify", function() {
 
 
 describe( "auth/token", function() {
-	var refreshToken;
+	var
+		author,
+		refreshToken;
 
-	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				refreshToken = refreshTokenGenerator( user );
-				done();
-			}).catch( err => done( err ));
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+	});
+
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		refreshToken = await refreshTokenGenerator( author );
 	});
 
 	it( "should return 201", function( done ) {
@@ -270,15 +306,22 @@ describe( "auth/token", function() {
 
 
 describe( "auth/refreshToken", function() {
-	var token;
+	var
+		author,
+		token;
 
-	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				token = tokenGenerator( user );
-				done();
-			}).catch( err => done( err ));
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+	});
+
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
 	});
 
 	it( "should return 201", function( done ) {

@@ -135,7 +135,7 @@ Router.delete( "/delete", ( req, res, next ) => {
 
 					Comment.findById( data.commentId )
 						.then( comment => {
-							if ( user.username !== comment.author ) {
+							if ( !user._id.equals( comment.author )) {
 								return next( errors.unauthorized());
 							}
 							comment.remove()
@@ -174,7 +174,7 @@ Router.patch( "/update", ( req, res, next ) => {
 					if ( !comment ) {
 						return next( errors.commentDoesntExist());
 					}
-					if ( user.username !== comment.author ) {
+					if ( !user._id.equals( comment.author )) {
 						return next( errors.unauthorized());
 					}
 					comment.content = data.newContent;

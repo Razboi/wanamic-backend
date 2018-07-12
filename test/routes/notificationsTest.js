@@ -15,47 +15,31 @@ chai.use( chaiHttp );
 mongoose.connect( process.env.MONGODB_URL );
 
 
-after( function( done ) {
-	User.remove({ email: "test@gmail.com" })
-		.then(() => {
-			User.remove({ email: "test2@gmail.com" })
-				.then(() => done())
-				.catch( err => done( err ));
-		}).catch( err => done( err ));
-});
-
-before( function( done ) {
-	new User({
-		email: "test@gmail.com",
-		username: "testuser",
-		fullname: "Test User",
-		passwordHash: bcrypt.hashSync( "test", 10 )
-	})
-		.save()
-		.then(() => {
-			new User({
-				email: "test2@gmail.com",
-				username: "testuser2",
-				fullname: "Test User2",
-				passwordHash: bcrypt.hashSync( "test", 10 )
-			})
-				.save()
-				.then(() => done())
-				.catch( err => done( err ));
-		}).catch( err => done( err ));
-});
-
-
 describe( "POST notifications/retrieve", function() {
-	var token;
+	var
+		author,
+		receiver,
+		token;
 
-	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				token = tokenGenerator( user );
-				done();
-			}).catch( err => done( err ));
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+		await User.remove({ email: "test2@gmail.com" });
+	});
+
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+		receiver = await new User({
+			email: "test2@gmail.com",
+			username: "testuser2",
+			fullname: "Test User2",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
 	});
 
 	it( "returns notifications, should return 200", function( done ) {
@@ -98,32 +82,35 @@ describe( "POST notifications/retrieve", function() {
 
 describe( "POST notifications/check", function() {
 	var
-		notificationId,
+		notification,
+		author,
+		receiver,
 		token;
 
-	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				token = tokenGenerator( user );
-				new Notification({
-					receiver: user._id,
-					author: "testuser2",
-					authorFullname: "Test User",
-				}).save()
-					.then( notification => {
-						notificationId = notification._id;
-						done();
-					}).catch( err => done( err ));
-			}).catch( err => done( err ));
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+		await User.remove({ email: "test2@gmail.com" });
+		await Notification.remove({ receiver: author._id });
 	});
 
-	after( function( done ) {
-		Notification.findById( notificationId )
-			.then( notification => {
-				notification.remove();
-				done();
-			}).catch( err => done( err ));
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+		receiver = await new User({
+			email: "test2@gmail.com",
+			username: "testuser2",
+			fullname: "Test User2",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		notification = await new Notification({
+			receiver: author._id,
+			author: receiver._id
+		}).save();
 	});
 
 	it( "returns notifications, should return 200", function( done ) {
@@ -131,7 +118,7 @@ describe( "POST notifications/check", function() {
 			.post( "/notifications/check" )
 			.send({
 				token: token,
-				notificationId: notificationId
+				notificationId: notification._id
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 200 );
@@ -156,7 +143,7 @@ describe( "POST notifications/check", function() {
 		chai.request( "localhost:8000" )
 			.post( "/notifications/check" )
 			.send({
-				notificationId: notificationId
+				notificationId: notification._id
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
@@ -170,7 +157,7 @@ describe( "POST notifications/check", function() {
 			.post( "/notifications/check" )
 			.send({
 				token: "123213adasdsad21321321",
-				notificationId: notificationId
+				notificationId: notification._id
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );

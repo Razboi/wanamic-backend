@@ -176,124 +176,70 @@ Router.post( "/isRequested", async( req, res, next ) => {
 	res.send({ user: userRequested, target: targetRequested });
 });
 
-Router.post( "/accept", ( req, res, next ) => {
-	var userId;
+
+Router.post( "/accept", async( req, res, next ) => {
+	var
+		userId,
+		user,
+		friend;
 
 	if ( !req.body.token || !req.body.friendUsername ) {
 		return next( errors.blankData());
 	}
+	const { token, friendUsername } = req.body;
 
 	try {
-		userId = tokenVerifier( req.body.token );
+		userId = await tokenVerifier( token );
+		user = await User.findById( userId ).exec();
+		friend = await User.findOne({ username: friendUsername }).exec();
+		if ( !user || !friend ) {
+			return next( errors.userDoesntExist());
+		}
+		const notification = await Notification.findOne({
+			receiver: user._id,
+			author: friend._id,
+			friendRequest: true
+		}).exec();
+
+		if ( !notification ) {
+			return next( errors.notificationDoesntExist());
+		}
+
+		if ( user.friends.some( id => friend._id.equals( id )) ||
+				friend.friends.some( id => user._id.equals( id ))) {
+			return next( errors.blankData());
+		}
+		user.friends.push( friend._id );
+		friend.friends.push( user._id );
+
+		// Unfollow
+		if ( friend.following.some( id => user._id.equals( id ))) {
+			const
+				indexUser = friend.following.indexOf( user._id ),
+				indexFriend = user.followers.indexOf( friend._id );
+
+			friend.following.splice( indexUser, 1 );
+			user.followers.splice( indexFriend, 1 );
+		}
+		if ( user.following.some( id => friend._id.equals( id ))) {
+			const
+				indexFriend = user.following.indexOf( friend._id ),
+				indexUser = friend.followers.indexOf( user._id );
+
+			user.following.splice( indexFriend, 1 );
+			friend.followers.splice( indexUser, 1 );
+		}
+
+		const requestIndex = friend.pendingRequests.indexOf( user.username );
+		friend.pendingRequests.splice( requestIndex, 1 );
+		user.save();
+		friend.save();
+		await notification.remove();
 	} catch ( err ) {
 		return next( err );
 	}
-
-	User.findById( userId )
-		.exec()
-		.then( user => {
-			if ( !user ) {
-				return next( errors.userDoesntExist());
-			}
-
-			User.findOne({ username: req.body.friendUsername })
-				.exec()
-				.then( friend => {
-					if ( !friend ) {
-						return next( errors.userDoesntExist());
-					}
-					Notification.findOne({
-						receiver: user._id,
-						author: friend._id,
-						friendRequest: true
-					})
-						.exec()
-						.then( notification => {
-							if ( !notification ) {
-								return next( errors.notificationDoesntExist());
-							}
-
-							if ( user.friends.some( id => friend._id.equals( id )) ||
-									friend.friends.some( id => user._id.equals( id ))) {
-								return next( errors.blankData());
-							}
-
-							user.friends.push( friend._id );
-							friend.friends.push( user._id );
-
-							if ( friend.following.some( id => user._id.equals( id ))) {
-								const
-									indexUser = friend.following.indexOf( user._id ),
-									indexFriend = user.followers.indexOf( friend._id );
-
-								friend.following.splice( indexUser, 1 );
-								user.followers.splice( indexFriend, 1 );
-							}
-							if ( user.following.some( id => friend._id.equals( id ))) {
-								const
-									indexFriend = user.following.indexOf( friend._id ),
-									indexUser = friend.followers.indexOf( user._id );
-
-								user.following.splice( indexFriend, 1 );
-								friend.followers.splice( indexUser, 1 );
-							}
-							const requestIndex = friend.pendingRequests.indexOf( user.username );
-							friend.pendingRequests.splice( requestIndex, 1 );
-							Promise.all([ user.save(), friend.save() ])
-								.then(() => {
-									notification.remove();
-									res.sendStatus( 201 );
-								}).catch( err => next( err ));
-						}).catch( err => next( err ));
-				}).catch( err => next( err ));
-		}).catch( err => next( err ));
+	res.sendStatus( 201 );
 });
 
-
-Router.delete( "/deleteReq", ( req, res, next ) => {
-	var userId;
-
-	if ( !req.body.token || !req.body.friendUsername ) {
-		return next( errors.blankData());
-	}
-
-	try {
-		userId = tokenVerifier( req.body.token );
-	} catch ( err ) {
-		return next( err );
-	}
-
-	User.findById( userId )
-		.exec()
-		.then( user => {
-			if ( !user ) {
-				return next( errors.userDoesntExist());
-			}
-
-			User.findOne({ username: req.body.friendUsername })
-				.exec()
-				.then( friend => {
-					if ( !friend ) {
-						return next( errors.userDoesntExist());
-					}
-					Notification.findOne({
-						receiver: user._id,
-						author: friend._id,
-						friendRequest: true
-					})
-						.exec()
-						.then( notification => {
-							if ( !notification ) {
-								return next( errors.notificationDoesntExist());
-							}
-
-							notification.remove()
-								.then(() => res.sendStatus( 200 ))
-
-								.catch( err => next( err ));
-						}).catch( err => next( err ));
-				}).catch( err => next( err ));
-		}).catch( err => next( err ));
-});
 
 module.exports = Router;

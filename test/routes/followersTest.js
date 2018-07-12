@@ -15,72 +15,40 @@ chai.use( chaiHttp );
 mongoose.connect( process.env.MONGODB_URL );
 
 
-after( function( done ) {
-	User.remove({ email: "test@gmail.com" })
-		.then(() => {
-			User.remove({ email: "test2@gmail.com" })
-				.then(() => done())
-				.catch( err => done( err ));
-		}).catch( err => done( err ));
-});
-
-before( function( done ) {
-	new User({
-		email: "test@gmail.com",
-		username: "testuser",
-		fullname: "Test User",
-		passwordHash: bcrypt.hashSync( "test", 10 )
-	})
-		.save()
-		.then(() => {
-			new User({
-				email: "test2@gmail.com",
-				username: "testuser2",
-				fullname: "Test User2",
-				passwordHash: bcrypt.hashSync( "test", 10 )
-			})
-				.save()
-				.then(() => done())
-				.catch( err => done( err ));
-		}).catch( err => done( err ));
-});
-
-
-// POST
 describe( "POST followers/follow", function() {
 	var
 		author,
+		receiver,
 		token;
 
-	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				author = user;
-				token = tokenGenerator( user );
-				done();
-			}).catch( err => done( err ));
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+		await User.remove({ email: "test2@gmail.com" });
+		await Notification.remove({ author: author._id });
 	});
 
-	after( function( done ) {
-		Notification.findOne({
-			author: author._id,
-			receiver: "testuser2",
-			follow: true
-		})
-			.exec()
-			.then( notification => {
-				notification.remove();
-				done();
-			}).catch( err => done( err ));
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+		receiver = await new User({
+			email: "test2@gmail.com",
+			username: "testuser2",
+			fullname: "Test User2",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
 	});
 
-	it( "adds a new user to following array, should return 201", function( done ) {
+	it( "adds a new follower/following", function( done ) {
 		chai.request( "localhost:8000" )
 			.post( "/followers/follow" )
 			.send({
 				token: token,
-				targetUsername: "testuser2"
+				targetUsername: receiver.username
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 201 );
@@ -119,7 +87,7 @@ describe( "POST followers/follow", function() {
 		chai.request( "localhost:8000" )
 			.post( "/followers/follow" )
 			.send({
-				targetUsername: "testuser2"
+				targetUsername: receiver.username
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
@@ -133,7 +101,7 @@ describe( "POST followers/follow", function() {
 			.post( "/followers/follow" )
 			.send({
 				token: "123213adasdsad21321321",
-				targetUsername: "testuser2"
+				targetUsername: receiver.username
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
@@ -144,17 +112,32 @@ describe( "POST followers/follow", function() {
 });
 
 
-// DELETE
-describe( "DELETE followers/unfollow", function() {
-	var token;
 
-	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				token = tokenGenerator( user );
-				done();
-			}).catch( err => done( err ));
+describe( "DELETE followers/unfollow", function() {
+	var
+		author,
+		receiver,
+		token;
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+		await User.remove({ email: "test2@gmail.com" });
+	});
+
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+		receiver = await new User({
+			email: "test2@gmail.com",
+			username: "testuser2",
+			fullname: "Test User2",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
 	});
 
 	it( "deletes a friend, should return 200", function( done ) {
@@ -162,7 +145,7 @@ describe( "DELETE followers/unfollow", function() {
 			.delete( "/followers/unfollow" )
 			.send({
 				token: token,
-				targetUsername: "testuser2"
+				targetUsername: receiver.username
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 200 );
@@ -187,7 +170,7 @@ describe( "DELETE followers/unfollow", function() {
 		chai.request( "localhost:8000" )
 			.delete( "/followers/unfollow" )
 			.send({
-				targetUsername: "testuser2"
+				targetUsername: receiver.username
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
@@ -215,7 +198,7 @@ describe( "DELETE followers/unfollow", function() {
 			.delete( "/followers/unfollow" )
 			.send({
 				token: "123213adasdsad21321321",
-				targetUsername: "test2@gmail.com"
+				targetUsername: receiver.username
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
@@ -226,25 +209,40 @@ describe( "DELETE followers/unfollow", function() {
 });
 
 
-// POST
-describe( "POST followers/setupFollow", function() {
-	var token;
 
-	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				token = tokenGenerator( user );
-				done();
-			}).catch( err => done( err ));
+describe( "POST followers/setupFollow", function() {
+	var
+		author,
+		receiver,
+		token;
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+		await User.remove({ email: "test2@gmail.com" });
 	});
 
-	it( "adds a list of users to following, should return 201", function( done ) {
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+		receiver = await new User({
+			email: "test2@gmail.com",
+			username: "testuser2",
+			fullname: "Test User2",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+	});
+
+	it( "setup following, should return 201", function( done ) {
 		chai.request( "localhost:8000" )
 			.post( "/followers/setupFollow" )
 			.send({
 				token: token,
-				users: [ "testuser2", "testuser" ]
+				users: [ receiver.username, author.username ]
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 201 );
@@ -283,7 +281,7 @@ describe( "POST followers/setupFollow", function() {
 		chai.request( "localhost:8000" )
 			.post( "/followers/setupFollow" )
 			.send({
-				users: [ "testuser2", "testuser" ]
+				users: [ receiver.username, author.username ]
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
@@ -297,7 +295,7 @@ describe( "POST followers/setupFollow", function() {
 			.post( "/followers/setupFollow" )
 			.send({
 				token: "123213adasdsad21321321",
-				users: [ "testuser2", "testuser" ]
+				users: [ receiver.username, author.username ]
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );

@@ -4,7 +4,7 @@ const
 
 	NotificationSchema = mongoose.Schema({
 		author: { type: Schema.Types.ObjectId, ref: "User", required: true },
-		receiver: { type: String, required: true },
+		receiver: { type: Schema.Types.ObjectId, ref: "User", required: true },
 		content: { type: String },
 		mediaImg: { type: String },
 		externalImg: { type: Boolean, default: false },

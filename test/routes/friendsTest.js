@@ -15,64 +15,34 @@ chai.use( chaiHttp );
 mongoose.connect( process.env.MONGODB_URL );
 
 
-after( function( done ) {
-	User.remove({ email: "test@gmail.com" })
-		.then(() => {
-			User.remove({ email: "test2@gmail.com" })
-				.then(() => done())
-				.catch( err => done( err ));
-		}).catch( err => done( err ));
-});
-
-before( function( done ) {
-	new User({
-		email: "test@gmail.com",
-		username: "testuser",
-		fullname: "Test User",
-		passwordHash: bcrypt.hashSync( "test", 10 )
-	})
-		.save()
-		.then(() => {
-			new User({
-				email: "test2@gmail.com",
-				username: "testuser2",
-				fullname: "Test User2",
-				passwordHash: bcrypt.hashSync( "test", 10 )
-			})
-				.save()
-				.then(() => done())
-				.catch( err => done( err ));
-		}).catch( err => done( err ));
-});
-
-
-// POST
 describe( "POST friends/add", function() {
 	var
 		author,
+		target,
 		token;
 
-	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				author = user;
-				token = tokenGenerator( user );
-				done();
-			}).catch( err => done( err ));
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+		await User.remove({ email: "test2@gmail.com" });
+		await Notification.remove({
+			author: author._id, friendRequest: true
+		});
 	});
 
-	after( function( done ) {
-		Notification.findOne({
-			author: author._id,
-			receiver: "testuser2",
-			friendRequest: true
-		})
-			.exec()
-			.then( notification => {
-				notification.remove();
-				done();
-			}).catch( err => done( err ));
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+		target = await new User({
+			email: "test2@gmail.com",
+			username: "testuser2",
+			fullname: "Test User2",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
 	});
 
 	it( "adds a new friend, should return 201", function( done ) {
@@ -80,7 +50,7 @@ describe( "POST friends/add", function() {
 			.post( "/friends/add" )
 			.send({
 				token: token,
-				friendUsername: "testuser2"
+				friendUsername: target.username
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 201 );
@@ -105,7 +75,7 @@ describe( "POST friends/add", function() {
 		chai.request( "localhost:8000" )
 			.post( "/friends/add" )
 			.send({
-				friendUsername: "testuser2"
+				friendUsername: target.username
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
@@ -119,7 +89,7 @@ describe( "POST friends/add", function() {
 			.post( "/friends/add" )
 			.send({
 				token: "123213adasdsad21321321",
-				friendUsername: "testuser2"
+				friendUsername: target.username
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
@@ -144,17 +114,32 @@ describe( "POST friends/add", function() {
 });
 
 
-// DELETE
-describe( "DELETE friends/delete", function() {
-	var token;
 
-	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				token = tokenGenerator( user );
-				done();
-			}).catch( err => done( err ));
+describe( "DELETE friends/delete", function() {
+	var
+		author,
+		target,
+		token;
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+		await User.remove({ email: "test2@gmail.com" });
+	});
+
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+		target = await new User({
+			email: "test2@gmail.com",
+			username: "testuser2",
+			fullname: "Test User2",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
 	});
 
 	it( "deletes a friend, should return 200", function( done ) {
@@ -162,7 +147,7 @@ describe( "DELETE friends/delete", function() {
 			.delete( "/friends/delete" )
 			.send({
 				token: token,
-				friendUsername: "testuser2"
+				friendUsername: target.username
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 200 );
@@ -187,7 +172,7 @@ describe( "DELETE friends/delete", function() {
 		chai.request( "localhost:8000" )
 			.delete( "/friends/delete" )
 			.send({
-				friendUsername: "testuser2"
+				friendUsername: target.username
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
@@ -201,7 +186,7 @@ describe( "DELETE friends/delete", function() {
 			.delete( "/friends/delete" )
 			.send({
 				token: "123213adasdsad21321321",
-				friendUsername: "testuser2"
+				friendUsername: target.username
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
@@ -225,16 +210,33 @@ describe( "DELETE friends/delete", function() {
 	});
 });
 
-describe( "POST friends/isRequested", function() {
-	var token;
 
-	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				token = tokenGenerator( user );
-				done();
-			}).catch( err => done( err ));
+
+describe( "POST friends/isRequested", function() {
+	var
+		author,
+		target,
+		token;
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+		await User.remove({ email: "test2@gmail.com" });
+	});
+
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+		target = await new User({
+			email: "test2@gmail.com",
+			username: "testuser2",
+			fullname: "Test User2",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
 	});
 
 	it( "should return 200", function( done ) {
@@ -242,7 +244,7 @@ describe( "POST friends/isRequested", function() {
 			.post( "/friends/isRequested" )
 			.send({
 				token: token,
-				targetUsername: "testuser2"
+				targetUsername: target.username
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 200 );
@@ -267,7 +269,7 @@ describe( "POST friends/isRequested", function() {
 		chai.request( "localhost:8000" )
 			.post( "/friends/isRequested" )
 			.send({
-				targetUsername: "testuser2"
+				targetUsername: target.username
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
@@ -281,7 +283,7 @@ describe( "POST friends/isRequested", function() {
 			.post( "/friends/isRequested" )
 			.send({
 				token: "123213adasdsad21321321",
-				targetUsername: "testuser2"
+				targetUsername: target.username
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
@@ -305,25 +307,40 @@ describe( "POST friends/isRequested", function() {
 	});
 });
 
-describe( "POST friends/accept", function() {
-	var token;
 
-	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				token = tokenGenerator( user );
-				User.findOne({ username: "testuser2" }).exec()
-					.then( author => {
-						new Notification({
-							receiver: user._id,
-							author: author._id,
-							authorFullname: "Test User",
-							friendRequest: true
-						}).save()
-							.then(() => done());
-					});
-			}).catch( err => done( err ));
+
+describe( "POST friends/accept", function() {
+	var
+		author,
+		target,
+		token,
+		notification;
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+		await User.remove({ email: "test2@gmail.com" });
+		await Notification.remove({ receiver: author._id });
+	});
+
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+		target = await new User({
+			email: "test2@gmail.com",
+			username: "testuser23",
+			fullname: "Test User2",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		notification = await new Notification({
+			receiver: author._id,
+			author: target._id,
+			friendRequest: true
+		}).save();
 	});
 
 	it( "should return 201", function( done ) {
@@ -331,7 +348,7 @@ describe( "POST friends/accept", function() {
 			.post( "/friends/accept" )
 			.send({
 				token: token,
-				friendUsername: "testuser2"
+				friendUsername: target.username
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 201 );
@@ -356,7 +373,7 @@ describe( "POST friends/accept", function() {
 		chai.request( "localhost:8000" )
 			.post( "/friends/accept" )
 			.send({
-				friendUsername: "testuser2"
+				friendUsername: target.username
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
@@ -370,7 +387,7 @@ describe( "POST friends/accept", function() {
 			.post( "/friends/accept" )
 			.send({
 				token: "123213adasdsad21321321",
-				friendUsername: "testuser2"
+				friendUsername: target.username
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
@@ -382,93 +399,6 @@ describe( "POST friends/accept", function() {
 	it( "should return 404 User doesn't exist", function( done ) {
 		chai.request( "localhost:8000" )
 			.post( "/friends/accept" )
-			.send({
-				token: token,
-				friendUsername: "inexistingusername"
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 404 );
-				res.text.should.equal( "User doesn't exist" );
-				done();
-			});
-	});
-});
-
-
-describe( "DELETE friends/deleteReq", function() {
-	var token;
-
-	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				token = tokenGenerator( user );
-				new Notification({
-					receiver: user._id,
-					author: "testuser2",
-					authorFullname: "Test User",
-					friendRequest: true
-				}).save()
-					.then(() => done());
-			}).catch( err => done( err ));
-	});
-
-	it( "should return 200", function( done ) {
-		chai.request( "localhost:8000" )
-			.delete( "/friends/deleteReq" )
-			.send({
-				token: token,
-				friendUsername: "testuser2"
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 200 );
-				done();
-			});
-	});
-
-	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
-			.delete( "/friends/deleteReq" )
-			.send({
-				token: token
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 422 );
-				res.text.should.equal( "Required data not found" );
-				done();
-			});
-	});
-
-	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
-			.delete( "/friends/deleteReq" )
-			.send({
-				friendUsername: "testuser2"
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 422 );
-				res.text.should.equal( "Required data not found" );
-				done();
-			});
-	});
-
-	it( "should return 401 malformed jwt", function( done ) {
-		chai.request( "localhost:8000" )
-			.delete( "/friends/deleteReq" )
-			.send({
-				token: "123213adasdsad21321321",
-				friendUsername: "testuser2"
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 401 );
-				res.text.should.equal( "jwt malformed" );
-				done();
-			});
-	});
-
-	it( "should return 404 User doesn't exist", function( done ) {
-		chai.request( "localhost:8000" )
-			.delete( "/friends/deleteReq" )
 			.send({
 				token: token,
 				friendUsername: "inexistingusername"

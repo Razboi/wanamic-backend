@@ -15,21 +15,25 @@ dotenv.config();
 chai.use( chaiHttp );
 mongoose.connect( process.env.MONGODB_URL );
 
-
-before( function( done ) {
-	new User({
-		email: "test@gmail.com",
-		username: "testuser",
-		fullname: "Test User",
-		passwordHash: bcrypt.hashSync( "test", 10 )
-	})
-		.save()
-		.then(() => done())
-		.catch( err => done( err ));
-});
-
-
 describe( "POST posts/explore/:skip", function() {
+	var
+		author,
+		token;
+
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+	});
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+	});
+
 	it( "gets explore posts, should return 200", function( done ) {
 		chai.request( "localhost:8000" )
 			.get( "/posts/explore/0" )
@@ -52,24 +56,22 @@ describe( "POST posts/explore/:skip", function() {
 
 describe( "POST posts/create", function() {
 	var
-		token,
-		userId;
+		author,
+		token;
 
-	// before running tests create a token
-	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				userId = user._id;
-				token = tokenGenerator( user );
-				done();
-			}).catch( err => done( err ));
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
 	});
 
-	after( function( done ) {
-		Post.remove({ author: userId })
-			.then(() => done())
-			.catch( err => done( err ));
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+		await Post.remove({ author: author._id });
 	});
 
 	it( "creates a new post, should return 201", function( done ) {
@@ -111,41 +113,29 @@ describe( "POST posts/create", function() {
 
 
 describe( "POST posts/like", function() {
-	var token;
+	var
+		author,
+		post,
+		token;
 
-	// before running tests create a token
-	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				token = tokenGenerator( user );
-				new Post({
-					author: user._id,
-					content: "Like me"
-				})
-					.save()
-					.then( post => {
-						postId = post.id;
-						done();
-					}).catch( err => done( err ));
-			}).catch( err => done( err ));
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+		post = await new Post({
+			author: author._id,
+			content: "Like me"
+		}).save();
 	});
 
-	after( function( done ) {
-		User.findOne({ username: "signuptestuser" }).exec()
-			.then( user => {
-				Notification.findOne({
-					author: user._id,
-					receiver: user._id,
-				})
-					.exec()
-					.then( notification => {
-						notification && notification.remove();
-						Post.remove({ id: postId })
-							.then(() => done())
-							.catch( err => done( err ));
-					});
-			}).catch( err => done( err ));
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+		await Post.remove({ author: author._id });
+		await Notification.remove({ author: author._id });
 	});
 
 	it( "creates adds a new like, should return 201", function( done ) {
@@ -153,7 +143,7 @@ describe( "POST posts/like", function() {
 			.post( "/posts/like" )
 			.send({
 				token: token,
-				postId: postId
+				postId: post._id
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 201 );
@@ -178,7 +168,7 @@ describe( "POST posts/like", function() {
 		chai.request( "localhost:8000" )
 			.post( "/posts/like" )
 			.send({
-				postId: postId
+				postId: post._id
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
@@ -192,7 +182,7 @@ describe( "POST posts/like", function() {
 			.post( "/posts/like" )
 			.send({
 				token: "1232312sadasd213213",
-				postId: postId
+				postId: post._id
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
@@ -204,30 +194,28 @@ describe( "POST posts/like", function() {
 
 
 describe( "POST posts/dislike", function() {
-	var token;
+	var
+		author,
+		post,
+		token;
 
-	// before running tests create a token
-	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				token = tokenGenerator( user );
-				new Post({
-					author: user._id,
-					content: "Like me"
-				})
-					.save()
-					.then( post => {
-						postId = post.id;
-						done();
-					}).catch( err => done( err ));
-			}).catch( err => done( err ));
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+		post = await new Post({
+			author: author._id,
+			content: "Like me"
+		}).save();
 	});
 
-	after( function( done ) {
-		Post.remove({ id: postId })
-			.then(() => done())
-			.catch( err => done( err ));
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+		await Post.remove({ author: author._id });
 	});
 
 	it( "removes a like, should return 200", function( done ) {
@@ -235,7 +223,7 @@ describe( "POST posts/dislike", function() {
 			.patch( "/posts/dislike" )
 			.send({
 				token: token,
-				postId: postId
+				postId: post._id
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 200 );
@@ -260,7 +248,7 @@ describe( "POST posts/dislike", function() {
 		chai.request( "localhost:8000" )
 			.patch( "/posts/dislike" )
 			.send({
-				postId: postId
+				postId: post._id
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
@@ -274,7 +262,7 @@ describe( "POST posts/dislike", function() {
 			.patch( "/posts/dislike" )
 			.send({
 				token: "1232312sadasd213213",
-				postId: postId
+				postId: post._id
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
@@ -287,24 +275,22 @@ describe( "POST posts/dislike", function() {
 
 describe( "POST posts/media", function() {
 	var
-		token,
-		userId;
+		author,
+		token;
 
-	// before running tests create a token
-	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				userId = user._id;
-				token = tokenGenerator( user );
-				done();
-			}).catch( err => done( err ));
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
 	});
 
-	after( function( done ) {
-		Post.remove({ author: userId })
-			.then(() => done())
-			.catch( err => done( err ));
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+		await Post.remove({ author: author._id });
 	});
 
 	it( "creates a new post, should return 201", function( done ) {
@@ -349,7 +335,8 @@ describe( "POST posts/media", function() {
 		chai.request( "localhost:8000" )
 			.post( "/posts/media" )
 			.send({
-				token: "1232312sadasd213213", data: { privacyRange: 1, alerts: {} }
+				token: "1232312sadasd213213",
+				data: { privacyRange: 1, alerts: {} }
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
@@ -361,31 +348,29 @@ describe( "POST posts/media", function() {
 
 describe( "POST posts/mediaLink", function() {
 	var
-		token,
-		userId;
+		author,
+		token;
 
-	// before running tests create a token
-	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				userId = user._id;
-				token = tokenGenerator( user );
-				done();
-			}).catch( err => done( err ));
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
 	});
 
-	after( function( done ) {
-		Post.remove({ author: userId })
-			.then(() => done())
-			.catch( err => done( err ));
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+		await Post.remove({ author: author._id });
 	});
 
 	it( "creates a new post, should return 201", function( done ) {
 		chai.request( "localhost:8000" )
 			.post( "/posts/mediaLink" )
 			.send({
-				token: token, link: "https://www.youtube.com/watch?v=B58OBfM-8A4"
+				token: token, link: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 201 );
@@ -410,7 +395,7 @@ describe( "POST posts/mediaLink", function() {
 		chai.request( "localhost:8000" )
 			.post( "/posts/mediaLink" )
 			.send({
-				link: "https://www.youtube.com/watch?v=B58OBfM-8A4"
+				link: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
@@ -424,7 +409,7 @@ describe( "POST posts/mediaLink", function() {
 			.post( "/posts/mediaLink" )
 			.send({
 				token: "1232312sadasd213213",
-				link: "https://www.youtube.com/watch?v=B58OBfM-8A4"
+				link: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
@@ -437,24 +422,22 @@ describe( "POST posts/mediaLink", function() {
 
 describe( "POST posts/mediaPicture", function() {
 	var
-		token,
-		userId;
+		author,
+		token;
 
-	// before running tests create a token
-	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				userId = user._id;
-				token = tokenGenerator( user );
-				done();
-			}).catch( err => done( err ));
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
 	});
 
-	after( function( done ) {
-		Post.remove({ author: userId })
-			.then(() => done())
-			.catch( err => done( err ));
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+		await Post.remove({ author: author._id });
 	});
 
 	it( "should return 422 for empty data", function( done ) {
@@ -487,15 +470,21 @@ describe( "POST posts/mediaPicture", function() {
 
 describe( "GET posts/:username/:skip", function() {
 	var
+		author,
 		token;
 
-	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				token = tokenGenerator( user );
-				done();
-			}).catch( err => done( err ));
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+	});
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
 	});
 
 	it( "should get the user posts", function( done ) {
@@ -515,15 +504,21 @@ describe( "GET posts/:username/:skip", function() {
 
 describe( "GET posts/newsfeed/:skip", function() {
 	var
+		author,
 		token;
 
-	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				token = tokenGenerator( user );
-				done();
-			}).catch( err => done( err ));
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+	});
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
 	});
 
 	it( "should get the user newsfeed", function( done ) {
@@ -566,25 +561,37 @@ describe( "GET posts/newsfeed/:skip", function() {
 
 describe( "DELETE posts/delete", function() {
 	var
+		author,
+		otherUser,
+		post,
 		token,
-		invalidToken,
-		postId;
+		invalidToken;
 
-	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				token = tokenGenerator( user );
-				new Post({
-					author: user._id,
-					content: "Delete me"
-				})
-					.save()
-					.then( post => {
-						postId = post.id;
-						done();
-					}).catch( err => done( err ));
-			}).catch( err => done( err ));
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		otherUser = await new User({
+			email: "test2@gmail.com",
+			username: "testuser2",
+			fullname: "Test User2",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+		invalidToken = tokenGenerator( otherUser );
+		post = await new Post({
+			author: author._id,
+			content: "Delete me"
+		}).save();
+	});
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+		await User.remove({ email: "test2@gmail.com" });
+		await Post.remove({ author: author._id });
 	});
 
 	it( "should return 422 Empty post data", function( done ) {
@@ -614,7 +621,7 @@ describe( "DELETE posts/delete", function() {
 		chai.request( "localhost:8000" )
 			.delete( "/posts/delete" )
 			.send({
-				post: { id: postId, token: "123123" }
+				post: { id: post._id, token: "123123" }
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
@@ -635,37 +642,11 @@ describe( "DELETE posts/delete", function() {
 			});
 	});
 
-	before( function( done ) {
-		User.findOne({ email: "test2@gmail.com" })
-			.exec()
-			.then( user => {
-				if ( !user ) {
-					chai.request( "localhost:8000" )
-						.post( "/auth/signup" )
-						.send({
-							credentials: {
-								email: "test2@gmail.com",
-								username: "testuser2",
-								fullname: "Test User2",
-								password: "test"
-							}
-						})
-						.end(( err, res ) => {
-							invalidToken = res.text;
-							done();
-						});
-				} else {
-					invalidToken = tokenGenerator( user );
-					done();
-				}
-			}).catch( err => done( err ));
-	});
-
 	it( "should return 401 Requester isn't the author", function( done ) {
 		chai.request( "localhost:8000" )
 			.delete( "/posts/delete" )
 			.send({
-				post: { id: postId, token: invalidToken }
+				post: { id: post._id, token: invalidToken }
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
@@ -674,15 +655,15 @@ describe( "DELETE posts/delete", function() {
 			});
 	});
 
+	// must go last to avoid 404 on other tests
 	it( "should return 200", function( done ) {
 		chai.request( "localhost:8000" )
 			.delete( "/posts/delete" )
 			.send({
-				post: { id: postId, token: token }
+				post: { id: post._id, token: token }
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 200 );
-				console.log( err );
 				done();
 			});
 	});
@@ -692,25 +673,37 @@ describe( "DELETE posts/delete", function() {
 
 describe( "PATCH posts/update", function() {
 	var
+		author,
+		otherUser,
+		post,
 		token,
-		invalidToken,
-		postId;
+		invalidToken;
 
-	// before updating a post we need to create the post and get the user token and postId
-	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				token = tokenGenerator( user );
-				new Post({
-					author: user._id,
-					content: "update test"
-				}).save()
-					.then( post => {
-						postId = post.id;
-						done();
-					}).catch( err => done( err ));
-			}).catch( err => done( err ));
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		otherUser = await new User({
+			email: "test2@gmail.com",
+			username: "testuser2",
+			fullname: "Test User2",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+		invalidToken = tokenGenerator( otherUser );
+		post = await new Post({
+			author: author._id,
+			content: "Update me"
+		}).save();
+	});
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+		await User.remove({ email: "test2@gmail.com" });
+		await Post.remove({ author: author._id });
 	});
 
 	it( "should return 200 and update the post", function( done ) {
@@ -719,7 +712,7 @@ describe( "PATCH posts/update", function() {
 			.send({
 				data: {
 					token: token,
-					post: { id: postId, content: "Updated content :)" }
+					post: { id: post._id, content: "Updated content" }
 				}
 			})
 			.end(( err, res ) => {
@@ -750,7 +743,7 @@ describe( "PATCH posts/update", function() {
 			.send({
 				data: {
 					token: "12312asdas123123",
-					post: { id: postId, content: "Should not update" }
+					post: { id: post._id, content: "Should not update" }
 				}
 			})
 			.end(( err, res ) => {
@@ -760,40 +753,13 @@ describe( "PATCH posts/update", function() {
 			});
 	});
 
-	// before testing get the invalid userToken. If the user doesn't exists create it
-	before( function( done ) {
-		User.findOne({ email: "test2@gmail.com" })
-			.exec()
-			.then( user => {
-				if ( !user ) {
-					chai.request( "localhost:8000" )
-						.post( "/auth/signup" )
-						.send({
-							credentials: {
-								email: "test2@gmail.com",
-								username: "testuser2",
-								fullname: "Test User2",
-								password: "test"
-							}
-						})
-						.end(( err, res ) => {
-							invalidToken = res.text;
-							done();
-						});
-				} else {
-					invalidToken = tokenGenerator( user );
-					done();
-				}
-			}).catch( err => done( err ));
-	});
-
 	it( "should return 401 Requester isn't the author", function( done ) {
 		chai.request( "localhost:8000" )
 			.patch( "/posts/update" )
 			.send({
 				data: {
 					token: invalidToken,
-					post: { id: postId, content: "Should not update" }
+					post: { id: post._id, content: "Should not update" }
 				}
 			})
 			.end(( err, res ) => {
@@ -802,36 +768,32 @@ describe( "PATCH posts/update", function() {
 				done();
 			});
 	});
-
-	after( function( done ) {
-		Post.remove({ _id: postId })
-			.exec()
-			.then(() => done())
-			.catch( err => done( err ));
-	});
 });
 
 
 describe( "POST posts/share", function() {
 	var
-		token,
-		postId;
+		author,
+		post,
+		token;
 
-	// before updating a post we need to create the post and get the user token and postId
-	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				token = tokenGenerator( user );
-				new Post({
-					author: user._id,
-					content: "test"
-				}).save()
-					.then( post => {
-						postId = post.id;
-						done();
-					}).catch( err => done( err ));
-			}).catch( err => done( err ));
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+		post = await new Post({
+			author: author._id,
+			content: "Share me"
+		}).save();
+	});
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+		await Post.remove({ author: author._id });
 	});
 
 	it( "should return 200 and share the post", function( done ) {
@@ -839,7 +801,7 @@ describe( "POST posts/share", function() {
 			.post( "/posts/share" )
 			.send({
 				token: token,
-				postId: postId
+				postId: post._id
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 201 );
@@ -864,7 +826,7 @@ describe( "POST posts/share", function() {
 		chai.request( "localhost:8000" )
 			.post( "/posts/share" )
 			.send({
-				postId: postId
+				postId: post._id
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
@@ -878,19 +840,12 @@ describe( "POST posts/share", function() {
 			.post( "/posts/share" )
 			.send({
 				token: "123213adasdsad21321321",
-				postId: postId
+				postId: post._id
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
 				res.text.should.equal( "jwt malformed" );
 				done();
 			});
-	});
-
-	after( function( done ) {
-		Post.remove({ _id: postId })
-			.exec()
-			.then(() => done())
-			.catch( err => done( err ));
 	});
 });
