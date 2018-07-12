@@ -13,8 +13,6 @@ const
 
 dotenv.config();
 chai.use( chaiHttp );
-mongoose.connect( process.env.MONGODB_URL );
-
 
 describe( "POST conversations/add", function() {
 	var

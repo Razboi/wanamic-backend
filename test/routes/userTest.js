@@ -13,9 +13,6 @@ const
 
 dotenv.config();
 chai.use( chaiHttp );
-mongoose.connect( process.env.MONGODB_URL );
-
-
 
 
 describe( "GET user/:username info", function() {
@@ -325,7 +322,6 @@ describe( "post user/randomUser", function() {
 			email: "test@gmail.com",
 			username: "testuser",
 			fullname: "Test User",
-			keywords: [ "test" ],
 			passwordHash: bcrypt.hashSync( "test", 10 )
 		}).save();
 		token = await tokenGenerator( author );
@@ -385,7 +381,6 @@ describe( "post user/matchKwUsers", function() {
 			email: "test@gmail.com",
 			username: "testuser",
 			fullname: "Test User",
-			keywords: [ "test" ],
 			passwordHash: bcrypt.hashSync( "test", 10 )
 		}).save();
 		token = await tokenGenerator( author );

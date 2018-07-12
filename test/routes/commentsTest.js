@@ -16,8 +16,6 @@ const
 dotenv.config();
 chai.use( chaiHttp );
 
-
-
 describe( "POST comments/create", function() {
 	var
 		author,

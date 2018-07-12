@@ -12,8 +12,6 @@ const
 
 dotenv.config();
 chai.use( chaiHttp );
-mongoose.connect( process.env.MONGODB_URL );
-
 
 describe( "POST friends/add", function() {
 	var
