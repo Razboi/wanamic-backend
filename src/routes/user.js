@@ -20,8 +20,9 @@ Router.get( "/:username", ( req, res, next ) => {
 	}
 
 	User.findOne({ username: req.params.username })
-		.select( "username fullname description keywords profileImage headerImage" +
-							" interests friends followers" )
+		.select( "username fullname description keywords profileImage" +
+							" headerImage interests friends followers location gender" +
+							" birthday totalLikes" )
 		.exec()
 		.then( user => {
 			if ( !user ) {
@@ -58,6 +59,15 @@ Router.post( "/info", upload.fields([ { name: "userImage", maxCount: 1 },
 		}
 		if ( newInfo.fullname && newInfo.fullname !== user.fullname ) {
 			user.fullname = newInfo.fullname;
+		}
+		if ( newInfo.location && newInfo.location !== user.location ) {
+			user.location = newInfo.location;
+		}
+		if ( newInfo.gender && newInfo.gender !== user.gender ) {
+			user.gender = newInfo.gender;
+		}
+		if ( newInfo.birthday && newInfo.birthday !== user.birthday ) {
+			user.birthday = newInfo.birthday;
 		}
 		if ( newInfo.username && newInfo.username !== user.username ) {
 			const userWithUsername = await User.findOne({
@@ -110,7 +120,7 @@ Router.post( "/match", ( req, res, next ) => {
 	}
 
 	User.find({ interests: { $in: req.body.data } })
-		.select( "username fullname description profileImage" )
+		.select( "username fullname description keywords profileImage" )
 		.limit( 10 )
 		.exec()
 		.then( users => {
@@ -478,7 +488,7 @@ Router.post( "/getUserNetwork", async( req, res, next ) => {
 		user = await User.findOne({ username: username })
 			.populate({
 				path: "friends followers following",
-				select: "username fullname profileImage description"
+				select: "username fullname profileImage description keywords"
 			})
 			.exec();
 		if ( !user ) {

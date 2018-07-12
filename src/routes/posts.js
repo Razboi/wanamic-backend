@@ -113,107 +113,94 @@ Router.post( "/create", async( req, res, next ) => {
 });
 
 
-Router.post( "/like", ( req, res, next ) => {
+Router.post( "/like", async( req, res, next ) => {
 	var
 		mediaImg,
-		data,
+		post,
+		user,
+		newNotification,
 		userId;
 
 	if ( !req.body.token || !req.body.postId ) {
 		return next( errors.blankData());
 	}
 
-	data = req.body;
+	const { token, postId } = req.body;
 
 	try {
-		userId = tokenVerifier( data.token );
+		userId = await tokenVerifier( token );
+		post = await Post.findById( postId ).exec();
+		if ( !post ) {
+			return next( errors.postDoesntExist());
+		}
+		if ( post.link ) {
+			mediaImg = post.linkContent.image;
+		} else {
+			mediaImg = post.mediaContent.image;
+		}
+		user = await User.findById( userId ).exec();
+		if ( !post.likedBy.includes( user.username )) {
+			post.likedBy.push( user.username );
+		}
+		post.save();
+		postAuthor = await User.findById( post.author ).exec();
+		postAuthor.totalLikes += 1;
+		if ( postAuthor.username !== user.username ) {
+			newNotification = await new Notification({
+				author: user._id,
+				receiver: postAuthor._id,
+				content: "liked your post",
+				mediaImg: mediaImg,
+				externalImg: !post.picture,
+				object: post._id
+			}).save();
+			postAuthor.notifications.push( newNotification );
+		}
+		postAuthor.save();
 	} catch ( err ) {
 		return next( err );
 	}
-
-	Post.findById( data.postId )
-		.exec()
-		.then( post => {
-			if ( !post ) {
-				return next( errors.postDoesntExist());
-			}
-			if ( post.link ) {
-				mediaImg = post.linkContent.image;
-			} else {
-				mediaImg = post.mediaContent.image;
-			}
-
-			User.findById( userId )
-				.then( user => {
-					if ( !post.likedBy.includes( user.username )) {
-						post.likedBy.push( user.username );
-					}
-					post.save()
-
-						.then( post => {
-							User.findById( post.author )
-								.exec()
-								.then( postAuthor => {
-									if ( postAuthor.username !== user.username ) {
-										new Notification({
-											author: user._id,
-											receiver: postAuthor._id,
-											content: "liked your post",
-											mediaImg: mediaImg,
-											externalImg: !post.picture,
-											object: post._id
-										}).save()
-											.then( newNotification => {
-												postAuthor.notifications.push( newNotification );
-												postAuthor.save();
-												res.status( 201 );
-												res.send( newNotification );
-
-											}).catch( err => next( err ));
-									} else {
-										res.sendStatus( 201 );
-									}
-								}).catch( err => next( err ));
-						}).catch( err => next( err ));
-				}).catch( err => next( err ));
-		}).catch( err => next( err ));
+	res.status( 201 );
+	res.send( newNotification );
 });
 
 
-Router.patch( "/dislike", ( req, res, next ) => {
+Router.patch( "/dislike", async( req, res, next ) => {
 	var
 		data,
-		userId;
+		userId,
+		post,
+		postAuthor;
 
 	if ( !req.body.token || !req.body.postId ) {
 		return next( errors.blankData());
 	}
-
-	data = req.body;
+	const { postId, token } = req.body;
 
 	try {
-		userId = tokenVerifier( data.token );
+		userId = await tokenVerifier( token );
+		post = await Post.findById( postId ).exec();
+		postAuthor = await User.findById( post.author ).exec();
+		user = await User.findById( userId ).exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+		if ( !post ) {
+			return next( errors.postDoesntExist());
+		}
+		if ( postAuthor && postAuthor.totalLikes > 0 ) {
+			postAuthor.totalLikes -= 1;
+			postAuthor.save();
+		}
+		if ( post.likedBy.includes( user.username )) {
+			const index = post.likedBy.indexOf( user.username );
+			post.likedBy.splice( index, 1 );
+		}
+		post.save();
 	} catch ( err ) {
 		return next( err );
 	}
-
-	Post.findById( data.postId )
-		.exec()
-		.then( post => {
-			if ( !post ) {
-				return next( errors.postDoesntExist());
-			}
-			User.findById( userId )
-				.then( user => {
-					if ( post.likedBy.includes( user.username )) {
-						const index = post.likedBy.indexOf( user.username );
-						post.likedBy.splice( index, 1 );
-					}
-					post.save()
-						.then(() => res.sendStatus( 200 ))
-						.catch( err => next( err ));
-				}).catch( err => next( err ));
-		}).catch( err => next( err ));
+	res.sendStatus( 200 );
 });
 
 
@@ -367,11 +354,14 @@ Router.post( "/mediaLink", ( req, res, next ) => {
 		}).catch( err => console.log( err ));
 });
 
-Router.post( "/mediaPicture", upload.single( "picture" ), ( req, res, next ) => {
+Router.post( "/mediaPicture", upload.single( "picture" ), async( req, res, next ) => {
 	var
 		mentions = [],
 		hashtags = [],
 		data,
+		newPost,
+		mentionsNotifications,
+		user,
 		userId;
 
 	if ( !req.body.token || !req.body || !req.file ) {
@@ -393,64 +383,53 @@ Router.post( "/mediaPicture", upload.single( "picture" ), ( req, res, next ) => 
 	}
 
 	try {
-		userId = tokenVerifier( data.token );
+		userId = await tokenVerifier( data.token );
+		user = await User.findById( userId ).exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+		newPost = await new Post({
+			author: user._id,
+			media: true,
+			picture: true,
+			content: data.content,
+			alerts: data.alerts,
+			hashtags: hashtags,
+			privacyRange: data.privacyRange,
+			mediaContent: {
+				image: req.file.filename,
+			}
+		}).save();
+		newPost = await newPost.populate({
+			path: "author",
+			select: "fullname username profileImage"
+		}).execPopulate();
+		User.update(
+			{ _id: { $in: user.friends } },
+			{ $push: { "newsfeed": newPost._id } },
+			{ multi: true }
+		).exec();
+		if ( data.privacyRange >= 2 ) {
+			User.update(
+				{ _id: { $in: user.followers } },
+				{ $push: { "newsfeed": newPost._id } },
+				{ multi: true }
+			).exec();
+		}
+		user.posts.push( newPost._id );
+		user.newsfeed.push( newPost._id );
+		user.album.push( req.file.filename );
+		user.save();
+		mentionsNotifications = await notifyMentions(
+			mentions, "post", newPost, user	);
 	} catch ( err ) {
 		return next( err );
 	}
-
-	User.findById( userId )
-		.exec()
-		.then( user => {
-			if ( !user ) {
-				return next( errors.userDoesntExist());
-			}
-			new Post({
-				author: user._id,
-				media: true,
-				picture: true,
-				content: data.content,
-				alerts: data.alerts,
-				hashtags: hashtags,
-				privacyRange: data.privacyRange,
-				mediaContent: {
-					image: req.file.filename,
-				}
-			}).save()
-				.then( newPost => {
-					User.update(
-						{ _id: { $in: user.friends } },
-						{ $push: { "newsfeed": newPost._id } },
-						{ multi: true }
-					)
-						.exec()
-						.catch( err => next( err ));
-
-					if ( data.privacyRange >= 2 ) {
-						User.update(
-							{ _id: { $in: user.followers } },
-							{ $push: { "newsfeed": newPost._id } },
-							{ multi: true }
-						)
-							.exec()
-							.catch( err => next( err ));
-					}
-
-					user.posts.push( newPost._id );
-					user.newsfeed.push( newPost._id );
-					user.album.push( req.file.filename );
-					user.save()
-						.then(() => {
-							notifyMentions( mentions, "post", newPost, user	)
-								.then( mentionsNotifications => {
-									res.status( 201 );
-									res.send({
-										newPost: newPost,
-										mentionsNotifications: mentionsNotifications
-									});
-								}).catch( err => next( err ));
-						}).catch( err => next( err ));
-				}).catch( err => next( err ));
-		}).catch( err => next( err ));
+	res.status( 201 );
+	res.send({
+		newPost: newPost,
+		mentionsNotifications: mentionsNotifications
+	});
 });
 
 
