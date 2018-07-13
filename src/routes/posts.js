@@ -20,11 +20,8 @@ Router.get( "/explore/:skip", async( req, res, next ) => {
 	}
 	try {
 		posts = await Post.find()
-			.populate({
-				path: "author",
-				select: "fullname username profileImage"
-			})
 			.where( "media" ).equals( true )
+			.where( "privacyRange" ).equals( "3" )
 			.limit( 10 )
 			.skip( req.params.skip * 10 )
 			.sort( "-createdAt" )
@@ -460,7 +457,7 @@ Router.post( "/newsfeed/:skip", ( req, res, next ) => {
 			},
 			populate: {
 				path: "sharedPost author",
-				select: "fullname username profileImage"
+				select: "fullname username profileImage alerts"
 			}
 		})
 		.exec()
@@ -553,7 +550,8 @@ Router.delete( "/delete", ( req, res, next ) => {
 
 					const
 						postsIndex = user.posts.indexOf( storedPost.id ),
-						newsfeedIndex = user.newsfeed.indexOf( storedPost.id );
+						newsfeedIndex = user.newsfeed.indexOf( storedPost.id ),
+						albumIndex = user.album.indexOf( storedPost.mediaContent.image );
 
 					User.update(
 						{ _id: { $in: user.friends } },
@@ -565,6 +563,7 @@ Router.delete( "/delete", ( req, res, next ) => {
 
 					user.posts.splice( postsIndex, 1 );
 					user.newsfeed.splice( newsfeedIndex, 1 );
+					user.album.splice( albumIndex, 1 );
 					user.save()
 						.then(() => {
 							if ( storedPost.picture ) {
