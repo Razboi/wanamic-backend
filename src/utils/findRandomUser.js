@@ -10,7 +10,7 @@ findRandomUser = async userId => {
 				.skip( randomNum )
 				.select(
 					"username fullname description posts keywords profileImage " +
-					"headerImage friends followers"
+					"headerImage friends followers totalLikes"
 				)
 				.exec();
 		return user;

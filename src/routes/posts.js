@@ -21,6 +21,8 @@ Router.get( "/explore/:skip", async( req, res, next ) => {
 	try {
 		posts = await Post.find()
 			.where( "media" ).equals( true )
+			.where( "sharedPost" ).equals( undefined )
+			.where( "alerts.nsfw" ).equals( false )
 			.where( "privacyRange" ).equals( "3" )
 			.limit( 10 )
 			.skip( req.params.skip * 10 )
@@ -455,10 +457,19 @@ Router.post( "/newsfeed/:skip", ( req, res, next ) => {
 				skip: req.params.skip * 10,
 				sort: { createdAt: -1 }
 			},
-			populate: {
-				path: "sharedPost author",
-				select: "fullname username profileImage alerts"
-			}
+			populate: [
+				{
+					path: "author",
+					select: "fullname username profileImage"
+				},
+				{
+					path: "sharedPost",
+					populate: {
+						path: "author",
+						select: "fullname username profileImage",
+					}
+				}
+			]
 		})
 		.exec()
 		.then( user => {

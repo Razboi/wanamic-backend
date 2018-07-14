@@ -24,6 +24,7 @@ const
 		headerImage: { type: String },
 		interests: [ { type: String } ],
 		totalLikes: { type: Number, default: 0 },
+		totalViews: { type: Number, default: 0 },
 		album: [ { type: String } ],
 		location: { type: String },
 		gender: { type: String },

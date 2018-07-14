@@ -12,25 +12,37 @@ const
 	errors = require( "../utils/errors" ),
 	fs = require( "fs" );
 
-// get user info
-Router.get( "/:username", ( req, res, next ) => {
+Router.post( "/userInfo", async( req, res, next ) => {
+	var
+		userId,
+		requester,
+		user;
 
-	if ( !req.params.username ) {
+	if ( !req.body.username || !req.body.token ) {
 		return next( errors.blankData());
 	}
 
-	User.findOne({ username: req.params.username })
-		.select( "username fullname description keywords profileImage" +
-							" headerImage interests friends followers location gender" +
-							" birthday totalLikes" )
-		.exec()
-		.then( user => {
-			if ( !user ) {
-				return next( errors.userDoesntExist());
-			}
-			user.keywords = "#" + user.keywords.toString().replace( /,/g, " #" );
-			res.send( user );
-		}).catch( err => next( err ));
+	const { username, token } = req.body;
+
+	try {
+		userId = await tokenVerifier( token );
+		requester = await User.findById( userId ).exec();
+		user = await User.findOne({ username: username })
+			.select( "username fullname description keywords profileImage" +
+								" headerImage interests friends followers location gender" +
+								" birthday totalLikes totalViews" )
+			.exec();
+		if ( !user || !requester ) {
+			return next( errors.userDoesntExist());
+		}
+		if ( user.username !== requester.username ) {
+			user.totalViews++;
+			user = await user.save();
+		}
+	} catch ( err ) {
+		return next( err );
+	}
+	res.send( user );
 });
 
 // set user info
@@ -178,7 +190,7 @@ Router.post( "/sugestedUsers", ( req, res, next ) => {
 				.where( "_id" ).ne( user.id )
 				.select(
 					"username fullname description keywords profileImage headerImage " +
-					"friends followers"
+					"friends followers totalLikes"
 				)
 				.exec()
 				.then( user => {
@@ -508,6 +520,31 @@ Router.post( "/getUserNetwork", async( req, res, next ) => {
 			following: requester.following
 		}
 	});
+});
+
+
+Router.post( "/getLikesAndViews", async( req, res, next ) => {
+	var
+		userId,
+		user;
+
+	if ( !req.body.token ) {
+		return next( errors.blankData());
+	}
+	const { token } = req.body;
+
+	try {
+		userId = await tokenVerifier( token );
+		user = await User.findById( userId )
+			.select( "totalLikes totalViews " )
+			.exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+	} catch ( err ) {
+		return next( err );
+	}
+	res.send( user );
 });
 
 
