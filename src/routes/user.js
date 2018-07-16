@@ -301,12 +301,16 @@ Router.post( "/getChats", async( req, res, next ) => {
 				path: "openConversations",
 				populate: {
 					path: "author target messages",
-					select: "fullname username profileImage author receiver content" +
-					" createdAt"
-				}
+					select: "fullname username profileImage content createdAt",
+					populate: {
+						path: "author receiver",
+						select: "fullname username profileImage"
+					}
+				},
 			})
 			.select( "openConversations" )
 			.exec();
+			console.log( user.openConversations );
 	} catch ( err ) {
 		return next( err );
 	}
@@ -462,8 +466,10 @@ Router.delete( "/deleteAccount", async( req, res, next ) => {
 
 Router.post( "/getUserAlbum", async( req, res, next ) => {
 	var
-		userId,
-		user;
+		visitorId,
+		user,
+		relationLevel,
+		filteredPosts = [];
 
 	if ( !req.body.token || !req.body.username ) {
 		return next( errors.blankData());
@@ -471,15 +477,32 @@ Router.post( "/getUserAlbum", async( req, res, next ) => {
 	const { token, username } = req.body;
 
 	try {
-		userId = await tokenVerifier( token );
-		user = await User.findOne({ username: username }).exec();
+		visitorId = await tokenVerifier( token );
+		user = await User.findOne({ username: username })
+			.populate({
+				path: "posts",
+				match: {
+					picture: true
+				}
+			})
+			.exec();
 		if ( !user ) {
 			return next( errors.userDoesntExist());
 		}
+		if ( user.friends.some( id => id.equals( visitorId ))
+				|| user._id.equals( visitorId )) {
+			relationLevel = 1;
+		} else if ( user.followers.some( id => id.equals( visitorId ))) {
+			relationLevel = 2;
+		} else {
+			relationLevel = 3;
+		}
+		filteredPosts = await user.posts.filter( post =>
+			post.privacyRange >= relationLevel );
 	} catch ( err ) {
 		return next( err );
 	}
-	res.send( user.album );
+	res.send( filteredPosts );
 });
 
 

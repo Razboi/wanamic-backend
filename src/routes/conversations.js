@@ -70,8 +70,8 @@ Router.post( "/add", async( req, res, next ) => {
 			return next( errors.userDoesntExist());
 		}
 		newMessage = await new Message({
-			author: user.username,
-			receiver: friend.username,
+			author: user._id,
+			receiver: friend._id,
 			content: content
 		}).save(),
 		userConversation = await Conversation.findOne({

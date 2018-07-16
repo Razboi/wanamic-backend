@@ -22,7 +22,7 @@ describe( "POST conversations/add", function() {
 		await User.remove({ email: "test@gmail.com" });
 		await Conversation.remove({ author: user._id });
 		await Conversation.remove({ target: user._id });
-		await Message.remove({ receiver: "testuser" });
+		await Message.remove({ receiver: user._id });
 	});
 
 	before( async function() {

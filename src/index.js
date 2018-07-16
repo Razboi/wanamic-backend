@@ -55,7 +55,7 @@ io.on( "connection", socket => {
 			tokenVerifier( data.token, userId => {
 				User.findById( userId )
 					.exec()
-					.then( user => socket.join( user.username ));
+					.then( user => socket.join( user._id ));
 			});
 		} catch ( err ) {
 			console.log( err );

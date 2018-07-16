@@ -20,6 +20,7 @@ Router.post( "/follow", ( req, res, next ) => {
 	}
 
 	User.findById( userId )
+		.select( "username fullname profileImage following friends" )
 		.exec()
 		.then( user => {
 			if ( !user ) {
@@ -47,6 +48,7 @@ Router.post( "/follow", ( req, res, next ) => {
 						follow: true
 					}).save()
 						.then( newNotification => {
+							newNotification.author = user;
 							user.following.push( userToFollow._id );
 							userToFollow.followers.push( user._id );
 							userToFollow.notifications.push( newNotification );

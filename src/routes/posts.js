@@ -23,6 +23,7 @@ Router.get( "/explore/:skip", async( req, res, next ) => {
 			.where( "media" ).equals( true )
 			.where( "sharedPost" ).equals( undefined )
 			.where( "alerts.nsfw" ).equals( false )
+			.where( "alerts.spoiler" ).equals( false )
 			.where( "privacyRange" ).equals( "3" )
 			.limit( 10 )
 			.skip( req.params.skip * 10 )
@@ -137,7 +138,12 @@ Router.post( "/like", async( req, res, next ) => {
 		} else {
 			mediaImg = post.mediaContent.image;
 		}
-		user = await User.findById( userId ).exec();
+		user = await User.findById( userId )
+			.select( "username fullname profileImage" )
+			.exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
 		if ( !post.likedBy.includes( user.username )) {
 			post.likedBy.push( user.username );
 		}
@@ -154,6 +160,7 @@ Router.post( "/like", async( req, res, next ) => {
 				object: post._id
 			}).save();
 			postAuthor.notifications.push( newNotification );
+			newNotification.author = user;
 		}
 		postAuthor.save();
 	} catch ( err ) {
@@ -267,91 +274,88 @@ Router.post( "/media", async( req, res, next ) => {
 	});
 });
 
-Router.post( "/mediaLink", ( req, res, next ) => {
+
+Router.post( "/mediaLink", async( req, res, next ) => {
 	var
-		data,
-		token,
 		userId,
+		user,
+		newPost,
+		previewData,
 		hostname,
-		embeddedUrl;
+		embeddedUrl,
+		mentionsNotifications;
 
 	if ( !req.body.token || !req.body.link ) {
 		return next( errors.blankData());
 	}
 
-	data = req.body;
+	const {
+		token, link, mentions, description, alerts, hashtags, privacyRange
+	} = req.body;
 
 	try {
-		userId = tokenVerifier( data.token );
+		userId = await tokenVerifier( token );
+		previewData = await LinkPreview.getPreview( link );
+		hostname = await extractHostname( previewData.url );
+		if ( hostname === "www.youtube.com" ) {
+			embeddedUrl = previewData.url.replace( "watch?v=", "embed/" );
+		}
+		user = await User.findById( userId ).exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+		newPost = await new Post({
+			author: user._id,
+			media: true,
+			link: true,
+			content: description,
+			alerts: alerts,
+			hashtags: hashtags,
+			privacyRange: privacyRange,
+			linkContent: {
+				url: previewData.url,
+				embeddedUrl: embeddedUrl,
+				hostname: hostname,
+				title: previewData.title,
+				description: previewData.description,
+				image: previewData.images[ 0 ]
+			}
+		}).save();
+		newPost = await newPost.populate({
+			path: "author",
+			select: "fullname username profileImage"
+		}).execPopulate();
+
+		User.update(
+			{ _id: { $in: user.friends } },
+			{ $push: { "newsfeed": newPost._id } },
+			{ multi: true }
+		).exec();
+
+		if ( privacyRange >= 2 ) {
+			User.update(
+				{ _id: { $in: user.followers } },
+				{ $push: { "newsfeed": newPost._id } },
+				{ multi: true }
+			).exec();
+		}
+
+		user.posts.push( newPost._id );
+		user.newsfeed.push( newPost._id );
+		user.save();
+
+		mentionsNotifications = await notifyMentions(
+			mentions, "post", newPost, user );
 	} catch ( err ) {
 		return next( err );
 	}
-
-	LinkPreview.getPreview( data.link )
-		.then( previewData => {
-			hostname = extractHostname( previewData.url );
-			if ( hostname === "www.youtube.com" ) {
-				embeddedUrl = previewData.url.replace( "watch?v=", "embed/" );
-			}
-			User.findById( userId )
-				.exec()
-				.then( user => {
-					if ( !user ) {
-						return next( errors.userDoesntExist());
-					}
-					new Post({
-						author: user._id,
-						media: true,
-						link: true,
-						content: data.description,
-						alerts: data.alerts,
-						hashtags: data.hashtags,
-						privacyRange: data.privacyRange,
-						linkContent: {
-							url: previewData.url,
-							embeddedUrl: embeddedUrl,
-							hostname: hostname,
-							title: previewData.title,
-							description: previewData.description,
-							image: previewData.images[ 0 ]
-						}
-					}).save()
-						.then( newPost => {
-							User.update(
-								{ _id: { $in: user.friends } },
-								{ $push: { "newsfeed": newPost._id } },
-								{ multi: true }
-							)
-								.exec()
-								.catch( err => next( err ));
-
-							if ( data.privacyRange >= 2 ) {
-								User.update(
-									{ _id: { $in: user.followers } },
-									{ $push: { "newsfeed": newPost._id } },
-									{ multi: true }
-								)
-									.exec()
-									.catch( err => next( err ));
-							}
-
-							user.posts.push( newPost._id );
-							user.newsfeed.push( newPost._id );
-							user.save()
-								.then(() => {
-									notifyMentions( data.mentions, "post", newPost, user )
-										.then( mentionsNotifications => {
-											res.status( 201 );
-											res.send({
-												newPost: newPost,
-												mentionsNotifications: mentionsNotifications
-											});
-										}).catch( err => next( err ));
-								}).catch( err => next( err ));
-						}).catch( err => next( err ));
-				}).catch( err => next( err ));
-		}).catch( err => console.log( err ));
+	res.status( 201 );
+	res.send({
+		newPost: newPost,
+		mentionsNotifications: mentionsNotifications
+	});
 });
+
 
 Router.post( "/mediaPicture", upload.single( "picture" ), async( req, res, next ) => {
 	var
@@ -417,7 +421,6 @@ Router.post( "/mediaPicture", upload.single( "picture" ), async( req, res, next 
 		}
 		user.posts.push( newPost._id );
 		user.newsfeed.push( newPost._id );
-		user.album.push( req.file.filename );
 		user.save();
 		mentionsNotifications = await notifyMentions(
 			mentions, "post", newPost, user	);
@@ -561,8 +564,7 @@ Router.delete( "/delete", ( req, res, next ) => {
 
 					const
 						postsIndex = user.posts.indexOf( storedPost.id ),
-						newsfeedIndex = user.newsfeed.indexOf( storedPost.id ),
-						albumIndex = user.album.indexOf( storedPost.mediaContent.image );
+						newsfeedIndex = user.newsfeed.indexOf( storedPost.id );
 
 					User.update(
 						{ _id: { $in: user.friends } },
@@ -574,7 +576,6 @@ Router.delete( "/delete", ( req, res, next ) => {
 
 					user.posts.splice( postsIndex, 1 );
 					user.newsfeed.splice( newsfeedIndex, 1 );
-					user.album.splice( albumIndex, 1 );
 					user.save()
 						.then(() => {
 							if ( storedPost.picture ) {
@@ -640,73 +641,74 @@ Router.patch( "/update", ( req, res, next ) => {
 		}).catch( err => next( err ));
 });
 
-Router.post( "/share", ( req, res, next ) => {
+Router.post( "/share", async( req, res, next ) => {
 	var
 		userId,
-		clickedPostId;
+		user,
+		postToShare,
+		originalPost,
+		newPost;
 
 	if ( !req.body.postId || !req.body.token ) {
 		return next( errors.blankData());
 	}
 
-	clickedPostId = req.body.postId;
+	const { postId, token, description } = req.body;
 
 	try {
-		userId = tokenVerifier( req.body.token );
+		userId = await tokenVerifier( token );
+		user = await User.findById( userId ).exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+		postToShare = await Post.findById( postId )
+			.populate( "sharedPost" )
+			.populate({
+				path: "author",
+				select: "username fullname profileImage"
+			})
+			.exec();
+		if ( !postToShare ) {
+			return next( errors.postDoesntExist());
+		}
+
+		if ( postToShare.sharedPost ) {
+			originalPost = postToShare.sharedPost;
+		} else {
+			originalPost = postToShare;
+		}
+
+		newPost = await new Post({
+			author: user._id,
+			content: description,
+			sharedPost: originalPost._id
+		}).save();
+
+		User.update(
+			{ _id: { $in: user.friends } },
+			{ $push: { "newsfeed": newPost._id } },
+			{ multi: true }
+		).exec();
+
+		user.posts.push( newPost._id );
+		user.newsfeed.push( newPost._id );
+		user.save();
+
+		if ( !postToShare.sharedBy.includes( String( user._id ))) {
+			postToShare.sharedBy.push( user._id );
+			postToShare.save();
+		}
+
+		newPost = await newPost.populate({
+			path: "author",
+			select: "fullname username profileImage"
+		}).execPopulate();
+		newPost.sharedPost = originalPost;
 	} catch ( err ) {
 		return next( err );
 	}
-
-	User.findById( userId )
-		.exec()
-		.then( user => {
-			if ( !user ) {
-				return next( errors.userDoesntExist());
-			}
-			Post.findById( clickedPostId )
-				.populate( "sharedPost" )
-				.exec()
-				.then( clickedPost => {
-					var originalPost;
-					if ( !clickedPost ) {
-						return next( errors.postDoesntExist());
-					}
-
-					if ( clickedPost.sharedPost ) {
-						originalPost = clickedPost.sharedPost;
-					} else {
-						originalPost = clickedPost;
-					}
-
-					new Post({
-						author: user._id,
-						content: req.body.shareComment,
-						sharedPost: originalPost._id
-					}).save()
-						.then( newPost => {
-							User.update(
-								{ _id: { $in: user.friends } },
-								{ $push: { "newsfeed": newPost._id } },
-								{ multi: true }
-							)
-								.exec()
-								.catch( err => next( err ));
-
-							user.posts.push( newPost._id );
-							user.newsfeed.push( newPost._id );
-							user.save()
-								.then(() => {
-									if ( !clickedPost.sharedBy.includes( user.username )) {
-										clickedPost.sharedBy.push( user.username );
-										clickedPost.save();
-									}
-									newPost.sharedPost = originalPost;
-									res.status( 201 );
-									res.send({ newPost: newPost, clickedPost: clickedPost });
-								}).catch( err => next( err ));
-						}).catch( err => next( err ));
-				}).catch( err => next( err ));
-		}).catch( err => next( err ));
+	res.status( 201 );
+	res.send({ newPost: newPost, postToShare: postToShare });
 });
 
 

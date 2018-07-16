@@ -28,6 +28,7 @@ Router.post( "/create", ( req, res, next ) => {
 	}
 
 	User.findById( userId )
+		.select( "username fullname profileImage" )
 		.exec()
 		.then( user => {
 			if ( !user ) {
@@ -75,6 +76,7 @@ Router.post( "/create", ( req, res, next ) => {
 													.then( commentNotification => {
 														postAuthor.notifications.push( commentNotification );
 														postAuthor.save();
+														commentNotification.author = user;
 														res.status( 201 );
 														res.send({
 															newComment: newComment,

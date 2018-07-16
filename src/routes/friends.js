@@ -51,6 +51,7 @@ Router.post( "/add", ( req, res, next ) => {
 	}
 
 	User.findById( userId )
+		.select( "username fullname profileImage friends pendingRequests" )
 		.exec()
 		.then( user => {
 			if ( !user ) {
@@ -67,7 +68,6 @@ Router.post( "/add", ( req, res, next ) => {
 						return next( errors.userDoesntExist());
 					}
 
-					// check if already are friends
 					if ( user.friends.some( id => friend._id.equals( id )) ||
 							friend.friends.some( id => user._id.equals( id ))) {
 						return next( errors.blankData());
@@ -92,6 +92,7 @@ Router.post( "/add", ( req, res, next ) => {
 								friendRequest: true
 							}).save()
 								.then( newNotification => {
+									newNotification.author = user;
 									user.pendingRequests.push( friend.username );
 									friend.notifications.push( newNotification );
 									Promise.all([ user.save(), friend.save() ])
