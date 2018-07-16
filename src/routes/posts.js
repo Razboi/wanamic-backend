@@ -28,6 +28,10 @@ Router.get( "/explore/:skip", async( req, res, next ) => {
 			.limit( 10 )
 			.skip( req.params.skip * 10 )
 			.sort( "-createdAt" )
+			.populate({
+				path: "author",
+				select: "username fullname profileImage"
+			})
 			.exec();
 	} catch ( err ) {
 		return next( err );

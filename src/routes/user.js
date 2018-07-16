@@ -310,7 +310,6 @@ Router.post( "/getChats", async( req, res, next ) => {
 			})
 			.select( "openConversations" )
 			.exec();
-			console.log( user.openConversations );
 	} catch ( err ) {
 		return next( err );
 	}
@@ -481,8 +480,10 @@ Router.post( "/getUserAlbum", async( req, res, next ) => {
 		user = await User.findOne({ username: username })
 			.populate({
 				path: "posts",
-				match: {
-					picture: true
+				match: { picture: true },
+				populate: {
+					path: "author",
+					select: "username fullname profileImage"
 				}
 			})
 			.exec();
