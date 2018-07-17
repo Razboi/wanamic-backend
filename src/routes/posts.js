@@ -601,49 +601,42 @@ Router.delete( "/delete", ( req, res, next ) => {
 });
 
 
-Router.patch( "/update", ( req, res, next ) => {
+Router.patch( "/update", async( req, res, next ) => {
 	var
-		updatedPost,
-		token,
-		userId;
+		userId,
+		user,
+		post;
 
-	if ( !req.body.data || !req.body.data.post || !req.body.data.token
-		|| !req.body.data.post.id || !req.body.data.post.content ) {
+	if ( !req.body.token || !req.body.postId || !req.body.newContent ) {
 		return next( errors.blankData());
 	}
 
-	updatedPost = req.body.data.post;
-	token = req.body.data.token;
+	const { token, postId, newContent } = req.body;
 
 	try {
-		userId = tokenVerifier( token );
+		userId = await tokenVerifier( token );
+		user = await User.findById( userId ).exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+		post = await Post.findById( postId )
+			.populate({ path: "sharedPost" })
+			.populate({
+				path: "author", select: "username fullname profileImage"
+			})
+			.exec();
+
+		if ( !user._id.equals( post.author._id )) {
+			return next( errors.unauthorized());
+		}
+		post.content = newContent;
+		await post.save();
 	} catch ( err ) {
 		return next( err );
 	}
-
-	User.findById( userId )
-		.exec()
-		.then( user => {
-			if ( !user ) {
-				return next( errors.userDoesntExist());
-			}
-
-			Post.findById( updatedPost.id )
-				.populate({ path: "sharedPost" })
-				.exec()
-				.then( storedPost => {
-					if ( !user._id.equals( storedPost.author )) {
-						return next( errors.unauthorized());
-					}
-					if ( updatedPost.content ) {
-						storedPost.content = updatedPost.content;
-					};
-					storedPost.save()
-						.then(() => res.send( storedPost ))
-						.catch( err => next( err ));
-				}).catch( err => next( err ));
-		}).catch( err => next( err ));
+	res.send( post );
 });
+
 
 Router.post( "/share", async( req, res, next ) => {
 	var
