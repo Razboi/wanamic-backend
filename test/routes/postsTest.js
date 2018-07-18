@@ -709,10 +709,9 @@ describe( "PATCH posts/update", function() {
 		chai.request( "localhost:8000" )
 			.patch( "/posts/update" )
 			.send({
-				data: {
-					token: token,
-					post: { id: post._id, content: "Updated content" }
-				}
+				token: token,
+				postId: post._id,
+				newContent: "Updated content"
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 200 );
@@ -724,10 +723,8 @@ describe( "PATCH posts/update", function() {
 		chai.request( "localhost:8000" )
 			.patch( "/posts/update" )
 			.send({
-				data: {
-					token: token,
-					post: {}
-				}
+				token: token,
+				postId: 123123
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
@@ -740,10 +737,9 @@ describe( "PATCH posts/update", function() {
 		chai.request( "localhost:8000" )
 			.patch( "/posts/update" )
 			.send({
-				data: {
-					token: "12312asdas123123",
-					post: { id: post._id, content: "Should not update" }
-				}
+				token: "12312asdas123123",
+				postId: post._id,
+				newContent: "Updated content"
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
@@ -756,10 +752,9 @@ describe( "PATCH posts/update", function() {
 		chai.request( "localhost:8000" )
 			.patch( "/posts/update" )
 			.send({
-				data: {
-					token: invalidToken,
-					post: { id: post._id, content: "Should not update" }
-				}
+				token: invalidToken,
+				postId: post._id,
+				newContent: "Updated content"
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
