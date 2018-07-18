@@ -646,11 +646,12 @@ Router.post( "/share", async( req, res, next ) => {
 		originalPost,
 		newPost;
 
-	if ( !req.body.postId || !req.body.token ) {
+	if ( !req.body.postId || !req.body.token || !req.body.privacyRange
+	|| !req.body.alerts ) {
 		return next( errors.blankData());
 	}
 
-	const { postId, token, description } = req.body;
+	const { postId, token, description, privacyRange, alerts } = req.body;
 
 	try {
 		userId = await tokenVerifier( token );
@@ -678,7 +679,9 @@ Router.post( "/share", async( req, res, next ) => {
 		newPost = await new Post({
 			author: user._id,
 			content: description,
-			sharedPost: originalPost._id
+			sharedPost: originalPost._id,
+			privacyRange: privacyRange,
+			alerts: alerts
 		}).save();
 
 		User.update(

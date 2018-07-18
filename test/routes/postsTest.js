@@ -795,7 +795,9 @@ describe( "POST posts/share", function() {
 			.post( "/posts/share" )
 			.send({
 				token: token,
-				postId: post._id
+				postId: post._id,
+				alerts: {},
+				privacyRange: 1
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 201 );
@@ -834,7 +836,9 @@ describe( "POST posts/share", function() {
 			.post( "/posts/share" )
 			.send({
 				token: "123213adasdsad21321321",
-				postId: post._id
+				postId: post._id,
+				alerts: {},
+				privacyRange: 1
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
