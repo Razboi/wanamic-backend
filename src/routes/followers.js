@@ -52,6 +52,7 @@ Router.post( "/follow", ( req, res, next ) => {
 							user.following.push( userToFollow._id );
 							userToFollow.followers.push( user._id );
 							userToFollow.notifications.push( newNotification );
+							userToFollow.newNotifications++;
 							Promise.all([ userToFollow.save(), user.save() ])
 								.then(() => {
 									res.status( 201 );

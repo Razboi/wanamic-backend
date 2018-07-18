@@ -21,7 +21,8 @@ const
 		mediaContent: {
 			title: { type: String },
 			artist: { type: String },
-			image: { type: String }
+			image: { type: String },
+			url: { type: String }
 		},
 		linkContent: {
 			url: { type: String },

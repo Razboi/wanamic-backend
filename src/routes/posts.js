@@ -164,6 +164,7 @@ Router.post( "/like", async( req, res, next ) => {
 				object: post._id
 			}).save();
 			postAuthor.notifications.push( newNotification );
+			postAuthor.newNotifications++;
 			newNotification.author = user;
 		}
 		postAuthor.save();
@@ -244,7 +245,8 @@ Router.post( "/media", async( req, res, next ) => {
 			mediaContent: {
 				title: data.title,
 				artist: data.artist,
-				image: data.image
+				image: data.image,
+				url: data.url
 			}
 		}).save();
 		newPost = await newPost.populate({

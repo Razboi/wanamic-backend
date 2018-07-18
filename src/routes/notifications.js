@@ -1,10 +1,6 @@
 const
 	Router = require( "express" ).Router(),
-	bcrypt = require( "bcrypt" ),
-	tokenGenerator = require( "../utils/tokenGenerator" ),
 	User = require( "../models/User" ),
-	Post = require( "../models/Post" ),
-	Notification = require( "../models/Notification" ),
 	errors = require( "../utils/errors" );
 
 Router.post( "/retrieve", async( req, res, next ) => {
@@ -31,49 +27,36 @@ Router.post( "/retrieve", async( req, res, next ) => {
 		return next( err );
 	}
 
-	const newNotifications = user.notifications.filter( notification => {
-		return notification.checked === false;
-	});
-
 	res.send({
 		notifications: user.notifications,
-		newNotifications: newNotifications.length,
+		newNotifications: user.newNotifications,
 		chatNotifications: user.chatNotifications
 	});
 });
 
-Router.post( "/check", ( req, res, next ) => {
-	var userId;
+Router.post( "/check", async( req, res, next ) => {
+	var
+		userId,
+		user;
 
-	if ( !req.body.token || !req.body.notificationId ) {
+	if ( !req.body.token ) {
 		return next( errors.blankData());
 	}
 
-	const data = req.body;
+	const { token } = req.body;
 
 	try {
-		userId = tokenVerifier( data.token );
+		userId = await tokenVerifier( token );
+		user = await User.findById( userId ).exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+		user.newNotifications = 0;
+		user.save();
 	} catch ( err ) {
 		return next( err );
 	}
-
-	Notification.findById( data.notificationId )
-		.exec()
-		.then( notification => {
-			if ( !notification ) {
-				return next( errors.notificationDoesntExist());
-			}
-			User.findById( userId )
-				.exec()
-				.then( user => {
-					if ( !user._id.equals( notification.receiver )) {
-						return next( errors.unauthorized());
-					}
-					notification.checked = true;
-					notification.save();
-					res.sendStatus( 200 );
-				}).catch( err => next( err ));
-		}).catch( err => next( err ));
+	res.sendStatus( 200 );
 });
 
 module.exports = Router;

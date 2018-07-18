@@ -95,6 +95,7 @@ Router.post( "/add", ( req, res, next ) => {
 									newNotification.author = user;
 									user.pendingRequests.push( friend.username );
 									friend.notifications.push( newNotification );
+									friend.newNotifications++;
 									Promise.all([ user.save(), friend.save() ])
 										.then(() => {
 											res.status( 201 );

@@ -15,6 +15,7 @@ const
 		followers: [ { type: Schema.Types.ObjectId, ref: "User" } ],
 		following: [ { type: Schema.Types.ObjectId, ref: "User" } ],
 		notifications: [ { type: Schema.Types.ObjectId, ref: "Notification" } ],
+		newNotifications: { type: Number, default: 0 },
 		pendingRequests: [ { type: String } ],
 		openConversations: [ { type: Schema.Types.ObjectId, ref: "Conversation" } ],
 		chatNotifications: [ { type: String } ],

@@ -71,6 +71,7 @@ Router.post( "/create", async( req, res, next ) => {
 			}).save();
 
 			postAuthor.notifications.push( commentNotification );
+			postAuthor.newNotifications++;
 			postAuthor.save();
 			commentNotification.author = user;
 		}
