@@ -30,13 +30,14 @@ notifyMentions = ( mentions, type, object, user ) => {
 							receiver: targetUser._id,
 							content: "mentioned you in a " + type,
 							mediaImg: mediaImg,
-							externalImg: !post.picture,
+							externalImg: !object.picture,
 							object: object._id,
 							comment: type === "comment"
 						}).save()
 							.then( notification => {
 								notifications.push( notification );
 								targetUser.notifications.push( notification );
+								targetUser.newNotifications++;
 								targetUser.save();
 
 								if ( i === mentionsLength ) {

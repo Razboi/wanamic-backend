@@ -13,7 +13,7 @@ const
 dotenv.config();
 chai.use( chaiHttp );
 
-describe( "POST notifications/retrieve", function() {
+describe( "POST notifications/retrieve/:skip", function() {
 	var
 		author,
 		receiver,
@@ -42,7 +42,7 @@ describe( "POST notifications/retrieve", function() {
 
 	it( "returns notifications, should return 200", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/notifications/retrieve" )
+			.post( "/notifications/retrieve/0" )
 			.send({
 				token: token
 			})
@@ -54,7 +54,7 @@ describe( "POST notifications/retrieve", function() {
 
 	it( "should return 422 Empty data", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/notifications/retrieve" )
+			.post( "/notifications/retrieve/0" )
 			.send({})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
@@ -65,7 +65,7 @@ describe( "POST notifications/retrieve", function() {
 
 	it( "should return 401 malformed jwt", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/notifications/retrieve" )
+			.post( "/notifications/retrieve/0" )
 			.send({
 				token: "123213adasdsad21321321"
 			})

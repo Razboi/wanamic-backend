@@ -20,7 +20,7 @@ const
 		openConversations: [ { type: Schema.Types.ObjectId, ref: "Conversation" } ],
 		chatNotifications: [ { type: String } ],
 		description: { type: String },
-		keywords: [ { type: String } ],
+		hobbies: [ { type: String } ],
 		profileImage: { type: String },
 		headerImage: { type: String },
 		interests: [ { type: String } ],

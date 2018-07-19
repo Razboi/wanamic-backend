@@ -3,11 +3,10 @@ const
 	User = require( "../models/User" ),
 	errors = require( "../utils/errors" );
 
-Router.post( "/retrieve", async( req, res, next ) => {
+Router.post( "/retrieve/:skip", async( req, res, next ) => {
 	var
 		userId,
-		user,
-		newMessagesCount = 0;
+		user;
 
 	if ( !req.body.token ) {
 		return next( errors.blankData());
@@ -17,12 +16,17 @@ Router.post( "/retrieve", async( req, res, next ) => {
 		user = await User.findById( userId )
 			.populate({
 				path: "notifications openConversations",
-				options: { sort: { createdAt: -1 } },
+				options: {
+					sort: { createdAt: -1 },
+					limit: 10,
+					skip: req.params.skip * 10
+				},
 				populate: {
 					path: "author",
 					select: "fullname username profileImage"
 				}
-			}).exec();
+			})
+			.exec();
 	} catch ( err ) {
 		return next( err );
 	}

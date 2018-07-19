@@ -330,7 +330,7 @@ describe( "PATCH comments/update", function() {
 });
 
 
-describe( "POST comments/postComments/:skip", function() {
+describe( "POST comments/retrieve/:skip", function() {
 	var
 		token,
 		author,
@@ -357,7 +357,7 @@ describe( "POST comments/postComments/:skip", function() {
 
 	it( "gets the post comments, should return 200", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/comments/postComments/0" )
+			.post( "/comments/retrieve/0" )
 			.send({
 				token: token,
 				postId: post._id
@@ -370,7 +370,7 @@ describe( "POST comments/postComments/:skip", function() {
 
 	it( "should return 404 for endpoint not found", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/comments/postComments/" )
+			.post( "/comments/retrieve/" )
 			.send({
 				token: token,
 				postId: post._id
@@ -383,7 +383,7 @@ describe( "POST comments/postComments/:skip", function() {
 
 	it( "should return 422 Empty data", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/comments/postComments/0" )
+			.post( "/comments/retrieve/0" )
 			.send({
 				token: token
 			})
@@ -396,7 +396,7 @@ describe( "POST comments/postComments/:skip", function() {
 
 	it( "should return 422 Empty data", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/comments/postComments/0" )
+			.post( "/comments/retrieve/0" )
 			.send({
 				postId: post._id
 			})
@@ -409,7 +409,7 @@ describe( "POST comments/postComments/:skip", function() {
 
 	it( "should return 401 malformed jwt", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/comments/postComments/0" )
+			.post( "/comments/retrieve/0" )
 			.send({
 				token: "123213adasdsad21321321",
 				postId: post._id

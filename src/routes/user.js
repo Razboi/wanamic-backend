@@ -28,13 +28,14 @@ Router.post( "/userInfo", async( req, res, next ) => {
 		userId = await tokenVerifier( token );
 		requester = await User.findById( userId ).exec();
 		user = await User.findOne({ username: username })
-			.select( "username fullname description keywords profileImage" +
+			.select( "username fullname description hobbies profileImage" +
 								" headerImage interests friends followers location gender" +
 								" birthday totalLikes totalViews" )
 			.exec();
 		if ( !user || !requester ) {
 			return next( errors.userDoesntExist());
 		}
+		console.log( user );
 		if ( user.username !== requester.username ) {
 			user.totalViews++;
 			user = await user.save();
@@ -132,7 +133,7 @@ Router.post( "/match", ( req, res, next ) => {
 	}
 
 	User.find({ interests: { $in: req.body.data } })
-		.select( "username fullname description keywords profileImage" )
+		.select( "username fullname description hobbies profileImage" )
 		.limit( 10 )
 		.exec()
 		.then( users => {
@@ -189,14 +190,11 @@ Router.post( "/sugestedUsers", ( req, res, next ) => {
 				.skip( req.body.skip )
 				.where( "_id" ).ne( user.id )
 				.select(
-					"username fullname description keywords profileImage headerImage " +
+					"username fullname description hobbies profileImage headerImage " +
 					"friends followers totalLikes"
 				)
 				.exec()
 				.then( user => {
-					if ( user ) {
-						user.keywords = "#" + user.keywords.toString().replace( /,/g, " #" );
-					}
 					res.send( user );
 				}).catch( err => next( err ));
 		}).catch( err => next( err ));
@@ -220,14 +218,11 @@ Router.post( "/randomUser", ( req, res, next ) => {
 
 	findRandomUser( userId )
 		.then( user => {
-			if ( user ) {
-				user.keywords = "#" + user.keywords.toString().replace( /,/g, " #" );
-			}
 			res.send( user );
 		}).catch( err => next( err ));
 });
 
-// get one user with one or more common keywords
+// get one user with one or more common hobbies
 Router.post( "/matchKwUsers", ( req, res, next ) => {
 	var userId;
 
@@ -241,47 +236,47 @@ Router.post( "/matchKwUsers", ( req, res, next ) => {
 		return next( err );
 	}
 
-	User.findOne({ keywords: { $in: req.body.data } })
+	User.findOne({ hobbies: { $in: req.body.data } })
 		.skip( req.body.skip )
 		.where( "_id" ).ne( userId )
 		.select(
-			"username fullname description keywords profileImage headerImage " +
+			"username fullname description hobbies profileImage headerImage " +
 			"friends followers"
 		)
 		.exec()
 		.then( user => {
-			if ( user ) {
-				user.keywords = "#" + user.keywords.toString().replace( /,/g, " #" );
-			}
 			res.send( user );
 		}).catch( err => next( err ));
 });
 
-// set the user keywords
-Router.post( "/setUserKw", ( req, res, next ) => {
-	var userId;
+
+Router.post( "/setUserKw", async( req, res, next ) => {
+	var
+		userId,
+		user,
+		newHobbies = [];
 
 	if ( !req.body.token || !req.body.data ) {
 		return next( errors.blankData());
 	}
 
+	const { token, data } = req.body;
+
 	try {
-		userId = tokenVerifier( req.body.token );
+		userId = await tokenVerifier( token );
+		user = await User.findById( userId ).exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+		for ( const hobbie of data ) {
+			newHobbies.push( hobbie.text );
+		}
+		user.hobbies = newHobbies;
+		user.save();
 	} catch ( err ) {
 		return next( err );
 	}
-
-	User.findById( userId )
-		.exec()
-		.then( user => {
-			if ( !user ) {
-				return next( errors.userDoesntExist());
-			}
-			user.keywords = req.body.data;
-			user.save()
-				.then(() => res.sendStatus( 201 ))
-				.catch( err => next( err ));
-		}).catch( err => next( err ));
+	res.sendStatus( 201 );
 });
 
 
@@ -524,7 +519,7 @@ Router.post( "/getUserNetwork", async( req, res, next ) => {
 		user = await User.findOne({ username: username })
 			.populate({
 				path: "friends followers following",
-				select: "username fullname profileImage description keywords"
+				select: "username fullname profileImage description hobbies"
 			})
 			.exec();
 		if ( !user ) {

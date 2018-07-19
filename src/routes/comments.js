@@ -174,7 +174,7 @@ Router.patch( "/update", ( req, res, next ) => {
 });
 
 
-Router.post( "/postComments/:skip", ( req, res, next ) => {
+Router.post( "/retrieve/:skip", ( req, res, next ) => {
 	var
 		data,
 		userId;
