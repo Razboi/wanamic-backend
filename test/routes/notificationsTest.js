@@ -115,8 +115,7 @@ describe( "POST notifications/check", function() {
 		chai.request( "localhost:8000" )
 			.post( "/notifications/check" )
 			.send({
-				token: token,
-				notificationId: notification._id
+				token: token
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 200 );
@@ -127,22 +126,7 @@ describe( "POST notifications/check", function() {
 	it( "should return 422 Empty data", function( done ) {
 		chai.request( "localhost:8000" )
 			.post( "/notifications/check" )
-			.send({
-				token: token
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 422 );
-				res.text.should.equal( "Required data not found" );
-				done();
-			});
-	});
-
-	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
-			.post( "/notifications/check" )
-			.send({
-				notificationId: notification._id
-			})
+			.send({})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
 				res.text.should.equal( "Required data not found" );
