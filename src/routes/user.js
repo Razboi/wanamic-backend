@@ -35,7 +35,7 @@ Router.post( "/userInfo", async( req, res, next ) => {
 		if ( !user || !requester ) {
 			return next( errors.userDoesntExist());
 		}
-		console.log( user );
+
 		if ( user.username !== requester.username ) {
 			user.totalViews++;
 			user = await user.save();
@@ -222,8 +222,8 @@ Router.post( "/randomUser", ( req, res, next ) => {
 		}).catch( err => next( err ));
 });
 
-// get one user with one or more common hobbies
-Router.post( "/matchKwUsers", ( req, res, next ) => {
+
+Router.post( "/matchHobbies", ( req, res, next ) => {
 	var userId;
 
 	if ( !req.body.token || !req.body.data || req.body.skip === undefined ) {
@@ -235,8 +235,9 @@ Router.post( "/matchKwUsers", ( req, res, next ) => {
 	} catch ( err ) {
 		return next( err );
 	}
+	const searchRegex = new RegExp( req.body.data );
 
-	User.findOne({ hobbies: { $in: req.body.data } })
+	User.findOne({ "hobbies": { $regex: searchRegex, $options: "i" } })
 		.skip( req.body.skip )
 		.where( "_id" ).ne( userId )
 		.select(

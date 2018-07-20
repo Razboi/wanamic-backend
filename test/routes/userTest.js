@@ -408,7 +408,7 @@ describe( "post user/randomUser", function() {
 
 
 
-describe( "post user/matchKwUsers", function() {
+describe( "post user/matchHobbies", function() {
 	var
 		token,
 		author;
@@ -429,7 +429,7 @@ describe( "post user/matchKwUsers", function() {
 
 	it( "should return 200", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/user/matchKwUsers" )
+			.post( "/user/matchHobbies" )
 			.send({
 				token: token,
 				skip: 0,
@@ -443,7 +443,7 @@ describe( "post user/matchKwUsers", function() {
 
 	it( "should return 422", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/user/matchKwUsers" )
+			.post( "/user/matchHobbies" )
 			.send({
 				token: token,
 				skip: 0
@@ -457,7 +457,7 @@ describe( "post user/matchKwUsers", function() {
 
 	it( "should return 422", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/user/matchKwUsers" )
+			.post( "/user/matchHobbies" )
 			.send({
 				token: token,
 				data: []
@@ -471,7 +471,7 @@ describe( "post user/matchKwUsers", function() {
 
 	it( "should return 422", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/user/matchKwUsers" )
+			.post( "/user/matchHobbies" )
 			.send({
 				data: [],
 				skip: 0
@@ -485,7 +485,7 @@ describe( "post user/matchKwUsers", function() {
 
 	it( "should return 401 invalid jwt", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/user/matchKwUsers" )
+			.post( "/user/matchHobbies" )
 			.send({
 				token: "123123sadasda1231312",
 				data: [],

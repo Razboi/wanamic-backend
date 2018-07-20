@@ -39,6 +39,38 @@ Router.get( "/explore/:skip", async( req, res, next ) => {
 	res.send( posts );
 });
 
+
+Router.post( "/search/:skip", async( req, res, next ) => {
+	var posts;
+
+	if ( !req.params.skip || !req.body.search ) {
+		return next( errors.blankData());
+	}
+	const searchRegex = new RegExp( req.body.search );
+	try {
+		posts = await Post.find({
+			"content": { $regex: searchRegex, $options: "i" }
+		})
+			.where( "media" ).equals( true )
+			.where( "sharedPost" ).equals( undefined )
+			.where( "alerts.nsfw" ).equals( false )
+			.where( "alerts.spoiler" ).equals( false )
+			.where( "privacyRange" ).equals( "3" )
+			.limit( 10 )
+			.skip( req.params.skip * 10 )
+			.sort( "-createdAt" )
+			.populate({
+				path: "author",
+				select: "username fullname profileImage"
+			})
+			.exec();
+	} catch ( err ) {
+		return next( err );
+	}
+	res.send( posts );
+});
+
+
 Router.post( "/getPost", ( req, res, next ) => {
 
 	if ( !req.body.postId ) {
