@@ -184,9 +184,18 @@ Router.post( "/like", async( req, res, next ) => {
 			post.likedBy.push( user.username );
 		}
 		post.save();
+
 		postAuthor = await User.findById( post.author ).exec();
 		postAuthor.totalLikes += 1;
-		if ( postAuthor.username !== user.username ) {
+
+		const alreadyNotificated = await Notification.findOne({
+			author: user._id,
+			receiver: postAuthor._id,
+			content: "liked your post",
+			object: post._id
+		}).exec();
+
+		if ( postAuthor.username !== user.username && !alreadyNotificated ) {
 			newNotification = await new Notification({
 				author: user._id,
 				receiver: postAuthor._id,

@@ -63,7 +63,9 @@ Router.post( "/add", async( req, res, next ) => {
 
 	try {
 		userId = await tokenVerifier( token );
-		user = await User.findById( userId ).exec();
+		user = await User.findById( userId )
+			.select( "fullname username profileImage" )
+			.exec();
 		friend = await User.findOne({ username: friendUsername }).exec();
 
 		if ( !user || !friend ) {
@@ -127,6 +129,7 @@ Router.post( "/add", async( req, res, next ) => {
 	} catch ( err ) {
 		return next( err );
 	}
+	newMessage.author = user;
 
 	res.status( 201 );
 	res.send({
