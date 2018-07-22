@@ -6,62 +6,67 @@ const
 	Notification = require( "../models/Notification" ),
 	errors = require( "../utils/errors" );
 
-Router.post( "/follow", ( req, res, next ) => {
-	var userId;
+Router.post( "/follow", async( req, res, next ) => {
+	var
+		userId,
+		user,
+		userToFollow,
+		newNotification;
 
 	if ( !req.body.token || !req.body.targetUsername ) {
 		return next( errors.blankData());
 	}
 
+	const { token, targetUsername } = req.body;
+
 	try {
-		userId = tokenVerifier( req.body.token );
+		userId = await tokenVerifier( token );
+		user = await User.findById( userId )
+			.select( "username fullname profileImage following friends" )
+			.exec();
+		userToFollow = await User.findOne({ username: targetUsername })
+			.exec();
+
+		if ( !user || !userToFollow ) {
+			return next( errors.userDoesntExist());
+		}
+
+		if ( userToFollow.followers.some( id => user._id.equals( id )) ||
+				user.following.some( id => userToFollow._id.equals( id ))) {
+			return next( errors.alreadyRelated());
+		}
+		if ( userToFollow.friends.some( id => user._id.equals( id )) ||
+				user.friends.some( id => userToFollow._id.equals( id ))) {
+			return next( errors.alreadyRelated());
+		}
+
+		const alreadyNotificated = await Notification.findOne({
+			author: user._id,
+			receiver: userToFollow._id,
+			follow: true
+		}).exec();
+
+		if ( !alreadyNotificated ) {
+			newNotification = await new Notification({
+				author: user._id,
+				receiver: userToFollow._id,
+				content: "started following you",
+				follow: true
+			}).save();
+			newNotification.author = user;
+			userToFollow.notifications.push( newNotification );
+			userToFollow.newNotifications++;
+		}
+
+		user.following.push( userToFollow._id );
+		userToFollow.followers.push( user._id );
+		Promise.all([ userToFollow.save(), user.save() ]);
+
 	} catch ( err ) {
 		return next( err );
 	}
-
-	User.findById( userId )
-		.select( "username fullname profileImage following friends" )
-		.exec()
-		.then( user => {
-			if ( !user ) {
-				return next( errors.userDoesntExist());
-			}
-			User.findOne({ username: req.body.targetUsername })
-				.exec()
-				.then( userToFollow => {
-					if ( !userToFollow ) {
-						return next( errors.userDoesntExist());
-					}
-
-					if ( userToFollow.followers.some( id => user._id.equals( id )) ||
-							user.following.some( id => userToFollow._id.equals( id ))) {
-						return next( errors.blankData());
-					}
-					if ( userToFollow.friends.some( id => user._id.equals( id )) ||
-							user.friends.some( id => userToFollow._id.equals( id ))) {
-						return next( errors.blankData());
-					}
-					new Notification({
-						author: user._id,
-						receiver: userToFollow._id,
-						content: "started following you",
-						follow: true
-					}).save()
-						.then( newNotification => {
-							newNotification.author = user;
-							user.following.push( userToFollow._id );
-							userToFollow.followers.push( user._id );
-							userToFollow.notifications.push( newNotification );
-							userToFollow.newNotifications++;
-							Promise.all([ userToFollow.save(), user.save() ])
-								.then(() => {
-									res.status( 201 );
-									res.send( newNotification );
-
-								}).catch( err => next( err ));
-						}).catch( err => next( err ));
-				}).catch( err => next( err ));
-		}).catch( err => next( err ));
+	res.status( 201 );
+	res.send( newNotification );
 });
 
 

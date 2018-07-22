@@ -34,7 +34,13 @@ Router.post( "/create", async( req, res, next ) => {
 			return next( errors.userDoesntExist());
 		}
 		post = await Post.findById( postId )
-			.populate({ path: "sharedPost" })
+			.populate({
+				path: "sharedPost",
+				populate: {
+					path: "author",
+					select: "fullname username profileImage",
+				}
+			})
 			.exec();
 		if ( !post ) {
 			return next( errors.postDoesntExist());
@@ -117,7 +123,15 @@ Router.delete( "/delete", async( req, res, next ) => {
 			return next( errors.unauthorized());
 		}
 
-		post = await Post.findById( postId ).exec();
+		post = await Post.findById( postId )
+			.populate({
+				path: "sharedPost",
+				populate: {
+					path: "author",
+					select: "fullname username profileImage",
+				}
+			})
+			.exec();
 		if ( !post ) {
 			return next( errors.postDoesntExist());
 		}

@@ -55,18 +55,18 @@ Router.post( "/add", async( req, res, next ) => {
 		userConversation,
 		friendConversation;
 
-	if ( !req.body.token || !req.body.friendUsername || !req.body.content ) {
+	if ( !req.body.token || !req.body.friendId || !req.body.content ) {
 		return next( errors.blankData());
 	}
 
-	const { token, friendUsername, content } = req.body;
+	const { token, friendId, content } = req.body;
 
 	try {
 		userId = await tokenVerifier( token );
 		user = await User.findById( userId )
-			.select( "fullname username profileImage" )
+			.select( "fullname username profileImage openConversations" )
 			.exec();
-		friend = await User.findOne({ username: friendUsername }).exec();
+		friend = await User.findById( friendId ).exec();
 
 		if ( !user || !friend ) {
 			return next( errors.userDoesntExist());
@@ -94,9 +94,17 @@ Router.post( "/add", async( req, res, next ) => {
 			}).save();
 			userConversation = await userConversation
 				.populate({
-					path: "author target messages",
-					select: "fullname username profileImage author receiver content",
+					path: "author target",
+					select: "fullname username profileImage",
 					options: { sort: { createdAt: -1 } }
+				})
+				.populate({
+					path: "messages",
+					select: "author receiver content",
+					populate: {
+						path: "author receiver",
+						select: "fullname username profileImage"
+					}
 				}).execPopulate();
 			user.openConversations.push( userConversation._id );
 		}
@@ -182,16 +190,16 @@ Router.delete( "/delete", async( req, res, next ) => {
 		partnerConversation,
 		messages;
 
-	if ( !req.body.token || !req.body.targetUsername ) {
+	if ( !req.body.token || !req.body.targetId ) {
 		return next( errors.blankData());
 	}
 
-	const { token, targetUsername } = req.body;
+	const { token, targetId } = req.body;
 
 	try {
 		userId = await tokenVerifier( token );
 		user = await User.findById( userId ).exec();
-		target = await User.findOne({ username: targetUsername }).exec();
+		target = await User.findById( targetId ).exec();
 		if ( !user || !target ) {
 			return next( errors.userDoesntExist());
 		}

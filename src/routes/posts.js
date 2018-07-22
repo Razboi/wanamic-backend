@@ -1,6 +1,7 @@
 const
 	Router = require( "express" ).Router(),
 	User = require( "../models/User" ),
+	Comment = require( "../models/Comment" ),
 	tokenVerifier = require( "../utils/tokenVerifier" ),
 	Post = require( "../models/Post" ),
 	LinkPreview = require( "react-native-link-preview" ),
@@ -551,10 +552,19 @@ Router.post( "/:username/:skip", async( req, res, next ) => {
 					skip: req.params.skip * 10,
 					sort: { createdAt: -1 }
 				},
-				populate: {
-					path: "sharedPost author",
-					select: "fullname username profileImage"
-				}
+				populate: [
+					{
+						path: "author",
+						select: "fullname username profileImage"
+					},
+					{
+						path: "sharedPost",
+						populate: {
+							path: "author",
+							select: "fullname username profileImage",
+						}
+					}
+				]
 			})
 			.exec();
 		if ( !user ) {
@@ -577,70 +587,62 @@ Router.post( "/:username/:skip", async( req, res, next ) => {
 });
 
 
-Router.delete( "/delete", ( req, res, next ) => {
-	var post;
+Router.delete( "/delete", async( req, res, next ) => {
+	var userId;
 
-	if ( !req.body.post || !req.body.post.id ) {
+	if ( !req.body.postId || !req.body.token ) {
 		return next( errors.blankData());
 	}
 
-	post = req.body.post;
+	const { postId, token } = req.body;
 
 	try {
-		userId = tokenVerifier( post.token );
+		userId = await tokenVerifier( token );
+		user = await User.findById( userId ).exec();
+		post = await Post.findById( postId ).exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+		if ( !post ) {
+			return next( errors.postDoesntExist());
+		}
+		if ( !user._id.equals( post.author )) {
+			return next( errors.unauthorized());
+		}
+
+		const
+			postsIndex = user.posts.indexOf( post.id ),
+			newsfeedIndex = user.newsfeed.indexOf( post.id );
+
+		user.posts.splice( postsIndex, 1 );
+		user.newsfeed.splice( newsfeedIndex, 1 );
+		await user.save();
+
+		User.update(
+			{ _id: { $in: user.friends } },
+			{ $pull: { "newsfeed": post._id } },
+			{ multi: true }
+		).exec();
+
+		if ( post.picture ) {
+			const
+				picPath = "../wanamic-frontend/src/images/",
+				picFile = post.mediaContent.image;
+			fs.unlink( picPath + picFile, err => {
+				if ( err ) {
+					next( err );
+				}
+			});
+		}
+
+		await Comment.remove({
+			_id: { $in: post.comments }
+		}).exec();
+		await post.remove();
 	} catch ( err ) {
 		return next( err );
 	}
-
-	User.findById( userId )
-		.exec()
-		.then( user => {
-			if ( !user ) {
-				return next( errors.userDoesntExist());
-			}
-
-			Post.findById( post.id )
-				.exec()
-				.then( storedPost => {
-					if ( !storedPost ) {
-						return next( errors.postDoesntExist());
-					}
-					if ( !user._id.equals( storedPost.author )) {
-						return next( errors.unauthorized());
-					}
-
-					const
-						postsIndex = user.posts.indexOf( storedPost.id ),
-						newsfeedIndex = user.newsfeed.indexOf( storedPost.id );
-
-					User.update(
-						{ _id: { $in: user.friends } },
-						{ $pull: { "newsfeed": storedPost.id } },
-						{ multi: true }
-					)
-						.exec()
-						.catch( err => next( err ));
-
-					user.posts.splice( postsIndex, 1 );
-					user.newsfeed.splice( newsfeedIndex, 1 );
-					user.save()
-						.then(() => {
-							if ( storedPost.picture ) {
-								const
-									picPath = "../wanamic-frontend/src/images/",
-									picFile = storedPost.mediaContent.image;
-								fs.unlink( picPath + picFile, err => {
-									if ( err ) {
-										next( err );
-									}
-								});
-							}
-							storedPost.remove()
-								.then(() => res.sendStatus( 200 ))
-								.catch( err => next( err ));
-						}).catch( err => next( err ));
-				}).catch( err => next( err ));
-		}).catch( err => next( err ));
+	res.sendStatus( 200 );
 });
 
 
@@ -703,7 +705,13 @@ Router.post( "/share", async( req, res, next ) => {
 			return next( errors.userDoesntExist());
 		}
 		postToShare = await Post.findById( postId )
-			.populate( "sharedPost" )
+			.populate({
+				path: "sharedPost",
+				populate: {
+					path: "author",
+					select: "fullname username profileImage",
+				}
+			})
 			.populate({
 				path: "author",
 				select: "username fullname profileImage"

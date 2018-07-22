@@ -63,5 +63,10 @@ module.exports = {
 		var err = new Error( "Duplicated notification" );
 		err.statusCode = 422;
 		return err;
+	},
+	alreadyRelated: () => {
+		var err = new Error( "Users already have this relation or a higher one" );
+		err.statusCode = 422;
+		return err;
 	}
 };

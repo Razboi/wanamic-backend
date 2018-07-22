@@ -597,7 +597,6 @@ describe( "DELETE posts/delete", function() {
 		chai.request( "localhost:8000" )
 			.delete( "/posts/delete" )
 			.send({
-				post: {}
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
@@ -620,7 +619,8 @@ describe( "DELETE posts/delete", function() {
 		chai.request( "localhost:8000" )
 			.delete( "/posts/delete" )
 			.send({
-				post: { id: post._id, token: "123123" }
+				postId: post._id,
+				token: "123123"
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
@@ -633,7 +633,8 @@ describe( "DELETE posts/delete", function() {
 		chai.request( "localhost:8000" )
 			.delete( "/posts/delete" )
 			.send({
-				post: { id: "123321", token: token }
+				postId: "123321",
+				token: token
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 500 );
@@ -645,7 +646,8 @@ describe( "DELETE posts/delete", function() {
 		chai.request( "localhost:8000" )
 			.delete( "/posts/delete" )
 			.send({
-				post: { id: post._id, token: invalidToken }
+				postId: post._id,
+				token: invalidToken
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
@@ -659,7 +661,8 @@ describe( "DELETE posts/delete", function() {
 		chai.request( "localhost:8000" )
 			.delete( "/posts/delete" )
 			.send({
-				post: { id: post._id, token: token }
+				postId: post._id,
+				token: token
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 200 );

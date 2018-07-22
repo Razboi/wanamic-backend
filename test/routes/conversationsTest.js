@@ -40,7 +40,7 @@ describe( "POST conversations/add", function() {
 			.post( "/conversations/add" )
 			.send({
 				token: token,
-				friendUsername: user.username,
+				friendId: user._id,
 				content: "sup"
 			})
 			.end(( err, res ) => {
@@ -54,7 +54,7 @@ describe( "POST conversations/add", function() {
 			.post( "/conversations/add" )
 			.send({
 				token: token,
-				friendUsername: "testuser"
+				friendId: user._id
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
@@ -67,7 +67,7 @@ describe( "POST conversations/add", function() {
 		chai.request( "localhost:8000" )
 			.post( "/conversations/add" )
 			.send({
-				friendUsername: "testuser",
+				friendId: user._id,
 				content: "sup"
 			})
 			.end(( err, res ) => {
@@ -96,7 +96,7 @@ describe( "POST conversations/add", function() {
 			.post( "/conversations/add" )
 			.send({
 				token: "123213adasdsad21321321",
-				friendUsername: "testuser",
+				friendId: user._id,
 				content: "sup"
 			})
 			.end(( err, res ) => {
