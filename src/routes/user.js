@@ -1,6 +1,10 @@
 const
 	Router = require( "express" ).Router(),
 	User = require( "../models/User" ),
+	Post = require( "../models/Post" ),
+	Comment = require( "../models/Comment" ),
+	Conversation = require( "../models/Conversation" ),
+	Notification = require( "../models/Notification" ),
 	Ticket = require( "../models/Ticket" ),
 	bcrypt = require( "bcrypt" ),
 	multer = require( "multer" ),
@@ -446,11 +450,21 @@ Router.delete( "/deleteAccount", async( req, res, next ) => {
 		}
 		if ( req.body.feedback ) {
 			await new Ticket({
-				author: user.username,
+				author: user._id,
 				content: req.body.feedback,
 				fromDeletedAccount: true
 			}).save();
 		}
+		await Post.remove({
+			_id: { $in: user.posts }
+		}).exec();
+		const comments = await Comment.find({ author: user._id }).remove();
+		await Conversation.remove({
+			_id: { $in: user.openConversations }
+		}).exec();
+		await Notification.remove({
+			_id: { $in: user.notifications }
+		}).exec();
 		await user.remove();
 	} catch ( err ) {
 		return next( err );
