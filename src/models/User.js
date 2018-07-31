@@ -18,7 +18,6 @@ const
 		newNotifications: { type: Number, default: 0 },
 		pendingRequests: [ { type: String } ],
 		openConversations: [ { type: Schema.Types.ObjectId, ref: "Conversation" } ],
-		chatNotifications: [ { type: String } ],
 		description: { type: String },
 		hobbies: [ { type: String } ],
 		profileImage: { type: String },

@@ -5,6 +5,7 @@ const
 	Comment = require( "../models/Comment" ),
 	Conversation = require( "../models/Conversation" ),
 	Notification = require( "../models/Notification" ),
+	Message = require( "../models/Message" ),
 	Ticket = require( "../models/Ticket" ),
 	bcrypt = require( "bcrypt" ),
 	multer = require( "multer" ),
@@ -449,23 +450,38 @@ Router.delete( "/deleteAccount", async( req, res, next ) => {
 			return next( errors.invalidPassword());
 		}
 		if ( req.body.feedback ) {
-			await new Ticket({
+			new Ticket({
 				author: user._id,
 				content: req.body.feedback,
 				fromDeletedAccount: true
 			}).save();
 		}
+
+		User.update(
+			{ _id: { $in: [ user.friends, user.followers ] } },
+			{ $pull: { "newsfeed": { $in: user.posts } } },
+			{ multi: true }
+		).exec();
+		Notification.remove({
+			_id: { $in: user.notifications }
+		}).exec();
+		await Comment.remove({
+			post: { $in: user.posts }
+		}).exec();
 		await Post.remove({
 			_id: { $in: user.posts }
 		}).exec();
-		const comments = await Comment.find({ author: user._id }).remove();
-		await Conversation.remove({
-			_id: { $in: user.openConversations }
-		}).exec();
-		await Notification.remove({
-			_id: { $in: user.notifications }
-		}).exec();
-		await user.remove();
+
+		const
+			comments = await Comment.find({ author: user._id }).remove(),
+			notifications = await Notification.find({ author: user._id }).remove(),
+			conversations = await Conversation.find({
+				$or: [ { author: user._id }, { target: user._id } ]
+			}).remove(),
+			messages = await Message.find({
+				$or: [ { author: user._id }, { receiver: user._id } ]
+			}).remove();
+		user.remove();
 	} catch ( err ) {
 		return next( err );
 	}

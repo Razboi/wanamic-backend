@@ -33,8 +33,7 @@ Router.post( "/retrieve/:skip", async( req, res, next ) => {
 
 	res.send({
 		notifications: user.notifications,
-		newNotifications: user.newNotifications,
-		chatNotifications: user.chatNotifications
+		newNotifications: user.newNotifications
 	});
 });
 

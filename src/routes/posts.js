@@ -11,6 +11,7 @@ const
 	Notification = require( "../models/Notification" ),
 	notifyMentions = require( "../utils/notifyMentions" ),
 	errors = require( "../utils/errors" ),
+	removePostAndComments = require( "../utils/removePostAndComments" ),
 	fs = require( "fs" );
 
 Router.get( "/explore/:skip", async( req, res, next ) => {
@@ -617,28 +618,7 @@ Router.delete( "/delete", async( req, res, next ) => {
 		user.posts.splice( postsIndex, 1 );
 		user.newsfeed.splice( newsfeedIndex, 1 );
 		await user.save();
-
-		User.update(
-			{ _id: { $in: user.friends } },
-			{ $pull: { "newsfeed": post._id } },
-			{ multi: true }
-		).exec();
-
-		if ( post.picture ) {
-			const
-				picPath = "../wanamic-frontend/src/images/",
-				picFile = post.mediaContent.image;
-			fs.unlink( picPath + picFile, err => {
-				if ( err ) {
-					next( err );
-				}
-			});
-		}
-
-		await Comment.remove({
-			_id: { $in: post.comments }
-		}).exec();
-		await post.remove();
+		await removePostAndComments( user, post );
 	} catch ( err ) {
 		return next( err );
 	}

@@ -129,10 +129,6 @@ Router.post( "/add", async( req, res, next ) => {
 			friend.openConversations.push( friendConversation._id );
 		}
 
-		if ( !friend.chatNotifications.includes( user.username )) {
-			friend.chatNotifications.push( user.username );
-		}
-
 		Promise.all([ user.save(), friend.save() ]);
 	} catch ( err ) {
 		return next( err );
@@ -168,9 +164,6 @@ Router.post( "/clearNotifications", async( req, res, next ) => {
 		conversation = await Conversation.findOne({
 			$and: [ { author: user._id }, { target: target._id } ]
 		}).exec();
-		user.chatNotifications = user.chatNotifications.filter( author =>
-			author !== targetUsername
-		);
 		conversation.newMessagesCount = 0;
 		Promise.all([ user.save(), conversation.save() ]);
 	} catch ( err ) {
@@ -220,8 +213,8 @@ Router.delete( "/delete", async( req, res, next ) => {
 		if ( !partnerConversation ) {
 			messages = await Message.find({
 				$or: [
-					{ $and: [ { author: user.username }, { receiver: target.username } ] },
-					{ $and: [ { author: target.username }, { receiver: user.username } ] }
+					{ $and: [ { author: user._id }, { receiver: target._id } ] },
+					{ $and: [ { author: target._id }, { receiver: user._id } ] }
 				]
 			}).remove();
 		}
