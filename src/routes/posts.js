@@ -7,12 +7,27 @@ const
 	LinkPreview = require( "react-native-link-preview" ),
 	extractHostname = require( "../utils/extractHostname" ),
 	multer = require( "multer" ),
-	upload = multer({ dest: "../wanamic-frontend/src/images" }),
 	Notification = require( "../models/Notification" ),
 	notifyMentions = require( "../utils/notifyMentions" ),
 	errors = require( "../utils/errors" ),
 	removePostAndComments = require( "../utils/removePostAndComments" ),
-	fs = require( "fs" );
+	fs = require( "fs" ),
+	path = require( "path" );
+
+var upload = multer({
+	dest: "../wanamic-frontend/src/images",
+	fileFilter: function( req, file, callback ) {
+		var ext = path.extname( file.originalname );
+		if ( ext !== ".png" && ext !== ".jpg" && ext !== ".gif" && ext !== ".jpeg" ) {
+			return callback( new Error(
+				"Only .png .jpg .gif .jpeg images are allowed" ));
+		}
+		callback( null, true );
+	},
+	limits: {
+		fileSize: 1024 * 1024
+	}
+});
 
 Router.get( "/explore/:skip", async( req, res, next ) => {
 	var posts;
