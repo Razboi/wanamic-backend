@@ -68,5 +68,11 @@ module.exports = {
 		var err = new Error( "Users already have this relation or a higher one" );
 		err.statusCode = 422;
 		return err;
+	},
+	invalidLink: () => {
+		var err = new Error( "The link that you provided isn't returning the necessary data for a preview." +
+		" Try sharing it through a text post." );
+		err.statusCode = 422;
+		return err;
 	}
 };

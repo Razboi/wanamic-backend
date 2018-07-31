@@ -9,13 +9,29 @@ const
 	Ticket = require( "../models/Ticket" ),
 	bcrypt = require( "bcrypt" ),
 	multer = require( "multer" ),
-	upload = multer({ dest: "../wanamic-frontend/src/images" }),
 	findRandomUser = require( "../utils/findRandomUser" ),
 	removeDuplicates = require( "../utils/removeDuplicatesArrOfObj" ),
 	validateEmail = require( "../utils/validateEmail" ),
 	async = require( "async" ),
 	errors = require( "../utils/errors" ),
-	fs = require( "fs" );
+	fs = require( "fs" ),
+	path = require( "path" );
+
+var upload = multer({
+	dest: "../wanamic-frontend/src/images",
+	fileFilter: function( req, file, callback ) {
+		var ext = path.extname( file.originalname );
+		if ( ext !== ".png" && ext !== ".jpg" && ext !== ".gif" && ext !== ".jpeg" ) {
+			return callback( new Error(
+				"Only .png .jpg .gif .jpeg images are allowed" ));
+		}
+		callback( null, true );
+	},
+	limits: {
+		fileSize: 1024 * 1024
+	}
+});
+
 
 Router.post( "/userInfo", async( req, res, next ) => {
 	var

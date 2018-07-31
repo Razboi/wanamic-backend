@@ -360,6 +360,9 @@ Router.post( "/mediaLink", async( req, res, next ) => {
 	try {
 		userId = await tokenVerifier( token );
 		previewData = await LinkPreview.getPreview( link );
+		if ( !previewData.images ) {
+			return next( errors.invalidLink());
+		}
 		hostname = await extractHostname( previewData.url );
 		if ( hostname === "www.youtube.com" ) {
 			embeddedUrl = previewData.url.replace( "watch?v=", "embed/" );
@@ -382,7 +385,7 @@ Router.post( "/mediaLink", async( req, res, next ) => {
 				hostname: hostname,
 				title: previewData.title,
 				description: previewData.description,
-				image: previewData.images[ 0 ]
+				image: previewData.images && previewData.images[ 0 ]
 			}
 		}).save();
 		newPost = await newPost.populate({
