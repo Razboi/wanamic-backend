@@ -39,8 +39,6 @@ Router.get( "/explore/:skip", async( req, res, next ) => {
 		posts = await Post.find()
 			.where( "media" ).equals( true )
 			.where( "sharedPost" ).equals( undefined )
-			.where( "alerts.nsfw" ).equals( false )
-			.where( "alerts.spoiler" ).equals( false )
 			.where( "privacyRange" ).equals( "3" )
 			.limit( 10 )
 			.skip( req.params.skip * 10 )
@@ -463,7 +461,11 @@ Router.post( "/mediaPicture", upload.single( "picture" ), async( req, res, next 
 			media: true,
 			picture: true,
 			content: data.content,
-			alerts: data.alerts,
+			alerts: {
+				nsfw: data.nsfw,
+				spoiler: data.spoiler,
+				spoilerDescription: data.spoilerDescription
+			},
 			hashtags: hashtags,
 			privacyRange: data.privacyRange,
 			mediaContent: {

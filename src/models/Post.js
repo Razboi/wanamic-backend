@@ -15,7 +15,8 @@ const
 		hashtags: [ { type: String } ],
 		alerts: {
 			nsfw: { type: Boolean, default: false },
-			spoiler: { type: Boolean, default: false }
+			spoiler: { type: Boolean, default: false },
+			spoilerDescription: { type: String }
 		},
 		privacyRange: { type: Number, default: 1 },
 		mediaContent: {
