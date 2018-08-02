@@ -16,6 +16,12 @@ Router.post( "/signup", ( req, res, next ) => {
 		return next( errors.blankData());
 	}
 
+	if ( credentials.username.length > 20 ) {
+		return next( errors.invalidUsernameLength());
+	} else if ( credentials.fullname.length > 30 ) {
+		return next( errors.invalidFullnameLength());
+	}
+
 	User.findOne({ username: credentials.username })
 		.exec()
 		.then( user => {

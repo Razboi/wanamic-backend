@@ -74,5 +74,15 @@ module.exports = {
 		" Try sharing it through a text post." );
 		err.statusCode = 422;
 		return err;
+	},
+	invalidUsernameLength: () => {
+		var err = new Error( "The username length exceeds 20 characters" );
+		err.statusCode = 422;
+		return err;
+	},
+	invalidFullnameLength: () => {
+		var err = new Error( "The fullname length exceeds 30 characters" );
+		err.statusCode = 422;
+		return err;
 	}
 };
