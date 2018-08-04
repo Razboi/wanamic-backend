@@ -54,6 +54,11 @@ module.exports = {
 		err.statusCode = 401;
 		return err;
 	},
+	invalidPasswordFormat: () => {
+		var err = new Error( "Invalid password format" );
+		err.statusCode = 422;
+		return err;
+	},
 	unauthorized: () => {
 		var err = new Error( "Unauthorized" );
 		err.statusCode = 401;
@@ -75,13 +80,13 @@ module.exports = {
 		err.statusCode = 422;
 		return err;
 	},
-	invalidUsernameLength: () => {
-		var err = new Error( "The username length exceeds 20 characters" );
+	invalidUsernameFormat: () => {
+		var err = new Error( "The username format is invalid" );
 		err.statusCode = 422;
 		return err;
 	},
-	invalidFullnameLength: () => {
-		var err = new Error( "The fullname length exceeds 30 characters" );
+	invalidFullnameFormat: () => {
+		var err = new Error( "The fullname format is invalid" );
 		err.statusCode = 422;
 		return err;
 	}

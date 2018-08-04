@@ -21,7 +21,7 @@ describe( "auth/signup", function() {
 			username: "testuser2",
 			fullname: "Test User",
 			keywords: [ "test" ],
-			passwordHash: bcrypt.hashSync( "test", 10 )
+			passwordHash: bcrypt.hashSync( "password123", 10 )
 		}).save();
 		token = await tokenGenerator( author );
 	});
@@ -39,7 +39,7 @@ describe( "auth/signup", function() {
 					email: "test@gmail.com",
 					username: "signuptestuser",
 					fullname: "Test User",
-					password: "test"
+					password: "password123"
 				}
 			})
 			.end(( err, res ) => {
@@ -73,7 +73,7 @@ describe( "auth/signup", function() {
 					email: "test2@gmail.com",
 					username: "newtestuser",
 					fullname: "Test User",
-					password: "test"
+					password: "password123"
 				}
 			})
 			.end(( err, res ) => {
@@ -91,7 +91,7 @@ describe( "auth/signup", function() {
 					email: "test2@gmail.com",
 					username: "testuser2",
 					fullname: "Test User",
-					password: "test"
+					password: "password123"
 				}
 			})
 			.end(( err, res ) => {

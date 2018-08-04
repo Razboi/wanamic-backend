@@ -92,6 +92,12 @@ Router.post( "/info", upload.fields([ { name: "userImage", maxCount: 1 },
 			user.description = newInfo.description;
 		}
 		if ( newInfo.fullname && newInfo.fullname !== user.fullname ) {
+			if ( credentials.fullname.length > 30 ) {
+				return next( errors.invalidFullnameFormat());
+			}
+			if ( !/[a-z\s]+$/i.test( credentials.fullname )) {
+				return next( errors.invalidFullnameFormat());
+			}
 			user.fullname = newInfo.fullname;
 		}
 		if ( newInfo.location && newInfo.location !== user.location ) {
@@ -104,6 +110,14 @@ Router.post( "/info", upload.fields([ { name: "userImage", maxCount: 1 },
 			user.birthday = newInfo.birthday;
 		}
 		if ( newInfo.username && newInfo.username !== user.username ) {
+			if ( credentials.username.length > 20 ) {
+				return next( errors.invalidUsernameFormat());
+			}
+			if ( !/[\w]+$/.test( credentials.username )
+			|| /[\s.]/.test( credentials.username )) {
+				errors.invalidUsernameFormat();
+			}
+
 			const userWithUsername = await User.findOne({
 				username: newInfo.username
 			}).exec();
@@ -385,6 +399,10 @@ Router.patch( "/updatePassword", async( req, res, next ) => {
 		return next( errors.blankData());
 	}
 	const { token, currentPassword, newPassword } = req.body;
+
+	if ( !/^(?=.*\d)(?=.*[a-zA-Z]).{8,}$/.test( newPassword )) {
+		return next( errors.invalidPasswordFormat());
+	}
 
 	try {
 		userId = await tokenVerifier( token );

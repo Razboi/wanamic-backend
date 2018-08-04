@@ -6,7 +6,8 @@ const
 	refreshTokenGenerator = require( "../utils/refreshTokenGenerator" ),
 	tokenVerifier = require( "../utils/tokenVerifier" ),
 	User = require( "../models/User" ),
-	errors = require( "../utils/errors" );
+	errors = require( "../utils/errors" ),
+	validateEmail = require( "../utils/validateEmail" );
 
 Router.post( "/signup", ( req, res, next ) => {
 	const credentials = req.body.credentials;
@@ -16,10 +17,24 @@ Router.post( "/signup", ( req, res, next ) => {
 		return next( errors.blankData());
 	}
 
+	if ( !validateEmail( credentials.email )) {
+		return next( errors.invalidEmailFormat());
+	}
+	if ( !/^(?=.*\d)(?=.*[a-zA-Z]).{8,}$/.test( credentials.password )) {
+		return next( errors.invalidPasswordFormat());
+	}
 	if ( credentials.username.length > 20 ) {
-		return next( errors.invalidUsernameLength());
-	} else if ( credentials.fullname.length > 30 ) {
-		return next( errors.invalidFullnameLength());
+		return next( errors.invalidUsernameFormat());
+	}
+	if ( credentials.fullname.length > 30 ) {
+		return next( errors.invalidFullnameFormat());
+	}
+	if ( !/[a-z\s]+$/i.test( credentials.fullname )) {
+		return next( errors.invalidFullnameFormat());
+	}
+	if ( !/[\w]+$/.test( credentials.username )
+	|| /[\s.]/.test( credentials.username )) {
+		errors.invalidUsernameFormat();
 	}
 
 	User.findOne({ username: credentials.username })
