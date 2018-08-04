@@ -21,19 +21,19 @@ Router.post( "/getFriends", ( req, res, next ) => {
 
 	User.findById( userId )
 		.populate({
-			path: "friends",
+			path: "friends following",
 			options: {
 				select: "username fullname profileImage",
 				sort: { createdAt: -1 }
 			}
 		})
-		.select( "friends" )
+		.select( "friends following" )
 		.exec()
 		.then( user => {
 			if ( !user ) {
 				return next( errors.userDoesntExist());
 			}
-			res.send( user.friends );
+			res.send([ ...user.friends, ...user.following ]);
 		}).catch( err => next( err ));
 });
 

@@ -166,11 +166,13 @@ Router.patch( "/update", async( req, res, next ) => {
 		if ( !user ) {
 			return next( errors.userDoesntExist());
 		}
-		comment = await Comment.findById( commentId ).exec();
+		comment = await Comment.findById( commentId )
+			.populate({ path: "author", select: "username fullname profileImage" })
+			.exec();
 		if ( !comment ) {
 			return next( errors.commentDoesntExist());
 		}
-		if ( !user._id.equals( comment.author )) {
+		if ( !user._id.equals( comment.author._id )) {
 			return next( errors.unauthorized());
 		}
 		comment.content = newContent;
@@ -180,7 +182,10 @@ Router.patch( "/update", async( req, res, next ) => {
 	} catch ( err ) {
 		return next( err );
 	}
-	res.send( mentionsNotifications );
+	res.send({
+		mentionsNotifications: mentionsNotifications,
+		updatedComment: comment
+	});
 });
 
 
