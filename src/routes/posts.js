@@ -652,11 +652,12 @@ Router.patch( "/update", async( req, res, next ) => {
 		user,
 		post;
 
-	if ( !req.body.token || !req.body.postId || !req.body.newContent ) {
+	if ( !req.body.token || !req.body.postId ||
+		req.body.newContent === undefined ) {
 		return next( errors.blankData());
 	}
 
-	const { token, postId, newContent } = req.body;
+	const { token, postId, newContent, mentions, hashtags } = req.body;
 
 	try {
 		userId = await tokenVerifier( token );
@@ -675,11 +676,17 @@ Router.patch( "/update", async( req, res, next ) => {
 			return next( errors.unauthorized());
 		}
 		post.content = newContent;
+		post.hashtags = hashtags;
 		await post.save();
+		mentionsNotifications = await notifyMentions(
+			mentions, "post", post, user );
 	} catch ( err ) {
 		return next( err );
 	}
-	res.send( post );
+	res.send({
+		updatedPost: post,
+		mentionsNotifications: mentionsNotifications
+	});
 });
 
 

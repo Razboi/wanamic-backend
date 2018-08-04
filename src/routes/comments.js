@@ -148,43 +148,39 @@ Router.delete( "/delete", async( req, res, next ) => {
 	res.send( post );
 });
 
-Router.patch( "/update", ( req, res, next ) => {
+Router.patch( "/update", async( req, res, next ) => {
 	var
 		data,
-		userId;
+		userId,
+		user;
 
 	if ( !req.body.token || !req.body.commentId || !req.body.newContent ) {
 		return next( errors.blankData());
 	}
 
-	data = req.body;
+	const { token, commentId, newContent, mentions, hashtags } = req.body;
 
 	try {
-		userId = tokenVerifier( data.token );
+		userId = await tokenVerifier( token );
+		user = await User.findById( userId ).exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+		comment = await Comment.findById( commentId ).exec();
+		if ( !comment ) {
+			return next( errors.commentDoesntExist());
+		}
+		if ( !user._id.equals( comment.author )) {
+			return next( errors.unauthorized());
+		}
+		comment.content = newContent;
+		mentionsNotifications = await notifyMentions(
+			mentions, "comment", comment, user );
+		await comment.save();
 	} catch ( err ) {
 		return next( err );
 	}
-
-	User.findById( userId )
-		.exec()
-		.then( user => {
-			if ( !user ) {
-				return next( errors.userDoesntExist());
-			}
-			Comment.findById( data.commentId )
-				.then( comment => {
-					if ( !comment ) {
-						return next( errors.commentDoesntExist());
-					}
-					if ( !user._id.equals( comment.author )) {
-						return next( errors.unauthorized());
-					}
-					comment.content = data.newContent;
-					comment.save()
-						.then(() => res.sendStatus( 200 ))
-						.catch( err => next( err ));
-				}).catch( err => next( err ));
-		}).catch( err => next( err ));
+	res.send( mentionsNotifications );
 });
 
 
