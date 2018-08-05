@@ -38,4 +38,15 @@ const
 
 	Post = mongoose.model( "Post", PostSchema );
 
+PostSchema.post( "remove", async( post, next ) => {
+	try {
+		await mongoose.model( "Comment" ).remove({
+			_id: { $in: post.comments }
+		}).exec();
+		next();
+	} catch ( err ) {
+		return next( err );
+	}
+});
+
 module.exports = Post;

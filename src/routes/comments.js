@@ -122,25 +122,8 @@ Router.delete( "/delete", async( req, res, next ) => {
 		if ( !user._id.equals( comment.author )) {
 			return next( errors.unauthorized());
 		}
-
-		post = await Post.findById( postId )
-			.populate({
-				path: "sharedPost",
-				populate: {
-					path: "author",
-					select: "fullname username profileImage",
-				}
-			})
-			.exec();
-		if ( !post ) {
-			return next( errors.postDoesntExist());
-		}
-
-		const commentIndex = post.comments.indexOf( commentId );
-		post.comments.splice( commentIndex, 1 );
-		await post.save();
-
-		comment.remove();
+		await comment.remove();
+		post = await Post.findById( postId ).exec();
 	} catch ( err ) {
 		return next( err );
 	}
@@ -189,10 +172,11 @@ Router.patch( "/update", async( req, res, next ) => {
 });
 
 
-Router.post( "/retrieve/:skip", ( req, res, next ) => {
+Router.post( "/retrieve/:skip", async( req, res, next ) => {
 	var
 		data,
-		userId;
+		userId,
+		post;
 
 	if ( !req.body.token || !req.body.postId || !req.params.skip ) {
 		return next( errors.blankData());
@@ -201,28 +185,28 @@ Router.post( "/retrieve/:skip", ( req, res, next ) => {
 	data = req.body;
 
 	try {
-		userId = tokenVerifier( data.token );
+		userId = await tokenVerifier( data.token );
+		post = await Post.findById( data.postId )
+			.populate({
+				path: "comments",
+				populate: {
+					path: "author",
+					select: "username fullname profileImage"
+				},
+				options: {
+					limit: 10,
+					skip: req.params.skip * 10,
+					sort: { createdAt: -1 }
+				}
+			})
+			.exec();
+		if ( !post ) {
+			return next( errors.postDoesntExist());
+		}
 	} catch ( err ) {
 		return next( err );
 	}
-
-	Post.findById( data.postId )
-		.populate({
-			path: "comments",
-			populate: {
-				path: "author",
-				select: "username fullname profileImage"
-			},
-			options: {
-				limit: 10,
-				skip: req.params.skip * 10,
-				sort: { createdAt: -1 }
-			}
-		})
-		.exec()
-		.then( post => {
-			res.send( post.comments );
-		}).catch( err => next( err ));
+	res.send( post.comments );
 });
 
 module.exports = Router;

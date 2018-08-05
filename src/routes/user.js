@@ -128,28 +128,30 @@ Router.post( "/info", upload.fields([ { name: "userImage", maxCount: 1 },
 			newUsername = newInfo.username;
 		}
 		if ( req.files ) {
-			if ( req.files[ "userImage" ]) {
+			if ( user.profileImage ) {
 				const
-					oldPicPath = "../wanamic-frontend/src/images/",
 					oldPicFile = user.profileImage;
-				user.profileImage = req.files[ "userImage" ][ 0 ].filename;
+				fs.unlink( "../wanamic-frontend/src/images/" + oldPicFile, err => {
+					if ( err ) {
+						next( err );
+					}
+				});
+			}
+			if ( req.files[ "userImage" ]) {
 				newImage = req.files[ "userImage" ][ 0 ].filename;
-				fs.unlink( oldPicPath + oldPicFile, err => {
+				user.profileImage = newImage;
+			}
+			if ( user.headerImage ) {
+				const
+					oldPicFile = user.profileImage;
+				fs.unlink( "../wanamic-frontend/src/images/" + oldPicFile, err => {
 					if ( err ) {
 						next( err );
 					}
 				});
 			}
 			if ( req.files[ "headerImage" ]) {
-				const
-					oldPicPath = "../wanamic-frontend/src/images/",
-					oldPicFile = user.headerImage;
 				user.headerImage = req.files[ "headerImage" ][ 0 ].filename;
-				fs.unlink( oldPicPath + oldPicFile, err => {
-					if ( err ) {
-						next( err );
-					}
-				});
 			}
 		}
 		await user.save();
@@ -308,7 +310,7 @@ Router.post( "/setUserKw", async( req, res, next ) => {
 			newHobbies.push( hobbie.text );
 		}
 		user.hobbies = newHobbies;
-		user.save();
+		await user.save();
 	} catch ( err ) {
 		return next( err );
 	}
@@ -484,23 +486,30 @@ Router.delete( "/deleteAccount", async( req, res, next ) => {
 			return next( errors.invalidPassword());
 		}
 		if ( req.body.feedback ) {
-			new Ticket({
+			await new Ticket({
 				author: user._id,
 				content: req.body.feedback,
 				fromDeletedAccount: true
 			}).save();
 		}
-
-		User.update(
-			{ _id: { $in: [ user.friends, user.followers ] } },
+		// remove user posts from network newsfeed
+		await User.update(
+			{ _id: { $in: [ ...user.friends, ...user.followers ] } },
 			{ $pull: { "newsfeed": { $in: user.posts } } },
 			{ multi: true }
 		).exec();
-		Notification.remove({
+		// remove user from friends/followers/following network
+		await User.update(
+			{ _id: { $in: [ ...user.friends, ...user.followers, ...user.following ] } },
+			{ $pull: {
+				"friends": user._id,
+				"followers": user._id,
+				"following": user._id
+			} },
+			{ multi: true }
+		).exec();
+		await Notification.remove({
 			_id: { $in: user.notifications }
-		}).exec();
-		await Comment.remove({
-			post: { $in: user.posts }
 		}).exec();
 		await Post.remove({
 			_id: { $in: user.posts }
@@ -508,14 +517,14 @@ Router.delete( "/deleteAccount", async( req, res, next ) => {
 
 		const
 			comments = await Comment.find({ author: user._id }).remove(),
-			notifications = await Notification.find({ author: user._id }).remove(),
 			conversations = await Conversation.find({
 				$or: [ { author: user._id }, { target: user._id } ]
 			}).remove(),
 			messages = await Message.find({
 				$or: [ { author: user._id }, { receiver: user._id } ]
 			}).remove();
-		user.remove();
+
+		await user.remove();
 	} catch ( err ) {
 		return next( err );
 	}

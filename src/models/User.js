@@ -2,6 +2,7 @@ const
 	mongoose = require( "mongoose" ),
 	bcrypt = require( "bcrypt" ),
 	Schema = mongoose.Schema,
+	fs = require( "fs" ),
 
 	UserSchema = mongoose.Schema({
 		username: { type: String, required: true },
@@ -39,5 +40,29 @@ UserSchema.methods.isValidPassword = function( password ) {
 
 
 const User = mongoose.model( "User", UserSchema );
+
+UserSchema.post( "remove", async( user, next ) => {
+	try {
+		if ( user.profileImage ) {
+			const imagePath = "../wanamic-frontend/src/images/" + user.profileImage;
+			fs.unlink( imagePath, err => {
+				if ( err ) {
+					next( err );
+				}
+			});
+		}
+		if ( user.headerImage ) {
+			const imagePath = "../wanamic-frontend/src/images/" + user.headerImage;
+			fs.unlink( imagePath, err => {
+				if ( err ) {
+					next( err );
+				}
+			});
+		}
+		next();
+	} catch ( err ) {
+		return next( err );
+	}
+});
 
 module.exports = User;

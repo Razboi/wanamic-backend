@@ -627,7 +627,7 @@ Router.delete( "/delete", async( req, res, next ) => {
 		if ( !post ) {
 			return next( errors.postDoesntExist());
 		}
-		if ( !user._id.equals( post.author )) {
+		if ( !user._id.equals( post.author._id )) {
 			return next( errors.unauthorized());
 		}
 
