@@ -11,7 +11,7 @@ const
 	multer = require( "multer" ),
 	findRandomUser = require( "../utils/findRandomUser" ),
 	removeDuplicates = require( "../utils/removeDuplicatesArrOfObj" ),
-	validateEmail = require( "../utils/validateEmail" ),
+	validators = require( "../utils/validators" ),
 	async = require( "async" ),
 	errors = require( "../utils/errors" ),
 	fs = require( "fs" ),
@@ -439,7 +439,7 @@ Router.patch( "/updateEmail", async( req, res, next ) => {
 
 	const { token, currentEmail, newEmail } = req.body;
 
-	if ( !validateEmail( newEmail )) {
+	if ( !validators.validateEmail( newEmail )) {
 		return next( errors.invalidEmailFormat());
 	}
 

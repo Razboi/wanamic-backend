@@ -12,6 +12,7 @@ const
 
 dotenv.config();
 chai.use( chaiHttp );
+mongoose.connect( process.env.MONGODB_URL );
 
 describe( "auth/signup", function() {
 
@@ -268,7 +269,11 @@ describe( "auth/token", function() {
 			fullname: "Test User",
 			passwordHash: bcrypt.hashSync( "test", 10 )
 		}).save();
-		refreshToken = await refreshTokenGenerator( author );
+		try {
+			refreshToken = await refreshTokenGenerator( author );
+		} catch ( err ) {
+			console.log( err );
+		}
 	});
 
 	it( "should return 201", function( done ) {
@@ -291,12 +296,12 @@ describe( "auth/token", function() {
 			});
 	});
 
-	it( "should return 401 malformed jwt", function( done ) {
+	it( "should return 500 jwt malformed", function( done ) {
 		chai.request( "localhost:8000" )
 			.post( "/auth/token" )
 			.send({ refreshToken: "123213adasdsad21321321" })
 			.end(( err, res ) => {
-				res.should.have.status( 401 );
+				res.should.have.status( 500 );
 				res.text.should.equal( "jwt malformed" );
 				done();
 			});

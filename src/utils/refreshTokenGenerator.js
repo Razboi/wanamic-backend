@@ -2,18 +2,18 @@ const
 	jwt = require( "jsonwebtoken" ),
 	User = require( "../models/User" );
 
-generateRefreshToken = user => {
-	if ( user && user.id ) {
-		const token = jwt.sign({ id: user.id }, process.env.SECRET_REFRESH );
-		User.findById( user.id )
-			.exec()
-			.then( user => {
-				user.refreshToken = token;
-				user.save();
-			}).catch( err => console.log( err ));
-		return token;
+generateRefreshToken = async user => {
+	if ( !user || !user._id ) {
+		throw "No user or user._id";
 	}
-	return false;
+	try {
+		const token = jwt.sign({ id: user.id }, process.env.SECRET_REFRESH );
+		user.refreshToken = token;
+		await user.save();
+		return token;
+	} catch ( err ) {
+		throw err;
+	}
 };
 
 module.exports = generateRefreshToken;
