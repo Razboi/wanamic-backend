@@ -26,7 +26,8 @@ const
 		interests: [ { type: String } ],
 		totalLikes: { type: Number, default: 0 },
 		totalViews: { type: Number, default: 0 },
-		location: { type: String },
+		country: { type: String },
+		region: { type: String },
 		gender: { type: String },
 		birthday: { type: Date },
 	});

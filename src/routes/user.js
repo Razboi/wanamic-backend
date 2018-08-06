@@ -50,8 +50,8 @@ Router.post( "/userInfo", async( req, res, next ) => {
 		requester = await User.findById( userId ).exec();
 		user = await User.findOne({ username: username })
 			.select( "username fullname description hobbies profileImage" +
-								" headerImage interests friends followers location gender" +
-								" birthday totalLikes totalViews" )
+								" headerImage interests friends followers gender" +
+								" birthday totalLikes totalViews country region" )
 			.exec();
 		if ( !user || !requester ) {
 			return next( errors.userDoesntExist());
@@ -100,8 +100,11 @@ Router.post( "/info", upload.fields([ { name: "userImage", maxCount: 1 },
 			}
 			user.fullname = newInfo.fullname;
 		}
-		if ( newInfo.location && newInfo.location !== user.location ) {
-			user.location = newInfo.location;
+		if ( newInfo.country && newInfo.country !== user.country ) {
+			user.country = newInfo.country;
+		}
+		if ( newInfo.region && newInfo.region !== user.region ) {
+			user.region = newInfo.region;
 		}
 		if ( newInfo.gender && newInfo.gender !== user.gender ) {
 			user.gender = newInfo.gender;
@@ -127,7 +130,8 @@ Router.post( "/info", upload.fields([ { name: "userImage", maxCount: 1 },
 			user.username = newInfo.username;
 			newUsername = newInfo.username;
 		}
-		if ( req.files ) {
+
+		if ( req.files && req.files[ "userImage" ]) {
 			if ( user.profileImage ) {
 				const
 					oldPicFile = user.profileImage;
@@ -137,10 +141,10 @@ Router.post( "/info", upload.fields([ { name: "userImage", maxCount: 1 },
 					}
 				});
 			}
-			if ( req.files[ "userImage" ]) {
-				newImage = req.files[ "userImage" ][ 0 ].filename;
-				user.profileImage = newImage;
-			}
+			newImage = req.files[ "userImage" ][ 0 ].filename;
+			user.profileImage = newImage;
+		}
+		if ( req.files && req.files[ "headerImage" ]) {
 			if ( user.headerImage ) {
 				const
 					oldPicFile = user.profileImage;
@@ -150,16 +154,14 @@ Router.post( "/info", upload.fields([ { name: "userImage", maxCount: 1 },
 					}
 				});
 			}
-			if ( req.files[ "headerImage" ]) {
-				user.headerImage = req.files[ "headerImage" ][ 0 ].filename;
-			}
+			user.headerImage = req.files[ "headerImage" ][ 0 ].filename;
 		}
 		await user.save();
+		res.status( 201 );
+		res.send({ newImage: newImage, newUsername: newUsername });
 	} catch ( err ) {
 		return next( err );
 	}
-	res.status( 201 );
-	res.send({ newImage: newImage, newUsername: newUsername });
 });
 
 // get 10 users with the same interests

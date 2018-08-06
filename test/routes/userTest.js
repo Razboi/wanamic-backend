@@ -125,13 +125,11 @@ describe( "post user/info", function() {
 		token = await tokenGenerator( author );
 	});
 
-	it( "gets the user info, should return 200", function( done ) {
+	it( "sets the user info, should return 200", function( done ) {
 		chai.request( "localhost:8000" )
 			.post( "/user/info" )
 			.send({
-				token: token,
-				userImage: null,
-				headerImage: null
+				token: token
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 201 );
