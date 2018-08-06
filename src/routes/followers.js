@@ -108,8 +108,13 @@ Router.delete( "/unfollow", ( req, res, next ) => {
 });
 
 // follow multiple users
-Router.post( "/setupFollow", ( req, res, next ) => {
-	var userId;
+Router.post( "/setupFollow", async( req, res, next ) => {
+	var
+		userId,
+		user,
+		target,
+		newNotification,
+		allNotifications = [];
 
 	if ( !req.body.token || !req.body.users ) {
 		return next( errors.blankData());
@@ -117,38 +122,48 @@ Router.post( "/setupFollow", ( req, res, next ) => {
 
 	try {
 		userId = tokenVerifier( req.body.token );
+		user = await User.findById( userId ).exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+		async.eachSeries( req.body.users, async function( userToFollow, done ) {
+			target = await User.findOne({ username: userToFollow }).exec();
+			if ( !target ) {
+				throw errors.userDoesntExist();
+			}
+			const alreadyNotificated = await Notification.findOne({
+				author: user._id,
+				receiver: target._id,
+				follow: true
+			}).exec();
+
+			if ( !alreadyNotificated ) {
+				newNotification = await new Notification({
+					author: user._id,
+					receiver: target._id,
+					content: "started following you",
+					follow: true
+				}).save();
+				newNotification.author = user;
+				target.notifications.push( newNotification );
+				target.newNotifications++;
+				allNotifications.push( newNotification );
+			}
+			user.following.push( target._id );
+			target.followers.push( user._id );
+			await user.save();
+			await target.save();
+		}, err => {
+			if ( err ) {
+				return next( err );
+			} else {
+				res.status( 201 );
+				res.send( allNotifications );
+			}
+		});
 	} catch ( err ) {
 		return next( err );
 	}
-
-	User.findById( userId )
-		.exec()
-		.then( user => {
-			if ( !user ) {
-				return next( errors.userDoesntExist());
-			}
-
-			async.eachSeries( req.body.users, function( userToFollow, done ) {
-				User.findOne({ username: userToFollow })
-					.exec()
-					.then( target => {
-						if ( !target ) {
-							return next( errors.userDoesntExist());
-						}
-						user.following.push( target._id );
-						target.followers.push( user._id );
-						Promise.all([ user.save(), target.save() ])
-							.then(() => done())
-							.catch( err => next( err ));
-					}).catch( err => next( err ));
-			}, err => {
-				if ( err ) {
-					next( err );
-				} else {
-					res.sendStatus( 201 );
-				}
-			});
-		}).catch( err => next( err ));
 });
 
 

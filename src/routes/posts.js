@@ -10,7 +10,7 @@ const
 	Notification = require( "../models/Notification" ),
 	notifyMentions = require( "../utils/notifyMentions" ),
 	errors = require( "../utils/errors" ),
-	removePostAndComments = require( "../utils/removePostAndComments" ),
+	removePost = require( "../utils/removePost" ),
 	fs = require( "fs" ),
 	path = require( "path" );
 
@@ -630,15 +630,7 @@ Router.delete( "/delete", async( req, res, next ) => {
 		if ( !user._id.equals( post.author._id )) {
 			return next( errors.unauthorized());
 		}
-
-		const
-			postsIndex = user.posts.indexOf( post.id ),
-			newsfeedIndex = user.newsfeed.indexOf( post.id );
-
-		user.posts.splice( postsIndex, 1 );
-		user.newsfeed.splice( newsfeedIndex, 1 );
-		await user.save();
-		await removePostAndComments( user, post );
+		await removePost( user, post );
 	} catch ( err ) {
 		return next( err );
 	}

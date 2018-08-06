@@ -123,12 +123,12 @@ Router.delete( "/delete", async( req, res, next ) => {
 			return next( errors.unauthorized());
 		}
 		await comment.remove();
-		post = await Post.findById( postId ).exec();
+		updatedPost = await Post.findById( postId ).exec();
 	} catch ( err ) {
 		return next( err );
 	}
-	post.author = user;
-	res.send( post );
+	updatedPost.author = user;
+	res.send( updatedPost );
 });
 
 Router.patch( "/update", async( req, res, next ) => {

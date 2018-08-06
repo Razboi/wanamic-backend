@@ -17,4 +17,6 @@ const
 
 	Notification = mongoose.model( "Notification", NotificationSchema );
 
+// middleware will only fire for ModelDocument.remove
+
 module.exports = Notification;

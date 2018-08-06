@@ -492,37 +492,6 @@ Router.delete( "/deleteAccount", async( req, res, next ) => {
 				fromDeletedAccount: true
 			}).save();
 		}
-		// remove user posts from network newsfeed
-		await User.update(
-			{ _id: { $in: [ ...user.friends, ...user.followers ] } },
-			{ $pull: { "newsfeed": { $in: user.posts } } },
-			{ multi: true }
-		).exec();
-		// remove user from friends/followers/following network
-		await User.update(
-			{ _id: { $in: [ ...user.friends, ...user.followers, ...user.following ] } },
-			{ $pull: {
-				"friends": user._id,
-				"followers": user._id,
-				"following": user._id
-			} },
-			{ multi: true }
-		).exec();
-		await Notification.remove({
-			_id: { $in: user.notifications }
-		}).exec();
-		await Post.remove({
-			_id: { $in: user.posts }
-		}).exec();
-
-		const
-			comments = await Comment.find({ author: user._id }).remove(),
-			conversations = await Conversation.find({
-				$or: [ { author: user._id }, { target: user._id } ]
-			}).remove(),
-			messages = await Message.find({
-				$or: [ { author: user._id }, { receiver: user._id } ]
-			}).remove();
 
 		await user.remove();
 	} catch ( err ) {

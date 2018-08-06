@@ -11,4 +11,6 @@ const
 
 	Message = mongoose.model( "Message", MessageSchema );
 
+// middleware will only fire for ModelDocument.remove
+
 module.exports = Message;
