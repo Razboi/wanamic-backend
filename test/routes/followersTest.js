@@ -2,6 +2,7 @@ const
 	chai = require( "chai" ),
 	chaiHttp = require( "chai-http" ),
 	should = chai.should(),
+	expect = chai.expect,
 	request = require( "request" ),
 	mongoose = require( "mongoose" ),
 	dotenv = require( "dotenv" ),
@@ -242,10 +243,14 @@ describe( "POST followers/setupFollow", function() {
 			.post( "/followers/setupFollow" )
 			.send({
 				token: token,
-				users: [ receiver.username, author.username ]
+				users: [
+					receiver.username, author.username
+				]
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 201 );
+				expect( res.body ).to.be.an( "array" );
+				expect( res.body.length ).to.equal( 2 );
 				done();
 			});
 	});

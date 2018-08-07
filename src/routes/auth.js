@@ -30,11 +30,14 @@ Router.post( "/signup", async( req, res, next ) => {
 		if ( !validators.validateFullname( credentials.fullname )) {
 			return next( errors.invalidFullnameFormat());
 		}
-		const existingUsername = await User.findOne({ username: credentials.username }).exec();
+		let
+			existingUsername = User.findOne({ username: credentials.username }).exec(),
+			existingEmail = User.findOne({ email: credentials.email }).exec();
+		[ existingUsername, existingEmail ] =
+			await Promise.all([ existingUsername, existingEmail ]);
 		if ( existingUsername ) {
 			return next( errors.registeredUsername());
 		}
-		const existingEmail = await User.findOne({ email: credentials.email }).exec();
 		if ( existingEmail ) {
 			return next( errors.registeredEmail());
 		}

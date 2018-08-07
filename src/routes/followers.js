@@ -2,7 +2,6 @@ const
 	Router = require( "express" ).Router(),
 	User = require( "../models/User" ),
 	tokenVerifier = require( "../utils/tokenVerifier" ),
-	async = require( "async" ),
 	Notification = require( "../models/Notification" ),
 	errors = require( "../utils/errors" );
 
@@ -16,21 +15,18 @@ Router.post( "/follow", async( req, res, next ) => {
 	if ( !req.body.token || !req.body.targetUsername ) {
 		return next( errors.blankData());
 	}
-
 	const { token, targetUsername } = req.body;
 
 	try {
-		userId = await tokenVerifier( token );
-		user = await User.findById( userId )
+		userId = tokenVerifier( token );
+		user = User.findById( userId )
 			.select( "username fullname profileImage following friends" )
 			.exec();
-		userToFollow = await User.findOne({ username: targetUsername })
-			.exec();
-
+		userToFollow = User.findOne({ username: targetUsername }).exec();
+		[ user, userToFollow ] = await Promise.all([ user, userToFollow ]);
 		if ( !user || !userToFollow ) {
 			return next( errors.userDoesntExist());
 		}
-
 		if ( userToFollow.followers.some( id => user._id.equals( id )) ||
 				user.following.some( id => userToFollow._id.equals( id ))) {
 			return next( errors.alreadyRelated());
@@ -39,7 +35,6 @@ Router.post( "/follow", async( req, res, next ) => {
 				user.friends.some( id => userToFollow._id.equals( id ))) {
 			return next( errors.alreadyRelated());
 		}
-
 		const alreadyNotificated = await Notification.findOne({
 			author: user._id,
 			receiver: userToFollow._id,
@@ -57,11 +52,9 @@ Router.post( "/follow", async( req, res, next ) => {
 			userToFollow.notifications.push( newNotification );
 			userToFollow.newNotifications++;
 		}
-
 		user.following.push( userToFollow._id );
 		userToFollow.followers.push( user._id );
 		Promise.all([ userToFollow.save(), user.save() ]);
-
 	} catch ( err ) {
 		return next( err );
 	}
@@ -70,41 +63,38 @@ Router.post( "/follow", async( req, res, next ) => {
 });
 
 
-Router.delete( "/unfollow", ( req, res, next ) => {
-	var userId;
+Router.delete( "/unfollow", async( req, res, next ) => {
+	var
+		userId,
+		user,
+		userToUnfollow;
 
 	if ( !req.body.token || !req.body.targetUsername ) {
 		return next( errors.blankData());
 	}
+	const { token, targetUsername } = req.body;
 
 	try {
-		userId = tokenVerifier( req.body.token );
+		userId = tokenVerifier( token );
+		user = User.findById( userId ).exec();
+		userToUnfollow = User.findOne({ username: targetUsername }).exec();
+		[ user, userToUnfollow ] = await Promise.all([ user, userToUnfollow ]);
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+		if ( !userToUnfollow ) {
+			return next( errors.userDoesntExist());
+		}
+		const
+			targetIndex = user.following.indexOf( userToUnfollow._id ),
+			userIndex = userToUnfollow.followers.indexOf( user._id );
+		user.following.splice( targetIndex, 1 );
+		userToUnfollow.followers.splice( userIndex, 1 );
+		Promise.all([ userToUnfollow.save(), user.save() ]);
 	} catch ( err ) {
 		return next( err );
 	}
-
-	User.findById( userId )
-		.exec()
-		.then( user => {
-			if ( !user ) {
-				return next( errors.userDoesntExist());
-			}
-			User.findOne({ username: req.body.targetUsername })
-				.exec()
-				.then( userToUnfollow => {
-					if ( !userToUnfollow ) {
-						return next( errors.userDoesntExist());
-					}
-					const
-						targetIndex = user.following.indexOf( userToUnfollow._id ),
-						userIndex = userToUnfollow.followers.indexOf( user._id );
-					user.following.splice( targetIndex, 1 );
-					userToUnfollow.followers.splice( userIndex, 1 );
-					Promise.all([ userToUnfollow.save(), user.save() ])
-						.then(() => res.sendStatus( 200 ))
-						.catch( err => next( err ));
-				}).catch( err => next( err ));
-		}).catch( err => next( err ));
+	res.sendStatus( 200 );
 });
 
 // follow multiple users
@@ -119,17 +109,19 @@ Router.post( "/setupFollow", async( req, res, next ) => {
 	if ( !req.body.token || !req.body.users ) {
 		return next( errors.blankData());
 	}
+	const { token, users } = req.body;
 
 	try {
-		userId = tokenVerifier( req.body.token );
+		userId = tokenVerifier( token );
 		user = await User.findById( userId ).exec();
 		if ( !user ) {
 			return next( errors.userDoesntExist());
 		}
-		async.eachSeries( req.body.users, async function( userToFollow, done ) {
+
+		for ( let userToFollow of users ) {
 			target = await User.findOne({ username: userToFollow }).exec();
 			if ( !target ) {
-				throw errors.userDoesntExist();
+				return next( errors.userDoesntExist());
 			}
 			const alreadyNotificated = await Notification.findOne({
 				author: user._id,
@@ -151,16 +143,10 @@ Router.post( "/setupFollow", async( req, res, next ) => {
 			}
 			user.following.push( target._id );
 			target.followers.push( user._id );
-			await user.save();
-			await target.save();
-		}, err => {
-			if ( err ) {
-				return next( err );
-			} else {
-				res.status( 201 );
-				res.send( allNotifications );
-			}
-		});
+			Promise.all([ user.save(), target.save() ]);
+		}
+		res.status( 201 );
+		res.send( allNotifications );
 	} catch ( err ) {
 		return next( err );
 	}

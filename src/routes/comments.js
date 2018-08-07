@@ -5,6 +5,7 @@ const
 	Comment = require( "../models/Comment" ),
 	Notification = require( "../models/Notification" ),
 	notifyMentions = require( "../utils/notifyMentions" ),
+	tokenVerifier = require( "../utils/tokenVerifier" ),
 	errors = require( "../utils/errors" );
 
 Router.post( "/create", async( req, res, next ) => {
@@ -22,13 +23,13 @@ Router.post( "/create", async( req, res, next ) => {
 	const { token, comment, postId, mentions } = req.body;
 	try {
 		userId = tokenVerifier( token );
-		user = await User.findById( userId )
+		user = User.findById( userId )
 			.select( "username fullname profileImage" )
 			.exec();
 		if ( !user ) {
 			return next( errors.userDoesntExist());
 		}
-		post = await Post.findById( postId )
+		post = Post.findById( postId )
 			.populate({
 				path: "author",
 				select: "fullname username profileImage"
@@ -41,6 +42,7 @@ Router.post( "/create", async( req, res, next ) => {
 				}
 			})
 			.exec();
+		[ user, post ] = await Promise.all([ user, post ]);
 		if ( !post ) {
 			return next( errors.postDoesntExist());
 		}
@@ -55,10 +57,11 @@ Router.post( "/create", async( req, res, next ) => {
 			post: post._id
 		}).save();
 		post.comments.push( newComment._id );
-		await post.save();
-		mentionsNotifications = await notifyMentions(
+		mentionsNotifications = notifyMentions(
 			mentions, "comment", post, user );
-		postAuthor = await User.findById( post.author ).exec();
+		postAuthor = User.findById( post.author ).exec();
+		[ post, mentionsNotifications, postAuthor ] =
+			await Promise.all([ post.save(), mentionsNotifications, postAuthor ]);
 
 		if ( !postAuthor._id.equals( user._id )) {
 			commentNotification = await new Notification({
@@ -104,18 +107,19 @@ Router.delete( "/delete", async( req, res, next ) => {
 
 	try {
 		userId = tokenVerifier( token );
-		user = await User.findById( userId )
+		user = User.findById( userId )
 			.select( "username fullname profileImage" )
 			.exec();
+		comment = Comment.findById( commentId ).exec();
+		[ user, comment ] = await Promise.all([ user, comment ]);
 		if ( !user ) {
 			return next( errors.userDoesntExist());
 		}
-		comment = await Comment.findById( commentId ).exec();
 		if ( !user._id.equals( comment.author )) {
 			return next( errors.unauthorized());
 		}
-		await comment.remove();
-		updatedPost = await Post.findById( postId ).exec();
+		updatedPost = Post.findById( postId ).exec();
+		updatedPost = await Promise.all([ updatedPost, comment.remove() ]);
 		updatedPost.author = user;
 	} catch ( err ) {
 		return next( err );
@@ -138,13 +142,14 @@ Router.patch( "/update", async( req, res, next ) => {
 
 	try {
 		userId = tokenVerifier( token );
-		user = await User.findById( userId ).exec();
+		user = User.findById( userId ).exec();
+		comment = Comment.findById( commentId )
+			.populate({ path: "author", select: "username fullname profileImage" })
+			.exec();
+		[ user, comment ] = await Promise.all([ user, comment ]);
 		if ( !user ) {
 			return next( errors.userDoesntExist());
 		}
-		comment = await Comment.findById( commentId )
-			.populate({ path: "author", select: "username fullname profileImage" })
-			.exec();
 		if ( !comment ) {
 			return next( errors.commentDoesntExist());
 		}
@@ -152,9 +157,10 @@ Router.patch( "/update", async( req, res, next ) => {
 			return next( errors.unauthorized());
 		}
 		comment.content = newContent;
-		mentionsNotifications = await notifyMentions(
+		mentionsNotifications = notifyMentions(
 			mentions, "comment", comment, user );
-		await comment.save();
+		[ mentionsNotifications ] =
+			await Promise.all([ mentionsNotifications, comment.save() ]);
 	} catch ( err ) {
 		return next( err );
 	}
@@ -176,7 +182,7 @@ Router.post( "/retrieve/:skip", async( req, res, next ) => {
 	const { token, postId } = req.body;
 
 	try {
-		userId = await tokenVerifier( token );
+		userId = tokenVerifier( token );
 		post = await Post.findById( postId )
 			.populate({
 				path: "comments",

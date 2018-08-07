@@ -5,6 +5,7 @@ const
 	dotenv = require( "dotenv" ),
 	bcrypt = require( "bcrypt" ),
 	User = require( "../../src/models/User" ),
+	Notification = require( "../../src/models/Notification" ),
 	notifyMentions = require( "../../src/utils/notifyMentions" );
 
 dotenv.config();
@@ -48,6 +49,9 @@ describe( "notifyMentions", function() {
 		await User.remove({ email: "test2@gmail.com" });
 		await User.remove({ email: "test3@gmail.com" });
 		await User.remove({ email: "test4@gmail.com" });
+		await Notification.remove({ receiver: user2._id });
+		await Notification.remove({ receiver: user3._id });
+		await Notification.remove({ receiver: user4._id });
 	});
 
 	it( "expect an array", async function() {

@@ -12,6 +12,7 @@ const
 
 dotenv.config();
 chai.use( chaiHttp );
+mongoose.connect( process.env.MONGODB_URL );
 
 describe( "POST notifications/retrieve/:skip", function() {
 	var
