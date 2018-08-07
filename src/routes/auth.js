@@ -1,5 +1,6 @@
 const
 	Router = require( "express" ).Router(),
+	dotenv = require( "dotenv" ),
 	bcrypt = require( "bcrypt" ),
 	jwt = require( "jsonwebtoken" ),
 	tokenGenerator = require( "../utils/tokenGenerator" ),
@@ -7,7 +8,10 @@ const
 	tokenVerifier = require( "../utils/tokenVerifier" ),
 	User = require( "../models/User" ),
 	errors = require( "../utils/errors" ),
+	nodemailer = require( "nodemailer" ),
 	validators = require( "../utils/validators" );
+
+dotenv.config();
 
 Router.post( "/signup", async( req, res, next ) => {
 	var user;
@@ -150,5 +154,71 @@ Router.post( "/refreshToken", async( req, res, next ) => {
 		return next( err );
 	}
 });
+
+
+Router.post( "/resetPassword", async( req, res, next ) => {
+	var user;
+
+	if ( !req.body.email ) {
+		return next( errors.blankData());
+	}
+	try {
+		user = await User.findOne({ email: req.body.email }).exec();
+		token = tokenGenerator( user, true );
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+		let transporter = nodemailer.createTransport({
+			service: "gmail",
+			auth: {
+				user: process.env.EMAIL_ADDRESS,
+				pass: process.env.EMAIL_PASSWORD
+			}
+		});
+		const
+			mailOptions = {
+				from: `Wanamic ${process.env.EMAIL_ADDRESS}`,
+				to: "recatala.marc@gmail.com",
+				subject: "Password reset",
+				html: `<h4>Hi ${user.fullname.split( " " )[ 0 ]},</h4>` +
+					"<p>Someone requested a password reset for your account." +
+					"If you didn't make this request, just ignore this email." +
+					"Otherwise, you can reset your password using this link:</p>\n" +
+					`http://localhost:3000/reset_password/${token}`
+			};
+		await transporter.sendMail( mailOptions );
+	} catch ( err ) {
+		return next( err );
+	}
+	res.sendStatus( 201 );
+});
+
+
+Router.post( "/setNewPassword", async( req, res, next ) => {
+	var
+		data,
+		user;
+
+	if ( !req.body.token || !req.body.newPassword ) {
+		return next( errors.blankData());
+	}
+	const { token, newPassword } = req.body;
+	try {
+		data = jwt.verify( req.body.token, process.env.SECRET_EMAIL );
+		user = await User.findById( data.id ).exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+		if ( !validators.validatePassword( newPassword )) {
+			return next( errors.invalidPasswordFormat());
+		}
+		user.passwordHash = await bcrypt.hashSync( newPassword, 10 );
+		await user.save();
+	} catch ( err ) {
+		return next( err );
+	}
+	res.sendStatus( 200 );
+});
+
 
 module.exports = Router;
