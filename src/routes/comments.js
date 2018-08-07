@@ -1,7 +1,5 @@
 const
 	Router = require( "express" ).Router(),
-	bcrypt = require( "bcrypt" ),
-	tokenGenerator = require( "../utils/tokenGenerator" ),
 	User = require( "../models/User" ),
 	Post = require( "../models/Post" ),
 	Comment = require( "../models/Comment" ),
@@ -10,8 +8,7 @@ const
 	errors = require( "../utils/errors" );
 
 Router.post( "/create", async( req, res, next ) => {
-	var
-		data,
+	let
 		mediaImg,
 		userId,
 		user,
@@ -22,11 +19,9 @@ Router.post( "/create", async( req, res, next ) => {
 	if ( !req.body.token || !req.body.comment || !req.body.postId ) {
 		return next( errors.blankData());
 	}
-
 	const { token, comment, postId, mentions } = req.body;
-
 	try {
-		userId = await tokenVerifier( token );
+		userId = tokenVerifier( token );
 		user = await User.findById( userId )
 			.select( "username fullname profileImage" )
 			.exec();
@@ -35,10 +30,14 @@ Router.post( "/create", async( req, res, next ) => {
 		}
 		post = await Post.findById( postId )
 			.populate({
+				path: "author",
+				select: "fullname username profileImage"
+			})
+			.populate({
 				path: "sharedPost",
 				populate: {
 					path: "author",
-					select: "fullname username profileImage",
+					select: "fullname username profileImage"
 				}
 			})
 			.exec();
@@ -50,19 +49,15 @@ Router.post( "/create", async( req, res, next ) => {
 		} else {
 			mediaImg = post.mediaContent.image;
 		}
-
 		newComment = await new Comment({
 			author: user._id,
 			content: comment,
 			post: post._id
 		}).save();
-
 		post.comments.push( newComment._id );
-		post.save();
-
+		await post.save();
 		mentionsNotifications = await notifyMentions(
 			mentions, "comment", post, user );
-
 		postAuthor = await User.findById( post.author ).exec();
 
 		if ( !postAuthor._id.equals( user._id )) {
@@ -78,15 +73,13 @@ Router.post( "/create", async( req, res, next ) => {
 
 			postAuthor.notifications.push( commentNotification );
 			postAuthor.newNotifications++;
-			postAuthor.save();
+			await postAuthor.save();
 			commentNotification.author = user;
+			newComment.author = user;
 		}
 	} catch ( err ) {
 		return next( err );
 	}
-	newComment.author = user;
-	post.author = user;
-
 	res.status( 201 );
 	res.send({
 		newComment: newComment,
@@ -96,55 +89,55 @@ Router.post( "/create", async( req, res, next ) => {
 	});
 });
 
+
 Router.delete( "/delete", async( req, res, next ) => {
-	var
+	let
 		userId,
 		user,
-		post,
+		updatedPost,
 		comment;
 
 	if ( !req.body.token || !req.body.commentId || !req.body.postId ) {
 		return next( errors.blankData());
 	}
-
 	const { token, commentId, postId } = req.body;
 
 	try {
-		userId = await tokenVerifier( token );
+		userId = tokenVerifier( token );
 		user = await User.findById( userId )
 			.select( "username fullname profileImage" )
 			.exec();
 		if ( !user ) {
 			return next( errors.userDoesntExist());
 		}
-
 		comment = await Comment.findById( commentId ).exec();
 		if ( !user._id.equals( comment.author )) {
 			return next( errors.unauthorized());
 		}
 		await comment.remove();
 		updatedPost = await Post.findById( postId ).exec();
+		updatedPost.author = user;
 	} catch ( err ) {
 		return next( err );
 	}
-	updatedPost.author = user;
 	res.send( updatedPost );
 });
 
+
 Router.patch( "/update", async( req, res, next ) => {
-	var
-		data,
+	let
 		userId,
-		user;
+		user,
+		comment,
+		mentionsNotifications;
 
 	if ( !req.body.token || !req.body.commentId || !req.body.newContent ) {
 		return next( errors.blankData());
 	}
-
 	const { token, commentId, newContent, mentions, hashtags } = req.body;
 
 	try {
-		userId = await tokenVerifier( token );
+		userId = tokenVerifier( token );
 		user = await User.findById( userId ).exec();
 		if ( !user ) {
 			return next( errors.userDoesntExist());
@@ -173,20 +166,18 @@ Router.patch( "/update", async( req, res, next ) => {
 
 
 Router.post( "/retrieve/:skip", async( req, res, next ) => {
-	var
-		data,
+	let
 		userId,
 		post;
 
 	if ( !req.body.token || !req.body.postId || !req.params.skip ) {
 		return next( errors.blankData());
 	}
-
-	data = req.body;
+	const { token, postId } = req.body;
 
 	try {
-		userId = await tokenVerifier( data.token );
-		post = await Post.findById( data.postId )
+		userId = await tokenVerifier( token );
+		post = await Post.findById( postId )
 			.populate({
 				path: "comments",
 				populate: {

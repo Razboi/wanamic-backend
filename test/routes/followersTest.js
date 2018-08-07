@@ -12,6 +12,7 @@ const
 
 dotenv.config();
 chai.use( chaiHttp );
+mongoose.connect( process.env.MONGODB_URL );
 
 describe( "POST followers/follow", function() {
 	var
@@ -217,6 +218,7 @@ describe( "POST followers/setupFollow", function() {
 	after( async function() {
 		await User.remove({ email: "test@gmail.com" });
 		await User.remove({ email: "test2@gmail.com" });
+		await Notification.remove({ author: author._id });
 	});
 
 	before( async function() {

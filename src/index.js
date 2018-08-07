@@ -19,7 +19,7 @@ const
 // apply env variables
 dotenv.config();
 
-mongoose.connect( process.env.MONGODB_URL, () =>
+mongoose.connect( process.env.MONGODB_URL, { useNewUrlParser: true }, () =>
 	console.log( "MongoDB connected" ));
 
 app.use( bodyParser.json());
