@@ -1,7 +1,6 @@
 const
 	Router = require( "express" ).Router(),
 	User = require( "../models/User" ),
-	Comment = require( "../models/Comment" ),
 	tokenVerifier = require( "../utils/tokenVerifier" ),
 	Post = require( "../models/Post" ),
 	LinkPreview = require( "react-native-link-preview" ),
@@ -30,7 +29,7 @@ var upload = multer({
 });
 
 Router.get( "/explore/:skip", async( req, res, next ) => {
-	var posts;
+	let posts;
 
 	if ( !req.params.skip ) {
 		return next( errors.blankData());
@@ -61,11 +60,10 @@ Router.post( "/search/:skip", async( req, res, next ) => {
 	if ( !req.params.skip || !req.body.search ) {
 		return next( errors.blankData());
 	}
-	const searchRegex = new RegExp( req.body.search );
 	try {
+		const searchRegex = new RegExp( req.body.search );
 		posts = await Post.find({
-			"content": { $regex: searchRegex, $options: "i" }
-		})
+			"content": { $regex: searchRegex, $options: "i" } })
 			.where( "media" ).equals( true )
 			.where( "sharedPost" ).equals( undefined )
 			.where( "alerts.nsfw" ).equals( false )
@@ -86,21 +84,25 @@ Router.post( "/search/:skip", async( req, res, next ) => {
 });
 
 
-Router.post( "/getPost", ( req, res, next ) => {
+Router.post( "/getPost", async( req, res, next ) => {
+	let post;
 
 	if ( !req.body.postId ) {
 		return next( errors.blankData());
 	}
-
-	Post.findById( req.body.postId )
-		.populate({
-			path: "sharedPost author",
-			select: "fullname username profileImage"
-		})
-		.exec()
-		.then( post => res.send( post ))
-		.catch( err => next( err ));
+	try {
+		post = await Post.findById( req.body.postId )
+			.populate({
+				path: "sharedPost author",
+				select: "fullname username profileImage"
+			})
+			.exec();
+	} catch ( err ) {
+		return next( err );
+	}
+	res.send( post );
 });
+
 
 Router.post( "/create", async( req, res, next ) => {
 	var
@@ -117,7 +119,7 @@ Router.post( "/create", async( req, res, next ) => {
 	} = req.body;
 
 	try {
-		userId = await tokenVerifier( token );
+		userId = tokenVerifier( token );
 		user = await User.findById( userId ).exec();
 		if ( !user ) {
 			return next( errors.userDoesntExist());
@@ -134,14 +136,14 @@ Router.post( "/create", async( req, res, next ) => {
 			select: "fullname username profileImage"
 		}).execPopulate();
 
-		User.update(
+		await User.update(
 			{ _id: { $in: user.friends } },
 			{ $push: { "newsfeed": newPost._id } },
 			{ multi: true }
 		).exec();
 
 		if ( privacyRange >= 2 ) {
-			User.update(
+			await User.update(
 				{ _id: { $in: user.followers } },
 				{ $push: { "newsfeed": newPost._id } },
 				{ multi: true }
@@ -149,18 +151,19 @@ Router.post( "/create", async( req, res, next ) => {
 		}
 		user.posts.push( newPost._id );
 		user.newsfeed.push( newPost._id );
-		await user.save();
 
-		mentionsNotifications = await notifyMentions(
+		mentionsNotifications = notifyMentions(
 			mentions, "post", newPost, user );
-		res.status( 201 );
-		res.send({
-			newPost: newPost,
-			mentionsNotifications: mentionsNotifications
-		});
+		[ mentionsNotifications ] =
+			await Promise.all([ mentionsNotifications, user.save() ]);
 	} catch ( err ) {
 		return next( err );
 	}
+	res.status( 201 );
+	res.send({
+		newPost: newPost,
+		mentionsNotifications: mentionsNotifications
+	});
 });
 
 
@@ -175,31 +178,30 @@ Router.post( "/like", async( req, res, next ) => {
 	if ( !req.body.token || !req.body.postId ) {
 		return next( errors.blankData());
 	}
-
 	const { token, postId } = req.body;
 
 	try {
-		userId = await tokenVerifier( token );
-		post = await Post.findById( postId ).exec();
+		userId = tokenVerifier( token );
+		post = Post.findById( postId ).exec();
+		user = User.findById( userId )
+			.select( "username fullname profileImage" )
+			.exec();
+		[ post, user ] = await Promise.all([ post, user ]);
 		if ( !post ) {
 			return next( errors.postDoesntExist());
+		}
+		if ( !user ) {
+			return next( errors.userDoesntExist());
 		}
 		if ( post.link ) {
 			mediaImg = post.linkContent.image;
 		} else {
 			mediaImg = post.mediaContent.image;
 		}
-		user = await User.findById( userId )
-			.select( "username fullname profileImage" )
-			.exec();
-		if ( !user ) {
-			return next( errors.userDoesntExist());
-		}
 		if ( !post.likedBy.includes( user.username )) {
 			post.likedBy.push( user.username );
+			await post.save();
 		}
-		post.save();
-
 		postAuthor = await User.findById( post.author ).exec();
 		postAuthor.totalLikes += 1;
 
@@ -223,7 +225,7 @@ Router.post( "/like", async( req, res, next ) => {
 			postAuthor.newNotifications++;
 			newNotification.author = user;
 		}
-		postAuthor.save();
+		await postAuthor.save();
 	} catch ( err ) {
 		return next( err );
 	}
@@ -245,10 +247,12 @@ Router.patch( "/dislike", async( req, res, next ) => {
 	const { postId, token } = req.body;
 
 	try {
-		userId = await tokenVerifier( token );
-		post = await Post.findById( postId ).exec();
-		postAuthor = await User.findById( post.author ).exec();
-		user = await User.findById( userId ).exec();
+		userId = tokenVerifier( token );
+		post = Post.findById( postId ).exec();
+		user = User.findById( userId ).exec();
+		postAuthor = post.then( post => User.findById( post.author ).exec());
+		[ post, user, postAuthor ] =
+			await Promise.all([ post, user, postAuthor ]);
 		if ( !user ) {
 			return next( errors.userDoesntExist());
 		}
@@ -257,13 +261,13 @@ Router.patch( "/dislike", async( req, res, next ) => {
 		}
 		if ( postAuthor && postAuthor.totalLikes > 0 ) {
 			postAuthor.totalLikes -= 1;
-			postAuthor.save();
+			await postAuthor.save();
 		}
 		if ( post.likedBy.includes( user.username )) {
 			const index = post.likedBy.indexOf( user.username );
 			post.likedBy.splice( index, 1 );
 		}
-		post.save();
+		await post.save();
 	} catch ( err ) {
 		return next( err );
 	}
@@ -285,7 +289,7 @@ Router.post( "/media", async( req, res, next ) => {
 	const { data, token } = req.body;
 
 	try {
-		userId = await tokenVerifier( token );
+		userId = tokenVerifier( token );
 		user = await User.findById( userId ).exec();
 		if ( !user ) {
 			return next( errors.userDoesntExist());
@@ -309,7 +313,7 @@ Router.post( "/media", async( req, res, next ) => {
 			path: "author",
 			select: "fullname username profileImage"
 		}).execPopulate();
-		User.update(
+		await User.update(
 			{ _id: { $in: user.friends } },
 			{ $push: { "newsfeed": newPost._id } },
 			{ multi: true }
@@ -323,9 +327,10 @@ Router.post( "/media", async( req, res, next ) => {
 		}
 		user.posts.push( newPost._id );
 		user.newsfeed.push( newPost._id );
-		await user.save();
-		mentionsNotifications = await notifyMentions(
+		mentionsNotifications = notifyMentions(
 			data.mentions, "post", newPost, user );
+		[ mentionsNotifications ] =
+			await Promise.all([ mentionsNotifications, user.save() ]);
 	} catch ( err ) {
 		return next( err );
 	}
@@ -356,18 +361,19 @@ Router.post( "/mediaLink", async( req, res, next ) => {
 	} = req.body;
 
 	try {
-		userId = await tokenVerifier( token );
-		previewData = await LinkPreview.getPreview( link );
+		userId = tokenVerifier( token );
+		previewData = LinkPreview.getPreview( link );
+		user = User.findById( userId ).exec();
+		[ previewData, user ] = await Promise.all([ previewData, user ]);
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
 		if ( !previewData.images ) {
 			return next( errors.invalidLink());
 		}
-		hostname = await extractHostname( previewData.url );
+		hostname = extractHostname( previewData.url );
 		if ( hostname === "www.youtube.com" ) {
 			embeddedUrl = previewData.url.replace( "watch?v=", "embed/" );
-		}
-		user = await User.findById( userId ).exec();
-		if ( !user ) {
-			return next( errors.userDoesntExist());
 		}
 		newPost = await new Post({
 			author: user._id,
@@ -391,26 +397,25 @@ Router.post( "/mediaLink", async( req, res, next ) => {
 			select: "fullname username profileImage"
 		}).execPopulate();
 
-		User.update(
+		await User.update(
 			{ _id: { $in: user.friends } },
 			{ $push: { "newsfeed": newPost._id } },
 			{ multi: true }
 		).exec();
 
 		if ( privacyRange >= 2 ) {
-			User.update(
+			await User.update(
 				{ _id: { $in: user.followers } },
 				{ $push: { "newsfeed": newPost._id } },
 				{ multi: true }
 			).exec();
 		}
-
 		user.posts.push( newPost._id );
 		user.newsfeed.push( newPost._id );
-		user.save();
-
-		mentionsNotifications = await notifyMentions(
+		mentionsNotifications = notifyMentions(
 			mentions, "post", newPost, user );
+		[ mentionsNotifications ] =
+			await Promise.all([ mentionsNotifications, user.save() ]);
 	} catch ( err ) {
 		return next( err );
 	}
@@ -424,9 +429,6 @@ Router.post( "/mediaLink", async( req, res, next ) => {
 
 Router.post( "/mediaPicture", upload.single( "picture" ), async( req, res, next ) => {
 	var
-		mentions = [],
-		hashtags = [],
-		data,
 		newPost,
 		mentionsNotifications,
 		user,
@@ -435,23 +437,10 @@ Router.post( "/mediaPicture", upload.single( "picture" ), async( req, res, next 
 	if ( !req.body.token || !req.body || !req.file ) {
 		return next( errors.blankData());
 	}
-
-	data = req.body;
-
-	if ( data.mentions.length > 1 ) {
-		mentions = data.mentions.split( "," );
-	} else if ( data.mentions.length === 1 ) {
-		mentions = data.mentions.split();
-	}
-
-	if ( data.hashtags.length > 1 ) {
-		hashtags = data.hashtags.split( "," );
-	} else if ( data.mentions.length === 1 ) {
-		hashtags = data.hashtags.split();
-	}
+	const { token, mentions, hashtags } = req.body;
 
 	try {
-		userId = await tokenVerifier( data.token );
+		userId = tokenVerifier( data.token );
 		user = await User.findById( userId ).exec();
 		if ( !user ) {
 			return next( errors.userDoesntExist());
@@ -476,13 +465,13 @@ Router.post( "/mediaPicture", upload.single( "picture" ), async( req, res, next 
 			path: "author",
 			select: "fullname username profileImage"
 		}).execPopulate();
-		User.update(
+		await User.update(
 			{ _id: { $in: user.friends } },
 			{ $push: { "newsfeed": newPost._id } },
 			{ multi: true }
 		).exec();
 		if ( data.privacyRange >= 2 ) {
-			User.update(
+			await User.update(
 				{ _id: { $in: user.followers } },
 				{ $push: { "newsfeed": newPost._id } },
 				{ multi: true }
@@ -490,9 +479,10 @@ Router.post( "/mediaPicture", upload.single( "picture" ), async( req, res, next 
 		}
 		user.posts.push( newPost._id );
 		user.newsfeed.push( newPost._id );
-		user.save();
-		mentionsNotifications = await notifyMentions(
+		mentionsNotifications = notifyMentions(
 			mentions, "post", newPost, user	);
+		[ mentionsNotifications ] =
+			await Promise.all([ mentionsNotifications, user.save() ]);
 	} catch ( err ) {
 		return next( err );
 	}
@@ -504,53 +494,48 @@ Router.post( "/mediaPicture", upload.single( "picture" ), async( req, res, next 
 });
 
 
-Router.post( "/newsfeed/:skip", ( req, res, next ) => {
+Router.post( "/newsfeed/:skip", async( req, res, next ) => {
 	var
 		userId,
-		token;
+		user;
 
 	if ( !req.body.token ) {
 		return next( errors.blankData());
 	}
-
-	token = req.body.token;
-
 	try {
-		userId = tokenVerifier( token );
+		userId = tokenVerifier( req.body.token );
+		user = await User.findById( userId )
+			.populate({
+				path: "newsfeed",
+				options: {
+					limit: 10,
+					skip: req.params.skip * 10,
+					sort: { createdAt: -1 }
+				},
+				populate: [
+					{
+						path: "author",
+						select: "fullname username profileImage"
+					},
+					{
+						path: "sharedPost",
+						populate: {
+							path: "author",
+							select: "fullname username profileImage",
+						}
+					}
+				]
+			})
+			.exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
 	} catch ( err ) {
 		return next( err );
 	}
-
-	User.findById( userId )
-		.populate({
-			path: "newsfeed",
-			options: {
-				limit: 10,
-				skip: req.params.skip * 10,
-				sort: { createdAt: -1 }
-			},
-			populate: [
-				{
-					path: "author",
-					select: "fullname username profileImage"
-				},
-				{
-					path: "sharedPost",
-					populate: {
-						path: "author",
-						select: "fullname username profileImage",
-					}
-				}
-			]
-		})
-		.exec()
-		.then( user => {
-			if ( !user ) {
-				return next( errors.userDoesntExist());
-			}
-			res.send( user.newsfeed );
-		}).catch( err => next( err ));
+	res.send( user.newsfeed );
 });
+
 
 // user timeline
 Router.post( "/:username/:skip", async( req, res, next ) => {
@@ -564,7 +549,7 @@ Router.post( "/:username/:skip", async( req, res, next ) => {
 		return next( errors.blankData());
 	}
 	try {
-		visitorId = await tokenVerifier( req.body.token );
+		visitorId = tokenVerifier( req.body.token );
 		user = await User.findOne({ username: req.params.username })
 			.populate({
 				path: "posts",
@@ -599,7 +584,7 @@ Router.post( "/:username/:skip", async( req, res, next ) => {
 		} else {
 			relationLvl = 3;
 		}
-		filteredPosts = await user.posts.filter( post =>
+		filteredPosts = user.posts.filter( post =>
 			post.privacyRange >= relationLvl );
 	} catch ( err ) {
 		return next( err );
@@ -614,13 +599,13 @@ Router.delete( "/delete", async( req, res, next ) => {
 	if ( !req.body.postId || !req.body.token ) {
 		return next( errors.blankData());
 	}
-
 	const { postId, token } = req.body;
 
 	try {
-		userId = await tokenVerifier( token );
-		user = await User.findById( userId ).exec();
-		post = await Post.findById( postId ).exec();
+		userId = tokenVerifier( token );
+		user = User.findById( userId ).exec();
+		post = Post.findById( postId ).exec();
+		[ user, post ] = await Promise.all([ user, post ]);
 		if ( !user ) {
 			return next( errors.userDoesntExist());
 		}
@@ -648,30 +633,30 @@ Router.patch( "/update", async( req, res, next ) => {
 		req.body.newContent === undefined ) {
 		return next( errors.blankData());
 	}
-
 	const { token, postId, newContent, mentions, hashtags } = req.body;
 
 	try {
-		userId = await tokenVerifier( token );
-		user = await User.findById( userId ).exec();
+		userId = tokenVerifier( token );
+		user = User.findById( userId ).exec();
 		if ( !user ) {
 			return next( errors.userDoesntExist());
 		}
-		post = await Post.findById( postId )
+		post = Post.findById( postId )
 			.populate({ path: "sharedPost" })
 			.populate({
 				path: "author", select: "username fullname profileImage"
 			})
 			.exec();
-
+		[ user, post ] = await Promise.all([ user, post ]);
 		if ( !user._id.equals( post.author._id )) {
 			return next( errors.unauthorized());
 		}
 		post.content = newContent;
 		post.hashtags = hashtags;
-		await post.save();
-		mentionsNotifications = await notifyMentions(
+		mentionsNotifications = notifyMentions(
 			mentions, "post", post, user );
+		[ mentionsNotifications ] =
+			await Promise.all([ mentionsNotifications, post.save() ]);
 	} catch ( err ) {
 		return next( err );
 	}
@@ -694,16 +679,12 @@ Router.post( "/share", async( req, res, next ) => {
 	|| !req.body.alerts ) {
 		return next( errors.blankData());
 	}
-
 	const { postId, token, description, privacyRange, alerts } = req.body;
 
 	try {
-		userId = await tokenVerifier( token );
-		user = await User.findById( userId ).exec();
-		if ( !user ) {
-			return next( errors.userDoesntExist());
-		}
-		postToShare = await Post.findById( postId )
+		userId = tokenVerifier( token );
+		user = User.findById( userId ).exec();
+		postToShare = Post.findById( postId )
 			.populate({
 				path: "sharedPost",
 				populate: {
@@ -716,16 +697,18 @@ Router.post( "/share", async( req, res, next ) => {
 				select: "username fullname profileImage"
 			})
 			.exec();
+		[ user, postToShare ] = await Promise.all([ user, postToShare ]);
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
 		if ( !postToShare ) {
 			return next( errors.postDoesntExist());
 		}
-
 		if ( postToShare.sharedPost ) {
 			originalPost = postToShare.sharedPost;
 		} else {
 			originalPost = postToShare;
 		}
-
 		newPost = await new Post({
 			author: user._id,
 			content: description,
@@ -733,22 +716,19 @@ Router.post( "/share", async( req, res, next ) => {
 			privacyRange: privacyRange,
 			alerts: alerts
 		}).save();
-
-		User.update(
+		await User.update(
 			{ _id: { $in: user.friends } },
 			{ $push: { "newsfeed": newPost._id } },
 			{ multi: true }
 		).exec();
-
 		user.posts.push( newPost._id );
 		user.newsfeed.push( newPost._id );
-		user.save();
+		await user.save();
 
 		if ( !postToShare.sharedBy.includes( String( user._id ))) {
 			postToShare.sharedBy.push( user._id );
-			postToShare.save();
+			await postToShare.save();
 		}
-
 		newPost = await newPost.populate({
 			path: "author",
 			select: "fullname username profileImage"

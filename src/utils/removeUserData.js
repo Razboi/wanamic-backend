@@ -8,19 +8,19 @@ const
 	Message = require( "../models/Message" );
 
 removeUserData = async user => {
-	return new Promise( async function( resolve, reject ) {
-		if ( !user ) {
-			reject( "Undefined user" );
-		}
-		try {
-			// remove user posts from network newsfeed
-			await mongoose.model( "User" ).update(
+	if ( !user ) {
+		throw new Error( "Undefined user" );
+	}
+	try {
+		// remove user posts from network newsfeed
+		let
+			updateNewsfeed = mongoose.model( "User" ).update(
 				{ _id: { $in: [ ...user.friends, ...user.followers ] } },
 				{ $pull: { "newsfeed": { $in: user.posts } } },
 				{ multi: true }
-			);
+			),
 			// remove user from friends/followers/following network
-			await mongoose.model( "User" ).update(
+			updateNetwork = mongoose.model( "User" ).update(
 				{ _id: { $in: [ ...user.friends, ...user.followers, ...user.following ] } },
 				{ $pull: {
 					"friends": user._id,
@@ -28,49 +28,51 @@ removeUserData = async user => {
 					"following": user._id
 				} },
 				{ multi: true }
-			);
-			await Notification.remove({
+			),
+			removeNotifications = Notification.remove({
 				$or: [ { _id: { $in: user.notifications } }, { author: user._id } ]
-			});
-			await Conversation.remove({
+			}),
+			removeConversations = Conversation.remove({
 				$or: [ { author: user._id }, { target: user._id } ]
-			});
-			await Message.remove({
+			}),
+			removeMessages = Message.remove({
 				$or: [ { author: user._id }, { receiver: user._id } ]
 			});
+		Promise.all([
+			updateNewsfeed, updateNetwork, removeNotifications,
+			removeConversations, removeMessages ]);
 
-			// middleware will only fire for ModelDocument.remove
-			const
-				comments = await Comment.find({ author: user._id }),
-				posts = await Post.find({ _id: { $in: user.posts } });
-			for ( const comment of comments ) {
-				await comment.remove();
-			}
-			for ( const post of posts ) {
-				await post.remove();
-			}
-
-			if ( user.profileImage ) {
-				const imagePath = "../wanamic-frontend/src/images/" + user.profileImage;
-				fs.unlink( imagePath, err => {
-					if ( err ) {
-						reject( err );
-					}
-				});
-			}
-			if ( user.headerImage ) {
-				const imagePath = "../wanamic-frontend/src/images/" + user.headerImage;
-				fs.unlink( imagePath, err => {
-					if ( err ) {
-						reject( err );
-					}
-				});
-			}
-			resolve();
-		} catch ( err ) {
-			return reject( err );
+		// middleware will only fire for ModelDocument.remove
+		const
+			comments = await Comment.find({ author: user._id }),
+			posts = await Post.find({ _id: { $in: user.posts } });
+		for ( const comment of comments ) {
+			await comment.remove();
 		}
-	});
+		for ( const post of posts ) {
+			await post.remove();
+		}
+
+		if ( user.profileImage ) {
+			const imagePath = "../wanamic-frontend/src/images/" + user.profileImage;
+			fs.unlink( imagePath, err => {
+				if ( err ) {
+					throw err;
+				}
+			});
+		}
+		if ( user.headerImage ) {
+			const imagePath = "../wanamic-frontend/src/images/" + user.headerImage;
+			fs.unlink( imagePath, err => {
+				if ( err ) {
+					throw err;
+				}
+			});
+		}
+		return true;
+	} catch ( err ) {
+		throw err;
+	}
 };
 
 module.exports = removeUserData;
