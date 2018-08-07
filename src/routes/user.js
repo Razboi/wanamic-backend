@@ -1,18 +1,13 @@
 const
 	Router = require( "express" ).Router(),
 	User = require( "../models/User" ),
-	Post = require( "../models/Post" ),
-	Comment = require( "../models/Comment" ),
-	Conversation = require( "../models/Conversation" ),
-	Notification = require( "../models/Notification" ),
-	Message = require( "../models/Message" ),
 	Ticket = require( "../models/Ticket" ),
 	bcrypt = require( "bcrypt" ),
 	multer = require( "multer" ),
+	tokenVerifier = require( "../utils/tokenVerifier" ),
 	findRandomUser = require( "../utils/findRandomUser" ),
 	removeDuplicates = require( "../utils/removeDuplicatesArrOfObj" ),
 	validators = require( "../utils/validators" ),
-	async = require( "async" ),
 	errors = require( "../utils/errors" ),
 	fs = require( "fs" ),
 	path = require( "path" );
@@ -42,24 +37,23 @@ Router.post( "/userInfo", async( req, res, next ) => {
 	if ( !req.body.username || !req.body.token ) {
 		return next( errors.blankData());
 	}
-
 	const { username, token } = req.body;
 
 	try {
-		userId = await tokenVerifier( token );
-		requester = await User.findById( userId ).exec();
-		user = await User.findOne({ username: username })
+		userId = tokenVerifier( token );
+		requester = User.findById( userId ).exec();
+		user = User.findOne({ username: username })
 			.select( "username fullname description hobbies profileImage" +
 								" headerImage interests friends followers gender" +
 								" birthday totalLikes totalViews country region" )
 			.exec();
+		[ requester, user ] = await Promise.all([ requester, user ]);
 		if ( !user || !requester ) {
 			return next( errors.userDoesntExist());
 		}
-
 		if ( user.username !== requester.username ) {
 			user.totalViews++;
-			user = await user.save();
+			await user.save();
 		}
 	} catch ( err ) {
 		return next( err );
@@ -67,87 +61,72 @@ Router.post( "/userInfo", async( req, res, next ) => {
 	res.send( user );
 });
 
+
 // set user info
 Router.post( "/info", upload.fields([ { name: "userImage", maxCount: 1 },
 	{ name: "headerImage", maxCount: 1 } ]), async( req, res, next ) => {
 	var
-		newInfo,
 		user,
-		userId,
-		newImage,
-		newUsername;
+		userId;
 
 	if ( !req.body.token ) {
 		return next( errors.blankData());
 	}
-	newInfo = req.body;
+	const {
+		token, description, fullname, username, country, region, gender,
+		birthday
+	} = req.body;
 
 	try {
-		userId = await tokenVerifier( req.body.token );
+		userId = tokenVerifier( token );
 		user = await User.findById( userId ).exec();
 		if ( !user ) {
 			return next( errors.userDoesntExist());
 		}
-		if ( newInfo.description && newInfo.description !== user.description ) {
-			user.description = newInfo.description;
+		if ( description && description !== user.description ) {
+			user.description = description;
 		}
-		if ( newInfo.fullname && newInfo.fullname !== user.fullname ) {
-			if ( credentials.fullname.length > 30 ) {
-				return next( errors.invalidFullnameFormat());
-			}
-			if ( !/[a-z\s]+$/i.test( credentials.fullname )) {
-				return next( errors.invalidFullnameFormat());
-			}
-			user.fullname = newInfo.fullname;
+		if ( fullname && fullname !== user.fullname &&
+			validators.validateFullname( fullname )) {
+			user.fullname = fullname;
 		}
-		if ( newInfo.country && newInfo.country !== user.country ) {
-			user.country = newInfo.country;
-		}
-		if ( newInfo.region && newInfo.region !== user.region ) {
-			user.region = newInfo.region;
-		}
-		if ( newInfo.gender && newInfo.gender !== user.gender ) {
-			user.gender = newInfo.gender;
-		}
-		if ( newInfo.birthday && newInfo.birthday !== user.birthday ) {
-			user.birthday = newInfo.birthday;
-		}
-		if ( newInfo.username && newInfo.username !== user.username ) {
-			if ( credentials.username.length > 20 ) {
-				return next( errors.invalidUsernameFormat());
-			}
-			if ( !/[\w]+$/.test( credentials.username )
-			|| /[\s.]/.test( credentials.username )) {
-				errors.invalidUsernameFormat();
-			}
+		if ( username && username !== user.username &&
+			validators.validateUsername( username )) {
 
 			const userWithUsername = await User.findOne({
-				username: newInfo.username
+				username: username
 			}).exec();
 			if ( userWithUsername ) {
 				return next( errors.registeredUsername());
 			}
-			user.username = newInfo.username;
-			newUsername = newInfo.username;
+			user.username = username;
 		}
-
+		if ( country && country !== user.country ) {
+			user.country = country;
+		}
+		if ( region && region !== user.region ) {
+			user.region = region;
+		}
+		if ( gender && gender !== user.gender ) {
+			user.gender = gender;
+		}
+		if ( birthday && birthday !== user.birthday ) {
+			user.birthday = birthday;
+		}
 		if ( req.files && req.files[ "userImage" ]) {
 			if ( user.profileImage ) {
-				const
-					oldPicFile = user.profileImage;
+				const oldPicFile = user.profileImage;
 				fs.unlink( "../wanamic-frontend/src/images/" + oldPicFile, err => {
 					if ( err ) {
 						next( err );
 					}
 				});
 			}
-			newImage = req.files[ "userImage" ][ 0 ].filename;
-			user.profileImage = newImage;
+			user.profileImage = req.files[ "userImage" ][ 0 ].filename;
 		}
 		if ( req.files && req.files[ "headerImage" ]) {
 			if ( user.headerImage ) {
-				const
-					oldPicFile = user.profileImage;
+				const oldPicFile = user.profileImage;
 				fs.unlink( "../wanamic-frontend/src/images/" + oldPicFile, err => {
 					if ( err ) {
 						next( err );
@@ -158,29 +137,30 @@ Router.post( "/info", upload.fields([ { name: "userImage", maxCount: 1 },
 		}
 		await user.save();
 		res.status( 201 );
-		res.send({ newImage: newImage, newUsername: newUsername });
+		res.send({ newImage: user.profileImage, newUsername: user.username });
 	} catch ( err ) {
 		return next( err );
 	}
 });
 
-// get 10 users with the same interests
-Router.post( "/match", ( req, res, next ) => {
 
+Router.post( "/match", async( req, res, next ) => {
+	let users;
 	if ( !req.body.data ) {
 		return next( errors.blankData());
 	}
-
-	User.find({ interests: { $in: req.body.data } })
-		.select( "username fullname description hobbies profileImage" )
-		.limit( 10 )
-		.exec()
-		.then( users => {
-			res.send( users );
-		}).catch( err => next( err ));
+	try {
+		users = await User.find({ interests: { $in: req.body.data } })
+			.select( "username fullname description hobbies profileImage" )
+			.limit( 10 )
+			.exec();
+	} catch ( err ) {
+		return next( err );
+	}
+	res.send( users );
 });
 
-// add new interests
+
 Router.post( "/updateInterests", async( req, res, next ) => {
 	var
 		userId,
@@ -192,7 +172,7 @@ Router.post( "/updateInterests", async( req, res, next ) => {
 	const { newInterests, token } = req.body;
 
 	try {
-		userId = await tokenVerifier( token );
+		userId = tokenVerifier( token );
 		user = await User.findById( userId ).exec();
 		if ( !user ) {
 			return next( errors.userDoesntExist());
@@ -205,42 +185,38 @@ Router.post( "/updateInterests", async( req, res, next ) => {
 	res.sendStatus( 201 );
 });
 
-// get one user with the same general interests
-Router.post( "/sugestedUsers", ( req, res, next ) => {
-	var userId;
+
+Router.post( "/sugestedUsers", async( req, res, next ) => {
+	var
+		userId,
+		user,
+		sugestedUser;
 
 	if ( !req.body.token || req.body.skip === undefined ) {
 		return next( errors.blankData());
 	}
-
 	try {
 		userId = tokenVerifier( req.body.token );
+		user = await User.findById( userId ).exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+		sugestedUser = await User.findOne({ interests: { $in: user.interests } })
+			.skip( req.body.skip )
+			.where( "_id" ).ne( user.id )
+			.select(
+				"username fullname description hobbies profileImage headerImage " +
+				"friends followers totalLikes"
+			)
+			.exec();
 	} catch ( err ) {
 		return next( err );
 	}
-
-	User.findById( userId )
-		.exec()
-		.then( user => {
-			if ( !user ) {
-				return next( errors.userDoesntExist());
-			}
-			User.findOne({ interests: { $in: user.interests } })
-				.skip( req.body.skip )
-				.where( "_id" ).ne( user.id )
-				.select(
-					"username fullname description hobbies profileImage headerImage " +
-					"friends followers totalLikes"
-				)
-				.exec()
-				.then( user => {
-					res.send( user );
-				}).catch( err => next( err ));
-		}).catch( err => next( err ));
+	res.send( sugestedUser );
 });
 
-// retrieve a random user that is not the requester
-Router.post( "/randomUser", ( req, res, next ) => {
+
+Router.post( "/randomUser", async( req, res, next ) => {
 	var
 		userId,
 		randomUser;
@@ -248,45 +224,39 @@ Router.post( "/randomUser", ( req, res, next ) => {
 	if ( !req.body.token ) {
 		return next( errors.blankData());
 	}
-
 	try {
 		userId = tokenVerifier( req.body.token );
+		randomUser = await findRandomUser( userId );
+		res.send( randomUser );
 	} catch ( err ) {
 		return next( err );
 	}
-
-	findRandomUser( userId )
-		.then( user => {
-			res.send( user );
-		}).catch( err => next( err ));
 });
 
 
-Router.post( "/matchHobbies", ( req, res, next ) => {
-	var userId;
+Router.post( "/matchHobbies", async( req, res, next ) => {
+	var
+		userId,
+		user;
 
 	if ( !req.body.token || !req.body.data || req.body.skip === undefined ) {
 		return next( errors.blankData());
 	}
-
 	try {
 		userId = tokenVerifier( req.body.token );
+		const searchRegex = new RegExp( req.body.data );
+		user = await User.findOne({ "hobbies": { $regex: searchRegex, $options: "i" } })
+			.skip( req.body.skip )
+			.where( "_id" ).ne( userId )
+			.select(
+				"username fullname description hobbies profileImage headerImage " +
+				"friends followers"
+			)
+			.exec();
 	} catch ( err ) {
 		return next( err );
 	}
-	const searchRegex = new RegExp( req.body.data );
-
-	User.findOne({ "hobbies": { $regex: searchRegex, $options: "i" } })
-		.skip( req.body.skip )
-		.where( "_id" ).ne( userId )
-		.select(
-			"username fullname description hobbies profileImage headerImage " +
-			"friends followers"
-		)
-		.exec()
-		.then( user => {
-			res.send( user );
-		}).catch( err => next( err ));
+	res.send( user );
 });
 
 
@@ -299,11 +269,10 @@ Router.post( "/setUserKw", async( req, res, next ) => {
 	if ( !req.body.token || !req.body.data ) {
 		return next( errors.blankData());
 	}
-
 	const { token, data } = req.body;
 
 	try {
-		userId = await tokenVerifier( token );
+		userId = tokenVerifier( token );
 		user = await User.findById( userId ).exec();
 		if ( !user ) {
 			return next( errors.userDoesntExist());
@@ -328,9 +297,8 @@ Router.post( "/getChats", async( req, res, next ) => {
 	if ( !req.body.token ) {
 		return next( errors.blankData());
 	}
-
 	try {
-		userId = await tokenVerifier( req.body.token );
+		userId = tokenVerifier( req.body.token );
 		user = await User.findById( userId )
 			.populate({
 				path: "openConversations",
@@ -345,50 +313,42 @@ Router.post( "/getChats", async( req, res, next ) => {
 			})
 			.select( "openConversations" )
 			.exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
 	} catch ( err ) {
 		return next( err );
 	}
-
-	if ( !user ) {
-		return next( errors.userDoesntExist());
-	}
-
 	res.send( user.openConversations );
 });
 
 
-Router.post( "/getSocialCircle", ( req, res, next ) => {
+Router.post( "/getSocialCircle", async( req, res, next ) => {
 	var
 		userId,
+		user,
 		socialCircle = [];
 
 	if ( !req.body.token ) {
 		return next( errors.blankData());
 	}
-
 	try {
 		userId = tokenVerifier( req.body.token );
+		user = await User.findById( userId )
+			.populate( "friends followers following", "username fullname profileImage" )
+			.select( "friends followers following" )
+			.exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+		socialCircle = socialCircle.concat(
+			user.friends, user.following, user.followers
+		);
+		socialCircle = removeDuplicates( socialCircle, "username" );
+		res.send( socialCircle );
 	} catch ( err ) {
 		return next( err );
 	}
-
-	User.findById( userId )
-		.populate( "friends followers following", "username fullname profileImage" )
-		.select( "friends followers following" )
-		.exec()
-		.then( user => {
-			if ( !user ) {
-				return next( errors.userDoesntExist());
-			}
-
-			socialCircle = socialCircle.concat(
-				user.friends, user.following, user.followers
-			);
-
-			socialCircle = removeDuplicates( socialCircle, "username" );
-
-			res.send( socialCircle );
-		}).catch( err => next( err ));
 });
 
 
@@ -404,12 +364,11 @@ Router.patch( "/updatePassword", async( req, res, next ) => {
 	}
 	const { token, currentPassword, newPassword } = req.body;
 
-	if ( !/^(?=.*\d)(?=.*[a-zA-Z]).{8,}$/.test( newPassword )) {
-		return next( errors.invalidPasswordFormat());
-	}
-
 	try {
-		userId = await tokenVerifier( token );
+		if ( !validators.validatePassword( newPassword )) {
+			return next( errors.invalidPasswordFormat());
+		}
+		userId = tokenVerifier( token );
 		user = await User.findById( userId ).exec();
 		if ( !user ) {
 			return next( errors.userDoesntExist());
@@ -419,7 +378,7 @@ Router.patch( "/updatePassword", async( req, res, next ) => {
 			return next( errors.invalidPassword());
 		}
 		user.passwordHash = await bcrypt.hashSync( newPassword, 10 );
-		user.save();
+		await user.save();
 	} catch ( err ) {
 		return next( err );
 	}
@@ -436,15 +395,13 @@ Router.patch( "/updateEmail", async( req, res, next ) => {
 			!req.body.newEmail ) {
 		return next( errors.blankData());
 	}
-
 	const { token, currentEmail, newEmail } = req.body;
 
-	if ( !validators.validateEmail( newEmail )) {
-		return next( errors.invalidEmailFormat());
-	}
-
 	try {
-		userId = await tokenVerifier( token );
+		if ( !validators.validateEmail( newEmail )) {
+			return next( errors.invalidEmailFormat());
+		}
+		userId = tokenVerifier( token );
 		user = await User.findById( userId ).exec();
 		if ( !user ) {
 			return next( errors.userDoesntExist());
@@ -457,11 +414,10 @@ Router.patch( "/updateEmail", async( req, res, next ) => {
 			return next( errors.registeredEmail());
 		}
 		user.email = newEmail;
-		user.save();
+		await user.save();
 	} catch ( err ) {
 		return next( err );
 	}
-
 	res.sendStatus( 201 );
 });
 
@@ -478,7 +434,7 @@ Router.delete( "/deleteAccount", async( req, res, next ) => {
 	const { token, password } = req.body;
 
 	try {
-		userId = await tokenVerifier( token );
+		userId = tokenVerifier( token );
 		user = await User.findById( userId ).exec();
 		if ( !user ) {
 			return next( errors.userDoesntExist());
@@ -494,7 +450,6 @@ Router.delete( "/deleteAccount", async( req, res, next ) => {
 				fromDeletedAccount: true
 			}).save();
 		}
-
 		await user.remove();
 	} catch ( err ) {
 		return next( err );
@@ -516,7 +471,7 @@ Router.post( "/getUserAlbum", async( req, res, next ) => {
 	const { token, username } = req.body;
 
 	try {
-		visitorId = await tokenVerifier( token );
+		visitorId = tokenVerifier( token );
 		user = await User.findOne({ username: username })
 			.populate({
 				path: "posts",
@@ -538,7 +493,7 @@ Router.post( "/getUserAlbum", async( req, res, next ) => {
 		} else {
 			relationLevel = 3;
 		}
-		filteredPosts = await user.posts.filter( post =>
+		filteredPosts = user.posts.filter( post =>
 			post.privacyRange >= relationLevel );
 	} catch ( err ) {
 		return next( err );
@@ -559,15 +514,16 @@ Router.post( "/getUserNetwork", async( req, res, next ) => {
 	const { token, username } = req.body;
 
 	try {
-		requesterId = await tokenVerifier( token );
-		requester = await User.findById( requesterId ).exec();
-		user = await User.findOne({ username: username })
+		requesterId = tokenVerifier( token );
+		requester = User.findById( requesterId ).exec();
+		user = User.findOne({ username: username })
 			.populate({
 				path: "friends followers following",
 				select: "username fullname profileImage description hobbies"
 			})
 			.exec();
-		if ( !user ) {
+		[ requester, user ] = await Promise.all([ requester, user ]);
+		if ( !user || !requester ) {
 			return next( errors.userDoesntExist());
 		}
 	} catch ( err ) {
@@ -595,10 +551,8 @@ Router.post( "/getLikesAndViews", async( req, res, next ) => {
 	if ( !req.body.token ) {
 		return next( errors.blankData());
 	}
-	const { token } = req.body;
-
 	try {
-		userId = await tokenVerifier( token );
+		userId = tokenVerifier( req.body.token );
 		user = await User.findById( userId )
 			.select( "totalLikes totalViews " )
 			.exec();
