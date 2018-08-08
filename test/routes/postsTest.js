@@ -15,7 +15,7 @@ dotenv.config();
 chai.use( chaiHttp );
 mongoose.connect( process.env.MONGODB_URL );
 
-describe( "POST posts/explore/:skip", function() {
+describe( "POST posts/explore/:skip/:limit", function() {
 	var
 		author,
 		token;
@@ -36,7 +36,7 @@ describe( "POST posts/explore/:skip", function() {
 
 	it( "gets explore posts, should return 200", function( done ) {
 		chai.request( "localhost:8000" )
-			.get( "/posts/explore/0" )
+			.get( "/posts/explore/0/10" )
 			.end(( err, res ) => {
 				res.should.have.status( 200 );
 				done();

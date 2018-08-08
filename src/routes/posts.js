@@ -28,19 +28,20 @@ var upload = multer({
 	}
 });
 
-Router.get( "/explore/:skip", async( req, res, next ) => {
+Router.get( "/explore/:skip/:limit", async( req, res, next ) => {
 	let posts;
 
-	if ( !req.params.skip ) {
+	if ( !req.params.skip || !req.params.limit ) {
 		return next( errors.blankData());
 	}
+	console.log( req.params.limit );
 	try {
 		posts = await Post.find()
 			.where( "media" ).equals( true )
 			.where( "sharedPost" ).equals( undefined )
 			.where( "privacyRange" ).equals( "3" )
-			.limit( 10 )
-			.skip( req.params.skip * 10 )
+			.limit( parseInt( req.params.limit ))
+			.skip( req.params.skip * req.params.limit )
 			.sort( "-createdAt" )
 			.populate({
 				path: "author",

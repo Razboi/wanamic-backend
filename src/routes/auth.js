@@ -178,11 +178,11 @@ Router.post( "/resetPassword", async( req, res, next ) => {
 		const
 			mailOptions = {
 				from: `Wanamic ${process.env.EMAIL_ADDRESS}`,
-				to: "recatala.marc@gmail.com",
+				to: user.email,
 				subject: "Password reset",
 				html: `<h4>Hi ${user.fullname.split( " " )[ 0 ]},</h4>` +
-					"<p>Someone requested a password reset for your account." +
-					"If you didn't make this request, just ignore this email." +
+					"<p>Someone requested a password reset for your account. " +
+					"If you didn't make this request, just ignore this email. " +
 					"Otherwise, you can reset your password using this link:</p>\n" +
 					`http://localhost:3000/reset_password/${token}`
 			};
