@@ -94,8 +94,15 @@ Router.post( "/getPost", async( req, res, next ) => {
 	try {
 		post = await Post.findById( req.body.postId )
 			.populate({
-				path: "sharedPost author",
+				path: "author",
 				select: "fullname username profileImage"
+			})
+			.populate({
+				path: "sharedPost",
+				populate: {
+					path: "author",
+					select: "fullname username profileImage"
+				}
 			})
 			.exec();
 	} catch ( err ) {
@@ -674,13 +681,16 @@ Router.post( "/share", async( req, res, next ) => {
 		user,
 		postToShare,
 		originalPost,
-		newPost;
+		newPost,
+		mentionsNotifications;
 
 	if ( !req.body.postId || !req.body.token || !req.body.privacyRange
 	|| !req.body.alerts ) {
 		return next( errors.blankData());
 	}
-	const { postId, token, description, privacyRange, alerts } = req.body;
+	const {
+		postId, token, description, privacyRange, alerts, mentions, hashtags
+	} = req.body;
 
 	try {
 		userId = tokenVerifier( token );
@@ -715,16 +725,29 @@ Router.post( "/share", async( req, res, next ) => {
 			content: description,
 			sharedPost: originalPost._id,
 			privacyRange: privacyRange,
-			alerts: alerts
+			alerts: alerts,
+			hashtags: hashtags
 		}).save();
+
 		await User.update(
 			{ _id: { $in: user.friends } },
 			{ $push: { "newsfeed": newPost._id } },
 			{ multi: true }
 		).exec();
+		if ( privacyRange >= 2 ) {
+			await User.update(
+				{ _id: { $in: user.followers } },
+				{ $push: { "newsfeed": newPost._id } },
+				{ multi: true }
+			).exec();
+		}
 		user.posts.push( newPost._id );
 		user.newsfeed.push( newPost._id );
-		await user.save();
+
+		mentionsNotifications = notifyMentions(
+			mentions, "post", newPost, user );
+		[ mentionsNotifications ] =
+			await Promise.all([ mentionsNotifications, user.save() ]);
 
 		if ( !postToShare.sharedBy.includes( String( user._id ))) {
 			postToShare.sharedBy.push( user._id );
@@ -739,7 +762,11 @@ Router.post( "/share", async( req, res, next ) => {
 		return next( err );
 	}
 	res.status( 201 );
-	res.send({ newPost: newPost, postToShare: postToShare });
+	res.send({
+		newPost: newPost,
+		postToShare: postToShare,
+		mentionsNotifications: mentionsNotifications
+	});
 });
 
 
