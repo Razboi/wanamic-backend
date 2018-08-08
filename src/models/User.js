@@ -2,15 +2,34 @@ const
 	mongoose = require( "mongoose" ),
 	bcrypt = require( "bcrypt" ),
 	Schema = mongoose.Schema,
+	removeUserData = require( "../utils/removeUserData" ),
 
 	UserSchema = mongoose.Schema({
-		username: { type: String },
+		username: { type: String, required: true },
 		email: { type: String, required: true },
-		fullname: { type: String },
-		passwordHash: { type: String },
+		fullname: { type: String, required: true },
+		passwordHash: { type: String, required: true },
+		refreshToken: { type: String },
 		posts: [ { type: Schema.Types.ObjectId, ref: "Post" } ],
 		newsfeed: [ { type: Schema.Types.ObjectId, ref: "Post" } ],
-		friends: [ { type: Schema.Types.ObjectId, ref: "User" } ]
+		friends: [ { type: Schema.Types.ObjectId, ref: "User" } ],
+		followers: [ { type: Schema.Types.ObjectId, ref: "User" } ],
+		following: [ { type: Schema.Types.ObjectId, ref: "User" } ],
+		notifications: [ { type: Schema.Types.ObjectId, ref: "Notification" } ],
+		newNotifications: { type: Number, default: 0 },
+		pendingRequests: [ { type: String } ],
+		openConversations: [ { type: Schema.Types.ObjectId, ref: "Conversation" } ],
+		description: { type: String },
+		hobbies: [ { type: String } ],
+		profileImage: { type: String },
+		headerImage: { type: String },
+		interests: [ { type: String } ],
+		totalLikes: { type: Number, default: 0 },
+		totalViews: { type: Number, default: 0 },
+		country: { type: String },
+		region: { type: String },
+		gender: { type: String },
+		birthday: { type: Date },
 	});
 
 UserSchema.methods.isValidPassword = function( password ) {
@@ -22,5 +41,14 @@ UserSchema.methods.isValidPassword = function( password ) {
 
 
 const User = mongoose.model( "User", UserSchema );
+
+UserSchema.post( "remove", async( user, next ) => {
+	try {
+		await removeUserData( user );
+		next();
+	} catch ( err ) {
+		return next( err );
+	}
+});
 
 module.exports = User;

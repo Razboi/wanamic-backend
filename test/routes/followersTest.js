@@ -2,6 +2,7 @@ const
 	chai = require( "chai" ),
 	chaiHttp = require( "chai-http" ),
 	should = chai.should(),
+	expect = chai.expect,
 	request = require( "request" ),
 	mongoose = require( "mongoose" ),
 	dotenv = require( "dotenv" ),
@@ -14,18 +15,16 @@ dotenv.config();
 chai.use( chaiHttp );
 mongoose.connect( process.env.MONGODB_URL );
 
-describe( "POST friends/add", function() {
+describe( "POST followers/follow", function() {
 	var
 		author,
-		target,
+		receiver,
 		token;
 
 	after( async function() {
 		await User.remove({ email: "test@gmail.com" });
 		await User.remove({ email: "test2@gmail.com" });
-		await Notification.remove({
-			author: author._id, friendRequest: true
-		});
+		await Notification.remove({ author: author._id });
 	});
 
 	before( async function() {
@@ -36,7 +35,7 @@ describe( "POST friends/add", function() {
 			passwordHash: bcrypt.hashSync( "test", 10 )
 		}).save();
 		token = await tokenGenerator( author );
-		target = await new User({
+		receiver = await new User({
 			email: "test2@gmail.com",
 			username: "testuser2",
 			fullname: "Test User2",
@@ -44,12 +43,12 @@ describe( "POST friends/add", function() {
 		}).save();
 	});
 
-	it( "adds a new friend, should return 201", function( done ) {
+	it( "adds a new follower/following", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/friends/add" )
+			.post( "/followers/follow" )
 			.send({
 				token: token,
-				friendUsername: target.username
+				targetUsername: receiver.username
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 201 );
@@ -57,9 +56,23 @@ describe( "POST friends/add", function() {
 			});
 	});
 
+	it( "should return 404 User doesn't exist", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/followers/follow" )
+			.send({
+				token: token,
+				targetUsername: "nonexistinguser"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 404 );
+				res.text.should.equal( "User doesn't exist" );
+				done();
+			});
+	});
+
 	it( "should return 422 Empty data", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/friends/add" )
+			.post( "/followers/follow" )
 			.send({
 				token: token
 			})
@@ -72,9 +85,9 @@ describe( "POST friends/add", function() {
 
 	it( "should return 422 Empty data", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/friends/add" )
+			.post( "/followers/follow" )
 			.send({
-				friendUsername: target.username
+				targetUsername: receiver.username
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
@@ -85,10 +98,10 @@ describe( "POST friends/add", function() {
 
 	it( "should return 401 malformed jwt", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/friends/add" )
+			.post( "/followers/follow" )
 			.send({
 				token: "123213adasdsad21321321",
-				friendUsername: target.username
+				targetUsername: receiver.username
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
@@ -96,28 +109,14 @@ describe( "POST friends/add", function() {
 				done();
 			});
 	});
-
-	it( "should return 404 User doesn't exist", function( done ) {
-		chai.request( "localhost:8000" )
-			.post( "/friends/add" )
-			.send({
-				token: token,
-				friendUsername: "inexistingusername"
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 404 );
-				res.text.should.equal( "User doesn't exist" );
-				done();
-			});
-	});
 });
 
 
 
-describe( "DELETE friends/delete", function() {
+describe( "DELETE followers/unfollow", function() {
 	var
 		author,
-		target,
+		receiver,
 		token;
 
 	after( async function() {
@@ -133,7 +132,7 @@ describe( "DELETE friends/delete", function() {
 			passwordHash: bcrypt.hashSync( "test", 10 )
 		}).save();
 		token = await tokenGenerator( author );
-		target = await new User({
+		receiver = await new User({
 			email: "test2@gmail.com",
 			username: "testuser2",
 			fullname: "Test User2",
@@ -143,10 +142,10 @@ describe( "DELETE friends/delete", function() {
 
 	it( "deletes a friend, should return 200", function( done ) {
 		chai.request( "localhost:8000" )
-			.delete( "/friends/delete" )
+			.delete( "/followers/unfollow" )
 			.send({
 				token: token,
-				friendUsername: target.username
+				targetUsername: receiver.username
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 200 );
@@ -156,7 +155,7 @@ describe( "DELETE friends/delete", function() {
 
 	it( "should return 422 Empty data", function( done ) {
 		chai.request( "localhost:8000" )
-			.delete( "/friends/delete" )
+			.delete( "/followers/unfollow" )
 			.send({
 				token: token
 			})
@@ -169,9 +168,9 @@ describe( "DELETE friends/delete", function() {
 
 	it( "should return 422 Empty data", function( done ) {
 		chai.request( "localhost:8000" )
-			.delete( "/friends/delete" )
+			.delete( "/followers/unfollow" )
 			.send({
-				friendUsername: target.username
+				targetUsername: receiver.username
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
@@ -180,26 +179,12 @@ describe( "DELETE friends/delete", function() {
 			});
 	});
 
-	it( "should return 401 malformed jwt", function( done ) {
-		chai.request( "localhost:8000" )
-			.delete( "/friends/delete" )
-			.send({
-				token: "123213adasdsad21321321",
-				friendUsername: target.username
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 401 );
-				res.text.should.equal( "jwt malformed" );
-				done();
-			});
-	});
-
 	it( "should return 404 User doesn't exist", function( done ) {
 		chai.request( "localhost:8000" )
-			.delete( "/friends/delete" )
+			.delete( "/followers/unfollow" )
 			.send({
 				token: token,
-				friendUsername: "inexistingusername"
+				targetUsername: "inexistentuser"
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 404 );
@@ -207,19 +192,34 @@ describe( "DELETE friends/delete", function() {
 				done();
 			});
 	});
+
+	it( "should return 401 malformed jwt", function( done ) {
+		chai.request( "localhost:8000" )
+			.delete( "/followers/unfollow" )
+			.send({
+				token: "123213adasdsad21321321",
+				targetUsername: receiver.username
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
+				done();
+			});
+	});
 });
 
 
 
-describe( "POST friends/isRequested", function() {
+describe( "POST followers/setupFollow", function() {
 	var
 		author,
-		target,
+		receiver,
 		token;
 
 	after( async function() {
 		await User.remove({ email: "test@gmail.com" });
 		await User.remove({ email: "test2@gmail.com" });
+		await Notification.remove({ author: author._id });
 	});
 
 	before( async function() {
@@ -230,7 +230,7 @@ describe( "POST friends/isRequested", function() {
 			passwordHash: bcrypt.hashSync( "test", 10 )
 		}).save();
 		token = await tokenGenerator( author );
-		target = await new User({
+		receiver = await new User({
 			email: "test2@gmail.com",
 			username: "testuser2",
 			fullname: "Test User2",
@@ -238,126 +238,40 @@ describe( "POST friends/isRequested", function() {
 		}).save();
 	});
 
-	it( "should return 200", function( done ) {
+	it( "setup following, should return 201", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/friends/isRequested" )
+			.post( "/followers/setupFollow" )
 			.send({
 				token: token,
-				targetUsername: target.username
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 200 );
-				done();
-			});
-	});
-
-	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
-			.post( "/friends/isRequested" )
-			.send({
-				token: token
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 422 );
-				res.text.should.equal( "Required data not found" );
-				done();
-			});
-	});
-
-	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
-			.post( "/friends/isRequested" )
-			.send({
-				targetUsername: target.username
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 422 );
-				res.text.should.equal( "Required data not found" );
-				done();
-			});
-	});
-
-	it( "should return 401 malformed jwt", function( done ) {
-		chai.request( "localhost:8000" )
-			.post( "/friends/isRequested" )
-			.send({
-				token: "123213adasdsad21321321",
-				targetUsername: target.username
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 401 );
-				res.text.should.equal( "jwt malformed" );
-				done();
-			});
-	});
-
-	it( "should return 404 User doesn't exist", function( done ) {
-		chai.request( "localhost:8000" )
-			.post( "/friends/isRequested" )
-			.send({
-				token: token,
-				targetUsername: "inexistingusername"
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 404 );
-				res.text.should.equal( "User doesn't exist" );
-				done();
-			});
-	});
-});
-
-
-
-describe( "POST friends/accept", function() {
-	var
-		author,
-		target,
-		token,
-		notification;
-
-	after( async function() {
-		await User.remove({ email: "test@gmail.com" });
-		await User.remove({ email: "test2@gmail.com" });
-		await Notification.remove({ receiver: author._id });
-	});
-
-	before( async function() {
-		author = await new User({
-			email: "test@gmail.com",
-			username: "testuser",
-			fullname: "Test User",
-			passwordHash: bcrypt.hashSync( "test", 10 )
-		}).save();
-		token = await tokenGenerator( author );
-		target = await new User({
-			email: "test2@gmail.com",
-			username: "testuser23",
-			fullname: "Test User2",
-			passwordHash: bcrypt.hashSync( "test", 10 )
-		}).save();
-		notification = await new Notification({
-			receiver: author._id,
-			author: target._id,
-			friendRequest: true
-		}).save();
-	});
-
-	it( "should return 201", function( done ) {
-		chai.request( "localhost:8000" )
-			.post( "/friends/accept" )
-			.send({
-				token: token,
-				friendUsername: target.username
+				users: [
+					receiver.username, author.username
+				]
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 201 );
+				expect( res.body ).to.be.an( "array" );
+				expect( res.body.length ).to.equal( 2 );
+				done();
+			});
+	});
+
+	it( "should return 404 User doesn't exist", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/followers/setupFollow" )
+			.send({
+				token: token,
+				users: [ "nonexistinguser321" ]
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 404 );
+				res.text.should.equal( "User doesn't exist" );
 				done();
 			});
 	});
 
 	it( "should return 422 Empty data", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/friends/accept" )
+			.post( "/followers/setupFollow" )
 			.send({
 				token: token
 			})
@@ -370,9 +284,9 @@ describe( "POST friends/accept", function() {
 
 	it( "should return 422 Empty data", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/friends/accept" )
+			.post( "/followers/setupFollow" )
 			.send({
-				friendUsername: target.username
+				users: [ receiver.username, author.username ]
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
@@ -383,28 +297,14 @@ describe( "POST friends/accept", function() {
 
 	it( "should return 401 malformed jwt", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/friends/accept" )
+			.post( "/followers/setupFollow" )
 			.send({
 				token: "123213adasdsad21321321",
-				friendUsername: target.username
+				users: [ receiver.username, author.username ]
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
 				res.text.should.equal( "jwt malformed" );
-				done();
-			});
-	});
-
-	it( "should return 404 User doesn't exist", function( done ) {
-		chai.request( "localhost:8000" )
-			.post( "/friends/accept" )
-			.send({
-				token: token,
-				friendUsername: "inexistingusername"
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 404 );
-				res.text.should.equal( "User doesn't exist" );
 				done();
 			});
 	});

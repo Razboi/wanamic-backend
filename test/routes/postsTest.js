@@ -8,52 +8,77 @@ const
 	bcrypt = require( "bcrypt" ),
 	tokenGenerator = require( "../../src/utils/tokenGenerator" ),
 	Post = require( "../../src/models/Post" ),
+	Notification = require( "../../src/models/Notification" ),
 	User = require( "../../src/models/User" );
 
 dotenv.config();
 chai.use( chaiHttp );
 mongoose.connect( process.env.MONGODB_URL );
 
+describe( "POST posts/explore/:skip/:limit", function() {
+	var
+		author,
+		token;
 
-// after running tests delete the testing posts
-after( function( done ) {
-	User.remove({ email: "test@gmail.com" })
-		.then(() => {
-			Post.remove({ author: "test@gmail.com" })
-				.then(() => done())
-				.catch( err => done( err ));
-		}).catch( err => done( err ));
-});
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+	});
 
-before( function( done ) {
-	new User({
-		email: "test@gmail.com",
-		passwordHash: bcrypt.hashSync( "test", 10 )
-	})
-		.save()
-		.then(() => done())
-		.catch( err => done( err ));
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+	});
+
+	it( "gets explore posts, should return 200", function( done ) {
+		chai.request( "localhost:8000" )
+			.get( "/posts/explore/0/10" )
+			.end(( err, res ) => {
+				res.should.have.status( 200 );
+				done();
+			});
+	});
+
+	it( "should return 404 for invalid route", function( done ) {
+		chai.request( "localhost:8000" )
+			.get( "/posts/explore/" )
+			.end(( err, res ) => {
+				res.should.have.status( 404 );
+				done();
+			});
+	});
 });
 
 
 describe( "POST posts/create", function() {
-	var token;
+	var
+		author,
+		token;
 
-	// before running tests create a token
-	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				token = tokenGenerator( user );
-				done();
-			}).catch( err => done( err ));
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+	});
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+		await Post.remove({ author: author._id });
 	});
 
 	it( "creates a new post, should return 201", function( done ) {
 		chai.request( "localhost:8000" )
 			.post( "/posts/create" )
 			.send({
-				post: { token: token, content: "test2" }
+				token: token, userInput: "test2"
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 201 );
@@ -64,11 +89,10 @@ describe( "POST posts/create", function() {
 	it( "should return 422 for empty data", function( done ) {
 		chai.request( "localhost:8000" )
 			.post( "/posts/create" )
-			.send({
-				post: {}
-			})
+			.send({})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -77,10 +101,367 @@ describe( "POST posts/create", function() {
 		chai.request( "localhost:8000" )
 			.post( "/posts/create" )
 			.send({
-				post: { token: "1232312sadasd213213", content: "test2" }
+				token: "1232312sadasd213213", userInput: "test2"
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
+				done();
+			});
+	});
+});
+
+
+describe( "POST posts/like", function() {
+	var
+		author,
+		post,
+		token;
+
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+		post = await new Post({
+			author: author._id,
+			content: "Like me"
+		}).save();
+	});
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+		await Post.remove({ author: author._id });
+		await Notification.remove({ author: author._id });
+	});
+
+	it( "creates adds a new like, should return 201", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/like" )
+			.send({
+				token: token,
+				postId: post._id
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 201 );
+				done();
+			});
+	});
+
+	it( "should return 422 for empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/like" )
+			.send({
+				token: token
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 422 for empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/like" )
+			.send({
+				postId: post._id
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 401 for invalid token", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/like" )
+			.send({
+				token: "1232312sadasd213213",
+				postId: post._id
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
+				done();
+			});
+	});
+});
+
+
+describe( "POST posts/dislike", function() {
+	var
+		author,
+		post,
+		token;
+
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+		post = await new Post({
+			author: author._id,
+			content: "Like me"
+		}).save();
+	});
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+		await Post.remove({ author: author._id });
+	});
+
+	it( "removes a like, should return 200", function( done ) {
+		chai.request( "localhost:8000" )
+			.patch( "/posts/dislike" )
+			.send({
+				token: token,
+				postId: post._id
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 200 );
+				done();
+			});
+	});
+
+	it( "should return 422 for empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.patch( "/posts/dislike" )
+			.send({
+				token: token
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 422 for empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.patch( "/posts/dislike" )
+			.send({
+				postId: post._id
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 401 for invalid token", function( done ) {
+		chai.request( "localhost:8000" )
+			.patch( "/posts/dislike" )
+			.send({
+				token: "1232312sadasd213213",
+				postId: post._id
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
+				done();
+			});
+	});
+});
+
+
+describe( "POST posts/media", function() {
+	var
+		author,
+		token;
+
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+	});
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+		await Post.remove({ author: author._id });
+	});
+
+	it( "creates a new post, should return 201", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/media" )
+			.send({
+				token: token, data: { privacyRange: 1, alerts: {} }
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 201 );
+				done();
+			});
+	});
+
+	it( "should return 422 for empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/media" )
+			.send({
+				token: token
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 422 for empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/media" )
+			.send({
+				data: {}
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 401 for invalid token", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/media" )
+			.send({
+				token: "1232312sadasd213213",
+				data: { privacyRange: 1, alerts: {} }
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
+				done();
+			});
+	});
+});
+
+describe( "POST posts/mediaLink", function() {
+	var
+		author,
+		token;
+
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+	});
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+		await Post.remove({ author: author._id });
+	});
+
+	it( "creates a new post, should return 201", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/mediaLink" )
+			.send({
+				token: token, link: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 201 );
+				done();
+			});
+	});
+
+	it( "should return 422 for empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/mediaLink" )
+			.send({
+				token: token
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 422 for empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/mediaLink" )
+			.send({
+				link: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 401 for invalid token", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/mediaLink" )
+			.send({
+				token: "1232312sadasd213213",
+				link: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
+				done();
+			});
+	});
+});
+
+
+describe( "POST posts/mediaPicture", function() {
+	var
+		author,
+		token;
+
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+	});
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+		await Post.remove({ author: author._id });
+	});
+
+	it( "should return 422 for empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/mediaPicture" )
+			.send({
+				picture: [ "123" ]
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 422 for empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/mediaPicture" )
+			.send({
+				token: "123asdad123123"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -89,24 +470,55 @@ describe( "POST posts/create", function() {
 
 describe( "GET posts/:username/:skip", function() {
 	var
+		author,
 		token;
 
-	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				token = tokenGenerator( user );
-				done();
-			}).catch( err => done( err ));
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
 	});
 
-	it( "should get the user  posts", function( done ) {
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+	});
+
+	it( "should get the user posts", function( done ) {
 		chai.request( "localhost:8000" )
-			.get( "/posts/test@gmail.com/0" )
+			.post( "/posts/testuser/0" )
+			.send({
+				token: token
+			})
 			.end(( err, res ) => {
 				res.should.have.status( 200 );
 				done();
 			});
+	});
+});
+
+
+
+describe( "GET posts/newsfeed/:skip", function() {
+	var
+		author,
+		token;
+
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+	});
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
 	});
 
 	it( "should get the user newsfeed", function( done ) {
@@ -121,47 +533,75 @@ describe( "GET posts/:username/:skip", function() {
 			});
 	});
 
-	it( "should return 404 User doesn't exist", function( done ) {
+	it( "should return 422 Missing token", function( done ) {
 		chai.request( "localhost:8000" )
-			.get( "/posts/" )
+			.post( "/posts/newsfeed/0" )
 			.end(( err, res ) => {
-				res.should.have.status( 404 );
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 422 Missing token", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/newsfeed/0" )
+			.send({
+				token: "123123asdasd123123"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
 				done();
 			});
 	});
 });
 
 
+
 describe( "DELETE posts/delete", function() {
 	var
+		author,
+		otherUser,
+		post,
 		token,
-		postId;
+		invalidToken;
 
-	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				token = tokenGenerator( user );
-				new Post({
-					author: user._id,
-					content: "Delete me"
-				})
-					.save()
-					.then( post => {
-						postId = post.id;
-						done();
-					}).catch( err => done( err ));
-			}).catch( err => done( err ));
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		otherUser = await new User({
+			email: "test2@gmail.com",
+			username: "testuser2",
+			fullname: "Test User2",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+		invalidToken = tokenGenerator( otherUser );
+		post = await new Post({
+			author: author._id,
+			content: "Delete me"
+		}).save();
 	});
 
-	it( "should return 200", function( done ) {
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+		await User.remove({ email: "test2@gmail.com" });
+		await Post.remove({ author: author._id });
+	});
+
+	it( "should return 422 Empty post data", function( done ) {
 		chai.request( "localhost:8000" )
 			.delete( "/posts/delete" )
 			.send({
-				post: { id: postId, token: token }
 			})
 			.end(( err, res ) => {
-				res.should.have.status( 200 );
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
@@ -169,48 +609,113 @@ describe( "DELETE posts/delete", function() {
 	it( "should return 422 Empty post data", function( done ) {
 		chai.request( "localhost:8000" )
 			.delete( "/posts/delete" )
-			.send({
-				post: {}
-			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 401", function( done ) {
+		chai.request( "localhost:8000" )
+			.delete( "/posts/delete" )
+			.send({
+				postId: post._id,
+				token: "123123"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
+				done();
+			});
+	});
+
+	it( "should return 500 for invalid objectId", function( done ) {
+		chai.request( "localhost:8000" )
+			.delete( "/posts/delete" )
+			.send({
+				postId: "123321",
+				token: token
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 500 );
+				done();
+			});
+	});
+
+	it( "should return 401 Requester isn't the author", function( done ) {
+		chai.request( "localhost:8000" )
+			.delete( "/posts/delete" )
+			.send({
+				postId: post._id,
+				token: invalidToken
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				res.text.should.equal( "Unauthorized" );
+				done();
+			});
+	});
+
+	// must go last to avoid 404 on other tests
+	it( "should return 200", function( done ) {
+		chai.request( "localhost:8000" )
+			.delete( "/posts/delete" )
+			.send({
+				postId: post._id,
+				token: token
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 200 );
 				done();
 			});
 	});
 });
 
 
+
 describe( "PATCH posts/update", function() {
 	var
+		author,
+		otherUser,
+		post,
 		token,
-		invalidToken,
-		postId;
+		invalidToken;
 
-	// before updating a post we need to create the post and get the user token and postId
-	before( function( done ) {
-		User.findOne({ email: "test@gmail.com" })
-			.exec()
-			.then( user => {
-				token = tokenGenerator( user );
-				new Post({
-					author: user._id,
-					content: "update test"
-				}).save()
-					.then( post => {
-						postId = post.id;
-						done();
-					}).catch( err => done( err ));
-			}).catch( err => done( err ));
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		otherUser = await new User({
+			email: "test2@gmail.com",
+			username: "testuser2",
+			fullname: "Test User2",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+		invalidToken = tokenGenerator( otherUser );
+		post = await new Post({
+			author: author._id,
+			content: "Update me"
+		}).save();
+	});
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+		await User.remove({ email: "test2@gmail.com" });
+		await Post.remove({ author: author._id });
 	});
 
 	it( "should return 200 and update the post", function( done ) {
 		chai.request( "localhost:8000" )
 			.patch( "/posts/update" )
 			.send({
-				data: {
-					token: token,
-					post: { id: postId, content: "Updated content :)" }
-				}
+				token: token,
+				postId: post._id,
+				newContent: "Updated content"
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 200 );
@@ -222,63 +727,127 @@ describe( "PATCH posts/update", function() {
 		chai.request( "localhost:8000" )
 			.patch( "/posts/update" )
 			.send({
-				data: {
-					token: token,
-					post: {}
-				}
+				token: token,
+				postId: 123123
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
-				res.text.should.equal( "Empty data" );
+				res.text.should.equal( "Required data not found" );
 				done();
 			});
 	});
 
-	// before testing get the invalid userToken. If the user doesn't exists create it
-	before( function( done ) {
-		User.findOne({ email: "test2@gmail.com" })
-			.exec()
-			.then( user => {
-				if ( !user ) {
-					chai.request( "localhost:8000" )
-						.post( "/auth/signup" )
-						.send({
-							credentials: {
-								email: "test2@gmail.com",
-								password: "test"
-							}
-						})
-						.end(( err, res ) => {
-							invalidToken = res.text;
-							done();
-						});
-				} else {
-					invalidToken = tokenGenerator( user );
-					done();
-				}
-			}).catch( err => done( err ));
+	it( "should return 401 jwt malformed", function( done ) {
+		chai.request( "localhost:8000" )
+			.patch( "/posts/update" )
+			.send({
+				token: "12312asdas123123",
+				postId: post._id,
+				newContent: "Updated content"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
+				done();
+			});
+	});
+
+	it( "should return 401 Requester isn't the author", function( done ) {
+		chai.request( "localhost:8000" )
+			.patch( "/posts/update" )
+			.send({
+				token: invalidToken,
+				postId: post._id,
+				newContent: "Updated content"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				res.text.should.equal( "Unauthorized" );
+				done();
+			});
+	});
+});
+
+
+describe( "POST posts/share", function() {
+	var
+		author,
+		post,
+		token;
+
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+		post = await new Post({
+			author: author._id,
+			content: "Share me"
+		}).save();
+	});
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+		await Post.remove({ author: author._id });
+	});
+
+	it( "should return 200 and share the post", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/share" )
+			.send({
+				token: token,
+				postId: post._id,
+				alerts: {},
+				privacyRange: 1
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 201 );
+				done();
+			});
+	});
+
+	it( "should return 422 Empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/share" )
+			.send({
+				token: token
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 422 Empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/posts/share" )
+			.send({
+				postId: post._id
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
 	});
 
 	it( "should return 401 malformed jwt", function( done ) {
 		chai.request( "localhost:8000" )
-			.patch( "/posts/update" )
+			.post( "/posts/share" )
 			.send({
-				data: {
-					token: invalidToken,
-					post: { id: postId, content: "Should not update" }
-				}
+				token: "123213adasdsad21321321",
+				postId: post._id,
+				alerts: {},
+				privacyRange: 1
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
-				res.text.should.equal( "Requester isn't the author" );
+				res.text.should.equal( "jwt malformed" );
 				done();
 			});
-	});
-
-	after( function( done ) {
-		Post.remove({ _id: postId })
-			.exec()
-			.then(() => done())
-			.catch( err => done( err ));
 	});
 });

@@ -7,24 +7,29 @@ const
 	dotenv = require( "dotenv" ),
 	bcrypt = require( "bcrypt" ),
 	tokenGenerator = require( "../../src/utils/tokenGenerator" ),
+	User = require( "../../src/models/User" ),
+	Comment = require( "../../src/models/Comment" ),
 	Notification = require( "../../src/models/Notification" ),
-	User = require( "../../src/models/User" );
+	Post = require( "../../src/models/Post" );
+
 
 dotenv.config();
 chai.use( chaiHttp );
 mongoose.connect( process.env.MONGODB_URL );
 
-describe( "POST friends/add", function() {
+describe( "POST comments/create", function() {
 	var
 		author,
-		target,
+		post,
 		token;
 
 	after( async function() {
 		await User.remove({ email: "test@gmail.com" });
-		await User.remove({ email: "test2@gmail.com" });
+		await Post.remove({ author: author._id });
+		await Comment.remove({ author: author._id });
 		await Notification.remove({
-			author: author._id, friendRequest: true
+			author: author._id,
+			comment: true
 		});
 	});
 
@@ -36,20 +41,19 @@ describe( "POST friends/add", function() {
 			passwordHash: bcrypt.hashSync( "test", 10 )
 		}).save();
 		token = await tokenGenerator( author );
-		target = await new User({
-			email: "test2@gmail.com",
-			username: "testuser2",
-			fullname: "Test User2",
-			passwordHash: bcrypt.hashSync( "test", 10 )
+		post = await new Post({
+			author: author._id,
+			content: "test"
 		}).save();
 	});
 
-	it( "adds a new friend, should return 201", function( done ) {
+	it( "creates a comment", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/friends/add" )
+			.post( "/comments/create" )
 			.send({
 				token: token,
-				friendUsername: target.username
+				postId: post._id,
+				comment: "test"
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 201 );
@@ -59,9 +63,10 @@ describe( "POST friends/add", function() {
 
 	it( "should return 422 Empty data", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/friends/add" )
+			.post( "/comments/create" )
 			.send({
-				token: token
+				token: token,
+				postId: post._id
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
@@ -72,9 +77,24 @@ describe( "POST friends/add", function() {
 
 	it( "should return 422 Empty data", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/friends/add" )
+			.post( "/comments/create" )
 			.send({
-				friendUsername: target.username
+				token: token,
+				comment: "test"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 422 Empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/comments/create" )
+			.send({
+				postId: post._id,
+				comment: "test"
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
@@ -85,10 +105,11 @@ describe( "POST friends/add", function() {
 
 	it( "should return 401 malformed jwt", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/friends/add" )
+			.post( "/comments/create" )
 			.send({
 				token: "123213adasdsad21321321",
-				friendUsername: target.username
+				postId: post._id,
+				comment: "test"
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
@@ -96,229 +117,20 @@ describe( "POST friends/add", function() {
 				done();
 			});
 	});
-
-	it( "should return 404 User doesn't exist", function( done ) {
-		chai.request( "localhost:8000" )
-			.post( "/friends/add" )
-			.send({
-				token: token,
-				friendUsername: "inexistingusername"
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 404 );
-				res.text.should.equal( "User doesn't exist" );
-				done();
-			});
-	});
 });
 
 
-
-describe( "DELETE friends/delete", function() {
+describe( "DELETE comments/delete", function() {
 	var
-		author,
-		target,
-		token;
-
-	after( async function() {
-		await User.remove({ email: "test@gmail.com" });
-		await User.remove({ email: "test2@gmail.com" });
-	});
-
-	before( async function() {
-		author = await new User({
-			email: "test@gmail.com",
-			username: "testuser",
-			fullname: "Test User",
-			passwordHash: bcrypt.hashSync( "test", 10 )
-		}).save();
-		token = await tokenGenerator( author );
-		target = await new User({
-			email: "test2@gmail.com",
-			username: "testuser2",
-			fullname: "Test User2",
-			passwordHash: bcrypt.hashSync( "test", 10 )
-		}).save();
-	});
-
-	it( "deletes a friend, should return 200", function( done ) {
-		chai.request( "localhost:8000" )
-			.delete( "/friends/delete" )
-			.send({
-				token: token,
-				friendUsername: target.username
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 200 );
-				done();
-			});
-	});
-
-	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
-			.delete( "/friends/delete" )
-			.send({
-				token: token
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 422 );
-				res.text.should.equal( "Required data not found" );
-				done();
-			});
-	});
-
-	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
-			.delete( "/friends/delete" )
-			.send({
-				friendUsername: target.username
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 422 );
-				res.text.should.equal( "Required data not found" );
-				done();
-			});
-	});
-
-	it( "should return 401 malformed jwt", function( done ) {
-		chai.request( "localhost:8000" )
-			.delete( "/friends/delete" )
-			.send({
-				token: "123213adasdsad21321321",
-				friendUsername: target.username
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 401 );
-				res.text.should.equal( "jwt malformed" );
-				done();
-			});
-	});
-
-	it( "should return 404 User doesn't exist", function( done ) {
-		chai.request( "localhost:8000" )
-			.delete( "/friends/delete" )
-			.send({
-				token: token,
-				friendUsername: "inexistingusername"
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 404 );
-				res.text.should.equal( "User doesn't exist" );
-				done();
-			});
-	});
-});
-
-
-
-describe( "POST friends/isRequested", function() {
-	var
-		author,
-		target,
-		token;
-
-	after( async function() {
-		await User.remove({ email: "test@gmail.com" });
-		await User.remove({ email: "test2@gmail.com" });
-	});
-
-	before( async function() {
-		author = await new User({
-			email: "test@gmail.com",
-			username: "testuser",
-			fullname: "Test User",
-			passwordHash: bcrypt.hashSync( "test", 10 )
-		}).save();
-		token = await tokenGenerator( author );
-		target = await new User({
-			email: "test2@gmail.com",
-			username: "testuser2",
-			fullname: "Test User2",
-			passwordHash: bcrypt.hashSync( "test", 10 )
-		}).save();
-	});
-
-	it( "should return 200", function( done ) {
-		chai.request( "localhost:8000" )
-			.post( "/friends/isRequested" )
-			.send({
-				token: token,
-				targetUsername: target.username
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 200 );
-				done();
-			});
-	});
-
-	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
-			.post( "/friends/isRequested" )
-			.send({
-				token: token
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 422 );
-				res.text.should.equal( "Required data not found" );
-				done();
-			});
-	});
-
-	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
-			.post( "/friends/isRequested" )
-			.send({
-				targetUsername: target.username
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 422 );
-				res.text.should.equal( "Required data not found" );
-				done();
-			});
-	});
-
-	it( "should return 401 malformed jwt", function( done ) {
-		chai.request( "localhost:8000" )
-			.post( "/friends/isRequested" )
-			.send({
-				token: "123213adasdsad21321321",
-				targetUsername: target.username
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 401 );
-				res.text.should.equal( "jwt malformed" );
-				done();
-			});
-	});
-
-	it( "should return 404 User doesn't exist", function( done ) {
-		chai.request( "localhost:8000" )
-			.post( "/friends/isRequested" )
-			.send({
-				token: token,
-				targetUsername: "inexistingusername"
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 404 );
-				res.text.should.equal( "User doesn't exist" );
-				done();
-			});
-	});
-});
-
-
-
-describe( "POST friends/accept", function() {
-	var
-		author,
-		target,
 		token,
-		notification;
+		author,
+		comment,
+		post;
 
 	after( async function() {
 		await User.remove({ email: "test@gmail.com" });
-		await User.remove({ email: "test2@gmail.com" });
-		await Notification.remove({ receiver: author._id });
+		await Post.remove({ author: author._id });
+		await Comment.remove({ author: author._id });
 	});
 
 	before( async function() {
@@ -329,35 +141,250 @@ describe( "POST friends/accept", function() {
 			passwordHash: bcrypt.hashSync( "test", 10 )
 		}).save();
 		token = await tokenGenerator( author );
-		target = await new User({
-			email: "test2@gmail.com",
-			username: "testuser23",
-			fullname: "Test User2",
-			passwordHash: bcrypt.hashSync( "test", 10 )
+		post = await new Post({
+			author: author._id,
+			content: "test"
 		}).save();
-		notification = await new Notification({
-			receiver: author._id,
-			author: target._id,
-			friendRequest: true
+		comment = await new Comment({
+			author: author._id,
+			content: "test",
+			post: post._id
 		}).save();
 	});
 
-	it( "should return 201", function( done ) {
+	it( "deletes a comment, should return 200", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/friends/accept" )
+			.delete( "/comments/delete" )
 			.send({
 				token: token,
-				friendUsername: target.username
+				postId: post._id,
+				commentId: comment._id
 			})
 			.end(( err, res ) => {
-				res.should.have.status( 201 );
+				res.should.have.status( 200 );
 				done();
 			});
 	});
 
 	it( "should return 422 Empty data", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/friends/accept" )
+			.delete( "/comments/delete" )
+			.send({
+				token: token,
+				postId: post._id
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 422 Empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.delete( "/comments/delete" )
+			.send({
+				token: token,
+				commentId: comment._id
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 422 Empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.delete( "/comments/delete" )
+			.send({
+				postId: post._id,
+				commentId: comment._id
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 401 malformed jwt", function( done ) {
+		chai.request( "localhost:8000" )
+			.delete( "/comments/delete" )
+			.send({
+				token: "123213adasdsad21321321",
+				postId: post._id,
+				commentId: comment._id
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
+				done();
+			});
+	});
+});
+
+
+
+describe( "PATCH comments/update", function() {
+	var
+		token,
+		author,
+		comment,
+		post;
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+		await Post.remove({ author: author._id });
+		await Comment.remove({ author: author._id });
+	});
+
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+		post = await new Post({
+			author: author._id,
+			content: "test"
+		}).save();
+		comment = await new Comment({
+			author: author._id,
+			content: "Update me",
+			post: post._id
+		}).save();
+	});
+
+	it( "updates a comment, should return 200", function( done ) {
+		chai.request( "localhost:8000" )
+			.patch( "/comments/update" )
+			.send({
+				token: token,
+				newContent: "updated",
+				commentId: comment._id
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 200 );
+				done();
+			});
+	});
+
+	it( "should return 422 Empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.patch( "/comments/update" )
+			.send({
+				token: token,
+				newContent: "updated"
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 422 Empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.patch( "/comments/update" )
+			.send({
+				token: token,
+				commentId: comment._id
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 422 Empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.patch( "/comments/update" )
+			.send({
+				newContent: "updated",
+				commentId: comment._id
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 422 );
+				res.text.should.equal( "Required data not found" );
+				done();
+			});
+	});
+
+	it( "should return 401 malformed jwt", function( done ) {
+		chai.request( "localhost:8000" )
+			.patch( "/comments/update" )
+			.send({
+				token: "123213adasdsad21321321",
+				newContent: "updated",
+				commentId: comment._id
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 401 );
+				res.text.should.equal( "jwt malformed" );
+				done();
+			});
+	});
+});
+
+
+describe( "POST comments/retrieve/:skip", function() {
+	var
+		token,
+		author,
+		post;
+
+	after( async function() {
+		await User.remove({ email: "test@gmail.com" });
+		await Post.remove({ author: author._id });
+	});
+
+	before( async function() {
+		author = await new User({
+			email: "test@gmail.com",
+			username: "testuser",
+			fullname: "Test User",
+			passwordHash: bcrypt.hashSync( "test", 10 )
+		}).save();
+		token = await tokenGenerator( author );
+		post = await new Post({
+			author: author._id,
+			content: "test"
+		}).save();
+	});
+
+	it( "gets the post comments, should return 200", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/comments/retrieve/0" )
+			.send({
+				token: token,
+				postId: post._id
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 200 );
+				done();
+			});
+	});
+
+	it( "should return 404 for endpoint not found", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/comments/retrieve/" )
+			.send({
+				token: token,
+				postId: post._id
+			})
+			.end(( err, res ) => {
+				res.should.have.status( 404 );
+				done();
+			});
+	});
+
+	it( "should return 422 Empty data", function( done ) {
+		chai.request( "localhost:8000" )
+			.post( "/comments/retrieve/0" )
 			.send({
 				token: token
 			})
@@ -370,9 +397,9 @@ describe( "POST friends/accept", function() {
 
 	it( "should return 422 Empty data", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/friends/accept" )
+			.post( "/comments/retrieve/0" )
 			.send({
-				friendUsername: target.username
+				postId: post._id
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
@@ -383,28 +410,14 @@ describe( "POST friends/accept", function() {
 
 	it( "should return 401 malformed jwt", function( done ) {
 		chai.request( "localhost:8000" )
-			.post( "/friends/accept" )
+			.post( "/comments/retrieve/0" )
 			.send({
 				token: "123213adasdsad21321321",
-				friendUsername: target.username
+				postId: post._id
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
 				res.text.should.equal( "jwt malformed" );
-				done();
-			});
-	});
-
-	it( "should return 404 User doesn't exist", function( done ) {
-		chai.request( "localhost:8000" )
-			.post( "/friends/accept" )
-			.send({
-				token: token,
-				friendUsername: "inexistingusername"
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 404 );
-				res.text.should.equal( "User doesn't exist" );
 				done();
 			});
 	});
