@@ -4,13 +4,12 @@ const
 	should = chai.should(),
 	request = require( "request" ),
 	mongoose = require( "mongoose" ),
-	dotenv = require( "dotenv" ),
+	dotenv = require( "dotenv" ).config(),
 	bcrypt = require( "bcrypt" ),
 	tokenGenerator = require( "../../src/utils/tokenGenerator" ),
 	refreshTokenGenerator = require( "../../src/utils/refreshTokenGenerator" ),
 	User = require( "../../src/models/User" );
 
-dotenv.config();
 chai.use( chaiHttp );
 mongoose.connect( process.env.DEV_MONGODB_URL, { useNewUrlParser: true }).then(() => {
 	console.log( "MongoDB connected" );
@@ -219,7 +218,7 @@ describe( "auth/verify", function() {
 			fullname: "Test User",
 			passwordHash: bcrypt.hashSync( "test", 10 )
 		}).save();
-		token = await tokenGenerator( author );
+		token = tokenGenerator( author );
 	});
 
 	it( "should return 200", function( done ) {
