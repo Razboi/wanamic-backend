@@ -13,7 +13,9 @@ const
 
 dotenv.config();
 chai.use( chaiHttp );
-mongoose.connect( process.env.MONGODB_URL );
+mongoose.connect( process.env.DEV_MONGODB_URL, { useNewUrlParser: true }).then(() => {
+	console.log( "MongoDB connected" );
+}).catch( err => console.log( err ));
 
 describe( "POST followers/follow", function() {
 	var
@@ -44,7 +46,7 @@ describe( "POST followers/follow", function() {
 	});
 
 	it( "adds a new follower/following", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/followers/follow" )
 			.send({
 				token: token,
@@ -57,7 +59,7 @@ describe( "POST followers/follow", function() {
 	});
 
 	it( "should return 404 User doesn't exist", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/followers/follow" )
 			.send({
 				token: token,
@@ -71,7 +73,7 @@ describe( "POST followers/follow", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/followers/follow" )
 			.send({
 				token: token
@@ -84,7 +86,7 @@ describe( "POST followers/follow", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/followers/follow" )
 			.send({
 				targetUsername: receiver.username
@@ -97,7 +99,7 @@ describe( "POST followers/follow", function() {
 	});
 
 	it( "should return 401 malformed jwt", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/followers/follow" )
 			.send({
 				token: "123213adasdsad21321321",
@@ -141,7 +143,7 @@ describe( "DELETE followers/unfollow", function() {
 	});
 
 	it( "deletes a friend, should return 200", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.delete( "/followers/unfollow" )
 			.send({
 				token: token,
@@ -154,7 +156,7 @@ describe( "DELETE followers/unfollow", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.delete( "/followers/unfollow" )
 			.send({
 				token: token
@@ -167,7 +169,7 @@ describe( "DELETE followers/unfollow", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.delete( "/followers/unfollow" )
 			.send({
 				targetUsername: receiver.username
@@ -180,7 +182,7 @@ describe( "DELETE followers/unfollow", function() {
 	});
 
 	it( "should return 404 User doesn't exist", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.delete( "/followers/unfollow" )
 			.send({
 				token: token,
@@ -194,7 +196,7 @@ describe( "DELETE followers/unfollow", function() {
 	});
 
 	it( "should return 401 malformed jwt", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.delete( "/followers/unfollow" )
 			.send({
 				token: "123213adasdsad21321321",
@@ -239,7 +241,7 @@ describe( "POST followers/setupFollow", function() {
 	});
 
 	it( "setup following, should return 201", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/followers/setupFollow" )
 			.send({
 				token: token,
@@ -256,7 +258,7 @@ describe( "POST followers/setupFollow", function() {
 	});
 
 	it( "should return 404 User doesn't exist", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/followers/setupFollow" )
 			.send({
 				token: token,
@@ -270,7 +272,7 @@ describe( "POST followers/setupFollow", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/followers/setupFollow" )
 			.send({
 				token: token
@@ -283,7 +285,7 @@ describe( "POST followers/setupFollow", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/followers/setupFollow" )
 			.send({
 				users: [ receiver.username, author.username ]
@@ -296,7 +298,7 @@ describe( "POST followers/setupFollow", function() {
 	});
 
 	it( "should return 401 malformed jwt", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/followers/setupFollow" )
 			.send({
 				token: "123213adasdsad21321321",

@@ -13,7 +13,9 @@ const
 
 dotenv.config();
 chai.use( chaiHttp );
-mongoose.connect( process.env.MONGODB_URL );
+mongoose.connect( process.env.DEV_MONGODB_URL, { useNewUrlParser: true }).then(() => {
+	console.log( "MongoDB connected" );
+}).catch( err => console.log( err ));
 
 describe( "POST posts/explore/:skip/:limit", function() {
 	var
@@ -35,7 +37,7 @@ describe( "POST posts/explore/:skip/:limit", function() {
 	});
 
 	it( "gets explore posts, should return 200", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.get( "/posts/explore/0/10" )
 			.end(( err, res ) => {
 				res.should.have.status( 200 );
@@ -44,7 +46,7 @@ describe( "POST posts/explore/:skip/:limit", function() {
 	});
 
 	it( "should return 404 for invalid route", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.get( "/posts/explore/" )
 			.end(( err, res ) => {
 				res.should.have.status( 404 );
@@ -75,7 +77,7 @@ describe( "POST posts/create", function() {
 	});
 
 	it( "creates a new post, should return 201", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/posts/create" )
 			.send({
 				token: token, userInput: "test2"
@@ -87,7 +89,7 @@ describe( "POST posts/create", function() {
 	});
 
 	it( "should return 422 for empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/posts/create" )
 			.send({})
 			.end(( err, res ) => {
@@ -98,7 +100,7 @@ describe( "POST posts/create", function() {
 	});
 
 	it( "should return 401 for invalid token", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/posts/create" )
 			.send({
 				token: "1232312sadasd213213", userInput: "test2"
@@ -139,7 +141,7 @@ describe( "POST posts/like", function() {
 	});
 
 	it( "creates adds a new like, should return 201", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/posts/like" )
 			.send({
 				token: token,
@@ -152,7 +154,7 @@ describe( "POST posts/like", function() {
 	});
 
 	it( "should return 422 for empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/posts/like" )
 			.send({
 				token: token
@@ -165,7 +167,7 @@ describe( "POST posts/like", function() {
 	});
 
 	it( "should return 422 for empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/posts/like" )
 			.send({
 				postId: post._id
@@ -178,7 +180,7 @@ describe( "POST posts/like", function() {
 	});
 
 	it( "should return 401 for invalid token", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/posts/like" )
 			.send({
 				token: "1232312sadasd213213",
@@ -219,7 +221,7 @@ describe( "POST posts/dislike", function() {
 	});
 
 	it( "removes a like, should return 200", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.patch( "/posts/dislike" )
 			.send({
 				token: token,
@@ -232,7 +234,7 @@ describe( "POST posts/dislike", function() {
 	});
 
 	it( "should return 422 for empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.patch( "/posts/dislike" )
 			.send({
 				token: token
@@ -245,7 +247,7 @@ describe( "POST posts/dislike", function() {
 	});
 
 	it( "should return 422 for empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.patch( "/posts/dislike" )
 			.send({
 				postId: post._id
@@ -258,7 +260,7 @@ describe( "POST posts/dislike", function() {
 	});
 
 	it( "should return 401 for invalid token", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.patch( "/posts/dislike" )
 			.send({
 				token: "1232312sadasd213213",
@@ -294,7 +296,7 @@ describe( "POST posts/media", function() {
 	});
 
 	it( "creates a new post, should return 201", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/posts/media" )
 			.send({
 				token: token, data: { privacyRange: 1, alerts: {} }
@@ -306,7 +308,7 @@ describe( "POST posts/media", function() {
 	});
 
 	it( "should return 422 for empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/posts/media" )
 			.send({
 				token: token
@@ -319,7 +321,7 @@ describe( "POST posts/media", function() {
 	});
 
 	it( "should return 422 for empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/posts/media" )
 			.send({
 				data: {}
@@ -332,7 +334,7 @@ describe( "POST posts/media", function() {
 	});
 
 	it( "should return 401 for invalid token", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/posts/media" )
 			.send({
 				token: "1232312sadasd213213",
@@ -367,7 +369,7 @@ describe( "POST posts/mediaLink", function() {
 	});
 
 	it( "creates a new post, should return 201", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/posts/mediaLink" )
 			.send({
 				token: token, link: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
@@ -379,7 +381,7 @@ describe( "POST posts/mediaLink", function() {
 	});
 
 	it( "should return 422 for empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/posts/mediaLink" )
 			.send({
 				token: token
@@ -392,7 +394,7 @@ describe( "POST posts/mediaLink", function() {
 	});
 
 	it( "should return 422 for empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/posts/mediaLink" )
 			.send({
 				link: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
@@ -405,7 +407,7 @@ describe( "POST posts/mediaLink", function() {
 	});
 
 	it( "should return 401 for invalid token", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/posts/mediaLink" )
 			.send({
 				token: "1232312sadasd213213",
@@ -441,7 +443,7 @@ describe( "POST posts/mediaPicture", function() {
 	});
 
 	it( "should return 422 for empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/posts/mediaPicture" )
 			.send({
 				picture: [ "123" ]
@@ -454,7 +456,7 @@ describe( "POST posts/mediaPicture", function() {
 	});
 
 	it( "should return 422 for empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/posts/mediaPicture" )
 			.send({
 				token: "123asdad123123"
@@ -488,7 +490,7 @@ describe( "GET posts/:username/:skip", function() {
 	});
 
 	it( "should get the user posts", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/posts/testuser/0" )
 			.send({
 				token: token
@@ -522,7 +524,7 @@ describe( "GET posts/newsfeed/:skip", function() {
 	});
 
 	it( "should get the user newsfeed", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/posts/newsfeed/0" )
 			.send({
 				token: token
@@ -534,7 +536,7 @@ describe( "GET posts/newsfeed/:skip", function() {
 	});
 
 	it( "should return 422 Missing token", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/posts/newsfeed/0" )
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
@@ -544,7 +546,7 @@ describe( "GET posts/newsfeed/:skip", function() {
 	});
 
 	it( "should return 422 Missing token", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/posts/newsfeed/0" )
 			.send({
 				token: "123123asdasd123123"
@@ -595,7 +597,7 @@ describe( "DELETE posts/delete", function() {
 	});
 
 	it( "should return 422 Empty post data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.delete( "/posts/delete" )
 			.send({
 			})
@@ -607,7 +609,7 @@ describe( "DELETE posts/delete", function() {
 	});
 
 	it( "should return 422 Empty post data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.delete( "/posts/delete" )
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
@@ -617,7 +619,7 @@ describe( "DELETE posts/delete", function() {
 	});
 
 	it( "should return 401", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.delete( "/posts/delete" )
 			.send({
 				postId: post._id,
@@ -631,7 +633,7 @@ describe( "DELETE posts/delete", function() {
 	});
 
 	it( "should return 500 for invalid objectId", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.delete( "/posts/delete" )
 			.send({
 				postId: "123321",
@@ -644,7 +646,7 @@ describe( "DELETE posts/delete", function() {
 	});
 
 	it( "should return 401 Requester isn't the author", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.delete( "/posts/delete" )
 			.send({
 				postId: post._id,
@@ -659,7 +661,7 @@ describe( "DELETE posts/delete", function() {
 
 	// must go last to avoid 404 on other tests
 	it( "should return 200", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.delete( "/posts/delete" )
 			.send({
 				postId: post._id,
@@ -710,7 +712,7 @@ describe( "PATCH posts/update", function() {
 	});
 
 	it( "should return 200 and update the post", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.patch( "/posts/update" )
 			.send({
 				token: token,
@@ -724,7 +726,7 @@ describe( "PATCH posts/update", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.patch( "/posts/update" )
 			.send({
 				token: token,
@@ -738,7 +740,7 @@ describe( "PATCH posts/update", function() {
 	});
 
 	it( "should return 401 jwt malformed", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.patch( "/posts/update" )
 			.send({
 				token: "12312asdas123123",
@@ -753,7 +755,7 @@ describe( "PATCH posts/update", function() {
 	});
 
 	it( "should return 401 Requester isn't the author", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.patch( "/posts/update" )
 			.send({
 				token: invalidToken,
@@ -795,7 +797,7 @@ describe( "POST posts/share", function() {
 	});
 
 	it( "should return 200 and share the post", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/posts/share" )
 			.send({
 				token: token,
@@ -810,7 +812,7 @@ describe( "POST posts/share", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/posts/share" )
 			.send({
 				token: token
@@ -823,7 +825,7 @@ describe( "POST posts/share", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/posts/share" )
 			.send({
 				postId: post._id
@@ -836,7 +838,7 @@ describe( "POST posts/share", function() {
 	});
 
 	it( "should return 401 malformed jwt", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/posts/share" )
 			.send({
 				token: "123213adasdsad21321321",

@@ -13,7 +13,9 @@ const
 
 dotenv.config();
 chai.use( chaiHttp );
-mongoose.connect( process.env.MONGODB_URL );
+mongoose.connect( process.env.DEV_MONGODB_URL, { useNewUrlParser: true }).then(() => {
+	console.log( "MongoDB connected" );
+}).catch( err => console.log( err ));
 
 describe( "POST conversations/add", function() {
 	var
@@ -37,7 +39,7 @@ describe( "POST conversations/add", function() {
 	});
 
 	it( "adds a conversation, should return 200", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/conversations/add" )
 			.send({
 				token: token,
@@ -51,7 +53,7 @@ describe( "POST conversations/add", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/conversations/add" )
 			.send({
 				token: token,
@@ -65,7 +67,7 @@ describe( "POST conversations/add", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/conversations/add" )
 			.send({
 				friendId: user._id,
@@ -79,7 +81,7 @@ describe( "POST conversations/add", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/conversations/add" )
 			.send({
 				token: token,
@@ -93,7 +95,7 @@ describe( "POST conversations/add", function() {
 	});
 
 	it( "should return 401 malformed jwt", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/conversations/add" )
 			.send({
 				token: "123213adasdsad21321321",

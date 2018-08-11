@@ -2,7 +2,7 @@ const
 	app = require( "express" )(),
 	bodyParser = require( "body-parser" ),
 	mongoose = require( "mongoose" ),
-	dotenv = require( "dotenv" ),
+	dotenv = require( "dotenv" ).config(),
 	posts = require( "./routes/posts" ),
 	comments = require( "./routes/comments" ),
 	friends = require( "./routes/friends" ),
@@ -16,13 +16,27 @@ const
 	Message = require( "./models/Message" ),
 	socketIo = require( "socket.io" );
 
-// apply env variables
-dotenv.config();
 
-mongoose.connect( process.env.MONGODB_URL, { useNewUrlParser: true }, () =>
-	console.log( "MongoDB connected" ));
+let mongoURL = process.env.NODE_ENV === "dev" ?
+	process.env.DEV_MONGODB_URL : process.env.PROD_MONGODB_URL;
+
+mongoose.connect( mongoURL, { useNewUrlParser: true }).then(() => {
+	console.log( "MongoDB connected" );
+}).catch( err => console.log( err ));
 
 app.use( bodyParser.json());
+app.use(( req, res, next ) => {
+	res.header( "Access-Control-Allow-Origin", "*" );
+	res.header(
+		"Access-Control-Allow-Headers",
+		"Origin, X-Requested-With, Content-Type, Accept, Authorization"
+	);
+	if ( req.method === "OPTIONS" ) {
+		res.header( "Access-Control-Allow-Methods", "PUT, POST, PATCH, DELETE, GET" );
+		return res.status( 200 ).json({});
+	}
+	next();
+});
 app.use( "/auth", auth );
 app.use( "/posts", posts );
 app.use( "/friends", friends );

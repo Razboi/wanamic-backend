@@ -1,7 +1,6 @@
 const
 	User = require( "../models/User" ),
-	Comment = require( "../models/Comment" ),
-	fs = require( "fs" );
+	Comment = require( "../models/Comment" );
 
 removePost = async( user, post ) => {
 	if ( !user || !post ) {

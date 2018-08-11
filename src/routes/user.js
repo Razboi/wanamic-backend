@@ -3,29 +3,64 @@ const
 	User = require( "../models/User" ),
 	Ticket = require( "../models/Ticket" ),
 	bcrypt = require( "bcrypt" ),
+	aws = require( "aws-sdk" ),
 	multer = require( "multer" ),
+	multerS3 = require( "multer-s3" ),
 	tokenVerifier = require( "../utils/tokenVerifier" ),
 	findRandomUser = require( "../utils/findRandomUser" ),
 	removeDuplicates = require( "../utils/removeDuplicatesArrOfObj" ),
 	validators = require( "../utils/validators" ),
 	errors = require( "../utils/errors" ),
-	fs = require( "fs" ),
+	removeImage = require( "../utils/removeImage" ),
 	path = require( "path" );
 
-var upload = multer({
-	dest: "../wanamic-frontend/src/images",
-	fileFilter: function( req, file, callback ) {
-		var ext = path.extname( file.originalname );
-		if ( ext !== ".png" && ext !== ".jpg" && ext !== ".gif" && ext !== ".jpeg" ) {
-			return callback( new Error(
-				"Only .png .jpg .gif .jpeg images are allowed" ));
-		}
-		callback( null, true );
-	},
-	limits: {
-		fileSize: 1024 * 1024
-	}
-});
+let
+	s3 = new aws.S3({
+		accessKeyId: process.env.ACCESS_KEY_ID,
+		secretAccessKey: process.env.SECRET_ACCESS_KEY,
+		Bucket: "wanamic"
+	}),
+	upload = process.env.NODE_ENV === "dev" ?
+		multer({
+			dest: "../wanamic-frontend/src/images",
+			fileFilter: function( req, file, callback ) {
+				var ext = path.extname( file.originalname );
+				if ( ext !== ".png" && ext !== ".jpg" && ext !== ".gif" && ext !== ".jpeg" ) {
+					return callback( new Error(
+						"Only .png .jpg .gif .jpeg images are allowed" ));
+				}
+				callback( null, true );
+			},
+			limits: {
+				fileSize: 1024 * 1024
+			}
+		})
+		:
+		multer({
+			storage: multerS3({
+				s3: s3,
+				bucket: "wanamic",
+				metadata: function( req, file, cb ) {
+					cb( null, { fieldName: file.fieldname });
+				},
+				key: function( req, file, cb ) {
+					cb( null, Date.now().toString());
+				}
+			}),
+			fileFilter: function( req, file, callback ) {
+				var ext = path.extname( file.originalname );
+				if ( ext !== ".png" && ext !== ".jpg" && ext !== ".gif" && ext !== ".jpeg" ) {
+					return callback( new Error(
+						"Only .png .jpg .gif .jpeg images are allowed" ));
+				}
+				callback( null, true );
+			},
+			limits: {
+				fileSize: 1024 * 1024
+			}
+		}),
+	filenameProp = process.env.NODE_ENV === "dev" ?
+		"filename" : "key";
 
 
 Router.post( "/userInfo", async( req, res, next ) => {
@@ -83,7 +118,7 @@ Router.post( "/info", upload.fields([ { name: "userImage", maxCount: 1 },
 		if ( !user ) {
 			return next( errors.userDoesntExist());
 		}
-		if ( description && description !== user.description ) {
+		if ( description !== "undefined" && description !== user.description ) {
 			user.description = description;
 		}
 		if ( fullname && fullname !== user.fullname &&
@@ -101,39 +136,29 @@ Router.post( "/info", upload.fields([ { name: "userImage", maxCount: 1 },
 			}
 			user.username = username;
 		}
-		if ( country && country !== user.country ) {
+		if ( country !== "undefined" && country !== user.country ) {
 			user.country = country;
 		}
-		if ( region && region !== user.region ) {
+		if ( region !== "undefined" && region !== user.region ) {
 			user.region = region;
 		}
-		if ( gender && gender !== user.gender ) {
+		if ( gender !== "undefined" && gender !== user.gender ) {
 			user.gender = gender;
 		}
-		if ( birthday && birthday !== user.birthday ) {
+		if ( birthday !== "undefined" && birthday !== user.birthday ) {
 			user.birthday = birthday;
 		}
 		if ( req.files && req.files[ "userImage" ]) {
 			if ( user.profileImage ) {
-				const oldPicFile = user.profileImage;
-				fs.unlink( "../wanamic-frontend/src/images/" + oldPicFile, err => {
-					if ( err ) {
-						next( err );
-					}
-				});
+				removeImage( user.profileImage );
 			}
-			user.profileImage = req.files[ "userImage" ][ 0 ].filename;
+			user.profileImage = req.files[ "userImage" ][ 0 ][ filenameProp ];
 		}
 		if ( req.files && req.files[ "headerImage" ]) {
 			if ( user.headerImage ) {
-				const oldPicFile = user.profileImage;
-				fs.unlink( "../wanamic-frontend/src/images/" + oldPicFile, err => {
-					if ( err ) {
-						next( err );
-					}
-				});
+				removeImage( user.headerImage );
 			}
-			user.headerImage = req.files[ "headerImage" ][ 0 ].filename;
+			user.headerImage = req.files[ "headerImage" ][ 0 ][ filenameProp ];
 		}
 		await user.save();
 		res.status( 201 );

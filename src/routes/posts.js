@@ -5,28 +5,63 @@ const
 	Post = require( "../models/Post" ),
 	LinkPreview = require( "react-native-link-preview" ),
 	extractHostname = require( "../utils/extractHostname" ),
+	aws = require( "aws-sdk" ),
 	multer = require( "multer" ),
+	multerS3 = require( "multer-s3" ),
 	Notification = require( "../models/Notification" ),
 	notifyMentions = require( "../utils/notifyMentions" ),
 	errors = require( "../utils/errors" ),
 	removePost = require( "../utils/removePost" ),
-	fs = require( "fs" ),
 	path = require( "path" );
 
-var upload = multer({
-	dest: "../wanamic-frontend/src/images",
-	fileFilter: function( req, file, callback ) {
-		var ext = path.extname( file.originalname );
-		if ( ext !== ".png" && ext !== ".jpg" && ext !== ".gif" && ext !== ".jpeg" ) {
-			return callback( new Error(
-				"Only .png .jpg .gif .jpeg images are allowed" ));
-		}
-		callback( null, true );
-	},
-	limits: {
-		fileSize: 1024 * 1024
-	}
-});
+let
+	s3 = new aws.S3({
+		accessKeyId: process.env.ACCESS_KEY_ID,
+		secretAccessKey: process.env.SECRET_ACCESS_KEY,
+		Bucket: "wanamic"
+	}),
+	upload = process.env.NODE_ENV === "dev" ?
+		multer({
+			dest: "../wanamic-frontend/src/images",
+			fileFilter: function( req, file, callback ) {
+				var ext = path.extname( file.originalname );
+				if ( ext !== ".png" && ext !== ".jpg" && ext !== ".gif" && ext !== ".jpeg" ) {
+					return callback( new Error(
+						"Only .png .jpg .gif .jpeg images are allowed" ));
+				}
+				callback( null, true );
+			},
+			limits: {
+				fileSize: 1024 * 1024
+			}
+		})
+		:
+		multer({
+			storage: multerS3({
+				s3: s3,
+				bucket: "wanamic",
+				metadata: function( req, file, cb ) {
+					cb( null, { fieldName: file.fieldname });
+				},
+				key: function( req, file, cb ) {
+					cb( null, Date.now().toString());
+				}
+			}),
+			fileFilter: function( req, file, callback ) {
+				var ext = path.extname( file.originalname );
+				if ( ext !== ".png" && ext !== ".jpg" && ext !== ".gif" && ext !== ".jpeg" ) {
+					return callback( new Error(
+						"Only .png .jpg .gif .jpeg images are allowed" ));
+				}
+				callback( null, true );
+			},
+			limits: {
+				fileSize: 1024 * 1024
+			}
+		}),
+	filenameProp = process.env.NODE_ENV === "dev" ?
+		"filename" : "key";
+
 
 Router.get( "/explore/:skip/:limit", async( req, res, next ) => {
 	let posts;
@@ -34,7 +69,6 @@ Router.get( "/explore/:skip/:limit", async( req, res, next ) => {
 	if ( !req.params.skip || !req.params.limit ) {
 		return next( errors.blankData());
 	}
-	console.log( req.params.limit );
 	try {
 		posts = await Post.find()
 			.where( "media" ).equals( true )
@@ -445,10 +479,13 @@ Router.post( "/mediaPicture", upload.single( "picture" ), async( req, res, next 
 	if ( !req.body.token || !req.body || !req.file ) {
 		return next( errors.blankData());
 	}
-	const { token, mentions, hashtags } = req.body;
+	const {
+		token, mentions, hashtags, content, nsfw, spoiler,
+		spoilerDescription, privacyRange
+	} = req.body;
 
 	try {
-		userId = tokenVerifier( data.token );
+		userId = tokenVerifier( token );
 		user = await User.findById( userId ).exec();
 		if ( !user ) {
 			return next( errors.userDoesntExist());
@@ -457,16 +494,16 @@ Router.post( "/mediaPicture", upload.single( "picture" ), async( req, res, next 
 			author: user._id,
 			media: true,
 			picture: true,
-			content: data.content,
+			content: content,
 			alerts: {
-				nsfw: data.nsfw,
-				spoiler: data.spoiler,
-				spoilerDescription: data.spoilerDescription
+				nsfw: nsfw,
+				spoiler: spoiler,
+				spoilerDescription: spoilerDescription
 			},
 			hashtags: hashtags,
-			privacyRange: data.privacyRange,
+			privacyRange: privacyRange,
 			mediaContent: {
-				image: req.file.filename,
+				image: req.file[ filenameProp ],
 			}
 		}).save();
 		newPost = await newPost.populate({
@@ -478,7 +515,7 @@ Router.post( "/mediaPicture", upload.single( "picture" ), async( req, res, next 
 			{ $push: { "newsfeed": newPost._id } },
 			{ multi: true }
 		).exec();
-		if ( data.privacyRange >= 2 ) {
+		if ( privacyRange >= 2 ) {
 			await User.update(
 				{ _id: { $in: user.followers } },
 				{ $push: { "newsfeed": newPost._id } },

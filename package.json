@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon src/index.js",
+    "start": "NODE_ENV=dev nodemon src/index.js",
     "test": "mocha --timeout 5000 --recursive --exit"
   },
   "author": "",
@@ -19,7 +19,7 @@
     "nodemon": "^1.18.3"
   },
   "dependencies": {
-    "async": "^2.6.1",
+    "aws-sdk": "^2.289.0",
     "bcrypt": "^2.0.1",
     "body-parser": "^1.18.3",
     "dotenv": "^5.0.1",
@@ -27,8 +27,8 @@
     "jsonwebtoken": "^8.3.0",
     "mongoose": "^5.2.6",
     "multer": "^1.3.1",
+    "multer-s3": "^2.7.0",
     "nodemailer": "^4.6.7",
-    "rand-token": "^0.4.0",
     "react-native-link-preview": "^1.3.4",
     "socket.io": "^2.1.1"
   }

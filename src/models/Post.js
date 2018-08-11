@@ -1,5 +1,5 @@
 const
-	fs = require( "fs" ),
+	removeImage = require( "../utils/removeImage" ),
 	mongoose = require( "mongoose" ),
 	Schema = mongoose.Schema,
 
@@ -39,6 +39,7 @@ const
 
 	Post = mongoose.model( "Post", PostSchema );
 
+
 PostSchema.post( "remove", async( post, next ) => {
 	try {
 		await mongoose.model( "Comment" ).remove({
@@ -46,14 +47,7 @@ PostSchema.post( "remove", async( post, next ) => {
 		}).exec();
 
 		if ( post.picture ) {
-			const
-				picPath = "../wanamic-frontend/src/images/",
-				picFile = post.mediaContent.image;
-			fs.unlink( picPath + picFile, err => {
-				if ( err ) {
-					next( err );
-				}
-			});
+			removeImage( post.mediaContent.image );
 		}
 		next();
 	} catch ( err ) {

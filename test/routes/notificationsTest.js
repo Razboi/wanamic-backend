@@ -12,7 +12,9 @@ const
 
 dotenv.config();
 chai.use( chaiHttp );
-mongoose.connect( process.env.MONGODB_URL );
+mongoose.connect( process.env.DEV_MONGODB_URL, { useNewUrlParser: true }).then(() => {
+	console.log( "MongoDB connected" );
+}).catch( err => console.log( err ));
 
 describe( "POST notifications/retrieve/:skip", function() {
 	var
@@ -42,7 +44,7 @@ describe( "POST notifications/retrieve/:skip", function() {
 	});
 
 	it( "returns notifications, should return 200", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/notifications/retrieve/0" )
 			.send({
 				token: token
@@ -54,7 +56,7 @@ describe( "POST notifications/retrieve/:skip", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/notifications/retrieve/0" )
 			.send({})
 			.end(( err, res ) => {
@@ -65,7 +67,7 @@ describe( "POST notifications/retrieve/:skip", function() {
 	});
 
 	it( "should return 401 malformed jwt", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/notifications/retrieve/0" )
 			.send({
 				token: "123213adasdsad21321321"
@@ -113,7 +115,7 @@ describe( "POST notifications/check", function() {
 	});
 
 	it( "returns notifications, should return 200", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/notifications/check" )
 			.send({
 				token: token
@@ -125,7 +127,7 @@ describe( "POST notifications/check", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/notifications/check" )
 			.send({})
 			.end(( err, res ) => {
@@ -136,7 +138,7 @@ describe( "POST notifications/check", function() {
 	});
 
 	it( "should return 401 malformed jwt", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/notifications/check" )
 			.send({
 				token: "123213adasdsad21321321",
