@@ -18,28 +18,29 @@ let
 	s3 = new aws.S3({
 		accessKeyId: process.env.ACCESS_KEY_ID,
 		secretAccessKey: process.env.SECRET_ACCESS_KEY,
-		Bucket: "wanamic"
+		Bucket: "wanamic.com"
 	}),
 	upload = process.env.NODE_ENV === "dev" ?
 		multer({
 			dest: "../wanamic-frontend/src/images",
 			fileFilter: function( req, file, callback ) {
 				var ext = path.extname( file.originalname );
-				if ( ext !== ".png" && ext !== ".jpg" && ext !== ".gif" && ext !== ".jpeg" ) {
+				if (( file.mimetype !== "image/jpeg" && file.mimetype !== "image/png"
+					&& file.mimetype !== "image/jpg" && file.mimetype !== "image/gif" )) {
 					return callback( new Error(
 						"Only .png .jpg .gif .jpeg images are allowed" ));
 				}
 				callback( null, true );
 			},
 			limits: {
-				fileSize: 1024 * 1024
+				fileSize: 1010000
 			}
 		})
 		:
 		multer({
 			storage: multerS3({
 				s3: s3,
-				bucket: "wanamic",
+				bucket: "wanamic.com",
 				metadata: function( req, file, cb ) {
 					cb( null, { fieldName: file.fieldname });
 				},
@@ -49,14 +50,15 @@ let
 			}),
 			fileFilter: function( req, file, callback ) {
 				var ext = path.extname( file.originalname );
-				if ( ext !== ".png" && ext !== ".jpg" && ext !== ".gif" && ext !== ".jpeg" ) {
+				if (( file.mimetype !== "image/jpeg" && file.mimetype !== "image/png"
+					&& file.mimetype !== "image/jpg" && file.mimetype !== "image/gif" )) {
 					return callback( new Error(
 						"Only .png .jpg .gif .jpeg images are allowed" ));
 				}
 				callback( null, true );
 			},
 			limits: {
-				fileSize: 1024 * 1024
+				fileSize: 1010000
 			}
 		}),
 	filenameProp = process.env.NODE_ENV === "dev" ?
