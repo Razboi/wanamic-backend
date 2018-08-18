@@ -78,11 +78,12 @@ Router.post( "/create", async( req, res, next ) => {
 			postAuthor.newNotifications++;
 			await postAuthor.save();
 			commentNotification.author = user;
-			newComment.author = user;
 		}
+		newComment.author = user;
 	} catch ( err ) {
 		return next( err );
 	}
+	console.log( "here" );
 	res.status( 201 );
 	res.send({
 		newComment: newComment,

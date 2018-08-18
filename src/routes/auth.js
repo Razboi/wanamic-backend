@@ -57,6 +57,7 @@ Router.post( "/signup", async( req, res, next ) => {
 			refreshToken: await refreshTokenGenerator( user ),
 			profileImage: user.profileImage && user.profileImage,
 			username: user.username,
+			fullname: user.fullname,
 			id: user._id
 		});
 	} catch ( err ) {

@@ -6,7 +6,7 @@ const
 let s3 = new aws.S3({
 	accessKeyId: process.env.ACCESS_KEY_ID,
 	secretAccessKey: process.env.SECRET_ACCESS_KEY,
-	Bucket: "wanamic"
+	Bucket: "wanamic.com"
 });
 
 removeImage = ( fileName ) => {
@@ -21,7 +21,7 @@ removeImage = ( fileName ) => {
 				}
 			});
 		} else {
-			s3.deleteObject({ Bucket: "wanamic", Key: fileName }, err => {
+			s3.deleteObject({ Bucket: "wanamic.com", Key: fileName }, err => {
 				if ( err ) {
 					throw err;
 				}
