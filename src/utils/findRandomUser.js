@@ -4,7 +4,7 @@ const
 findRandomUser = async userId => {
 	try {
 		const
-			count = await User.count().exec(),
+			count = await User.countDocuments().exec(),
 			randomNum = Math.floor( Math.random() * count ),
 			user = await User.findOne()
 				.skip( randomNum )

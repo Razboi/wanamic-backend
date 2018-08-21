@@ -9,6 +9,7 @@ const
 	User = require( "../models/User" ),
 	errors = require( "../utils/errors" ),
 	nodemailer = require( "nodemailer" ),
+	Email = require( "email-templates" ),
 	validators = require( "../utils/validators" );
 
 dotenv.config();
@@ -173,12 +174,17 @@ Router.post( "/refreshToken", async( req, res, next ) => {
 
 
 Router.post( "/resetPassword", async( req, res, next ) => {
-	var user;
+	var
+		user,
+		token,
+		url;
 
 	if ( !req.body.email ) {
 		return next( errors.blankData());
 	}
 	try {
+		url = process.env.NODE_ENV === "dev" ?
+			"http://localhost:3000" : "wanamic.com";
 		user = await User.findOne({ email: req.body.email }).exec();
 		token = tokenGenerator( user, true );
 		if ( !user ) {
@@ -187,6 +193,13 @@ Router.post( "/resetPassword", async( req, res, next ) => {
 		if ( user.banned ) {
 			return next( errors.banned());
 		}
+
+		const
+			email = new Email(),
+			html = await email.render( "password_reset", {
+				name: user.fullname.split( " " )[ 0 ],
+				resetLink: `${url}/reset_password/${token}`
+			});
 		let transporter = nodemailer.createTransport({
 			service: "gmail",
 			auth: {
@@ -199,11 +212,7 @@ Router.post( "/resetPassword", async( req, res, next ) => {
 				from: `Wanamic ${process.env.EMAIL_ADDRESS}`,
 				to: user.email,
 				subject: "Password reset",
-				html: `<h4>Hi ${user.fullname.split( " " )[ 0 ]},</h4>` +
-					"<p>Someone requested a password reset for your account. " +
-					"If you didn't make this request, just ignore this email. " +
-					"Otherwise, you can reset your password using this link:</p>\n" +
-					`http://localhost:3000/reset_password/${token}`
+				html: html
 			};
 		await transporter.sendMail( mailOptions );
 	} catch ( err ) {

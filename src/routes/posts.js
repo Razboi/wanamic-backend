@@ -418,7 +418,7 @@ Router.post( "/mediaLink", async( req, res, next ) => {
 		}
 		hostname = extractHostname( previewData.url );
 		if ( hostname === "www.youtube.com" ) {
-			[ embeddedUrl ] = previewData.url.replace( "watch?v=", "embed/" ).split( "&feature" );
+			[ embeddedUrl ] = previewData.url.replace( "watch?v=", "embed/" ).split( "&" );
 		}
 		newPost = await new Post({
 			author: user._id,
