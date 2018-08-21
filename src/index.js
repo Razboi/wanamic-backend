@@ -11,6 +11,7 @@ const
 	auth = require( "./routes/auth" ),
 	notifications = require( "./routes/notifications" ),
 	conversations = require( "./routes/conversations" ),
+	admin = require( "./routes/admin" ),
 	Notification = require( "./models/Notification" ),
 	User = require( "./models/User" ),
 	Message = require( "./models/Message" ),
@@ -45,6 +46,7 @@ app.use( "/followers", followers );
 app.use( "/comments", comments );
 app.use( "/notifications", notifications );
 app.use( "/conversations", conversations );
+app.use( "/admin", admin );
 
 // error middleware
 app.use(( err, req, res, next ) => {

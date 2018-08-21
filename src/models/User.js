@@ -30,7 +30,10 @@ const
 		region: { type: String },
 		gender: { type: String },
 		birthday: { type: Date },
-	});
+		admin: { type: Boolean, default: false },
+		infractions: [ { type: String } ],
+		banned: { type: String }
+	}, { timestamps: true });
 
 UserSchema.methods.isValidPassword = function( password ) {
 	if ( !password || !this.passwordHash ) {

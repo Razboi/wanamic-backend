@@ -89,5 +89,10 @@ module.exports = {
 		var err = new Error( "The fullname format is invalid" );
 		err.statusCode = 422;
 		return err;
+	},
+	banned: () => {
+		var err = new Error( "This user is banned" );
+		err.statusCode = 401;
+		return err;
 	}
 };

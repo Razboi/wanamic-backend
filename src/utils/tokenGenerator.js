@@ -14,7 +14,7 @@ generateToken = ( user, emailToken ) => {
 			});
 		} else {
 			token = jwt.sign({ id: user.id }, process.env.SECRET_JWT, {
-				expiresIn: "30m"
+				expiresIn: "1m"
 			});
 		}
 	} catch ( err ) {

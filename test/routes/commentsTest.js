@@ -387,39 +387,10 @@ describe( "POST comments/retrieve/:skip", function() {
 	it( "should return 422 Empty data", function( done ) {
 		chai.request( "localhost:8081" )
 			.post( "/comments/retrieve/0" )
-			.send({
-				token: token
-			})
+			.send({})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
 				res.text.should.equal( "Required data not found" );
-				done();
-			});
-	});
-
-	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8081" )
-			.post( "/comments/retrieve/0" )
-			.send({
-				postId: post._id
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 422 );
-				res.text.should.equal( "Required data not found" );
-				done();
-			});
-	});
-
-	it( "should return 401 malformed jwt", function( done ) {
-		chai.request( "localhost:8081" )
-			.post( "/comments/retrieve/0" )
-			.send({
-				token: "123213adasdsad21321321",
-				postId: post._id
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 401 );
-				res.text.should.equal( "jwt malformed" );
 				done();
 			});
 	});

@@ -3,6 +3,7 @@ const
 	User = require( "../models/User" ),
 	tokenVerifier = require( "../utils/tokenVerifier" ),
 	Post = require( "../models/Post" ),
+	Ticket = require( "../models/Ticket" ),
 	LinkPreview = require( "react-native-link-preview" ),
 	extractHostname = require( "../utils/extractHostname" ),
 	aws = require( "aws-sdk" ),
@@ -417,7 +418,7 @@ Router.post( "/mediaLink", async( req, res, next ) => {
 		}
 		hostname = extractHostname( previewData.url );
 		if ( hostname === "www.youtube.com" ) {
-			embeddedUrl = previewData.url.replace( "watch?v=", "embed/" );
+			[ embeddedUrl ] = previewData.url.replace( "watch?v=", "embed/" ).split( "&feature" );
 		}
 		newPost = await new Post({
 			author: user._id,
@@ -806,6 +807,39 @@ Router.post( "/share", async( req, res, next ) => {
 		postToShare: postToShare,
 		mentionsNotifications: mentionsNotifications
 	});
+});
+
+
+Router.post( "/report", async( req, res, next ) => {
+	var
+		userId,
+		user,
+		post;
+
+	if ( !req.body.postId || !req.body.token || !req.body.content ) {
+		return next( errors.blankData());
+	}
+	const { postId, content, token } = req.body;
+
+	try {
+		userId = tokenVerifier( token );
+		user = await User.findById( userId ).exec();
+		post = await Post.findById( postId ).exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+		await new Ticket({
+			author: user._id,
+			target: post.author,
+			object: post._id,
+			content: content,
+			report: true,
+			type: "post"
+		}).save();
+	} catch ( err ) {
+		return next( err );
+	}
+	res.sendStatus( 201 );
 });
 
 
