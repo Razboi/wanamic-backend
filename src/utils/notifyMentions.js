@@ -1,5 +1,7 @@
 const
 	User = require( "../models/User" ),
+	nodemailer = require( "nodemailer" ),
+	Email = require( "email-templates" ),
 	Notification = require( "../models/Notification" );
 
 notifyMentions = async( mentions, type, object, user ) => {
@@ -55,6 +57,32 @@ notifyMentions = async( mentions, type, object, user ) => {
 				targetUser.notifications.push( notification );
 				targetUser.newNotifications++;
 				await targetUser.save();
+
+				const
+					email = new Email(),
+					html = await email.render( "mention_notification", {
+						name: targetUser.fullname.split( " " )[ 0 ],
+						author: user.fullname,
+						type: type
+					});
+				let transporter = nodemailer.createTransport({
+					service: "gmail",
+					auth: {
+						user: process.env.EMAIL_ADDRESS,
+						pass: process.env.EMAIL_PASSWORD
+					}
+				});
+				const
+					mailOptions = {
+						from: `Wanamic ${process.env.EMAIL_ADDRESS}`,
+						to: targetUser.email,
+						subject: "New mention",
+						html: html
+					};
+				transporter.sendMail( mailOptions )
+					.catch( err => {
+						throw err;
+					});
 			}
 		}
 		return notifications;

@@ -3,6 +3,8 @@ const
 	User = require( "../models/User" ),
 	tokenVerifier = require( "../utils/tokenVerifier" ),
 	Notification = require( "../models/Notification" ),
+	nodemailer = require( "nodemailer" ),
+	Email = require( "email-templates" ),
 	errors = require( "../utils/errors" );
 
 // change name
@@ -69,8 +71,7 @@ Router.post( "/add", async( req, res, next ) => {
 			author: user._id,
 			receiver: friend._id,
 			friendRequest: true
-		})
-			.exec();
+		}).exec();
 		if ( duplicatedNotification ) {
 			return next( errors.duplicatedNotification());
 		}
@@ -85,6 +86,31 @@ Router.post( "/add", async( req, res, next ) => {
 		friend.notifications.push( newNotification );
 		friend.newNotifications++;
 		Promise.all([ user.save(), friend.save() ]);
+
+		const
+			email = new Email(),
+			html = await email.render( "friend_req_notification", {
+				name: friend.fullname.split( " " )[ 0 ],
+				requester: user.fullname
+			});
+		let transporter = nodemailer.createTransport({
+			service: "gmail",
+			auth: {
+				user: process.env.EMAIL_ADDRESS,
+				pass: process.env.EMAIL_PASSWORD
+			}
+		});
+		const
+			mailOptions = {
+				from: `Wanamic ${process.env.EMAIL_ADDRESS}`,
+				to: friend.email,
+				subject: "New friend request",
+				html: html
+			};
+		transporter.sendMail( mailOptions )
+			.catch( err => {
+				throw err;
+			});
 	} catch ( err ) {
 		return next( err );
 	}

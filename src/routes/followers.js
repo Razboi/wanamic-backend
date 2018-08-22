@@ -3,6 +3,8 @@ const
 	User = require( "../models/User" ),
 	tokenVerifier = require( "../utils/tokenVerifier" ),
 	Notification = require( "../models/Notification" ),
+	nodemailer = require( "nodemailer" ),
+	Email = require( "email-templates" ),
 	errors = require( "../utils/errors" );
 
 Router.post( "/follow", async( req, res, next ) => {
@@ -51,6 +53,31 @@ Router.post( "/follow", async( req, res, next ) => {
 			newNotification.author = user;
 			userToFollow.notifications.push( newNotification );
 			userToFollow.newNotifications++;
+
+			const
+				email = new Email(),
+				html = await email.render( "follow_notification", {
+					name: userToFollow.fullname.split( " " )[ 0 ],
+					follower: user.fullname
+				});
+			let transporter = nodemailer.createTransport({
+				service: "gmail",
+				auth: {
+					user: process.env.EMAIL_ADDRESS,
+					pass: process.env.EMAIL_PASSWORD
+				}
+			});
+			const
+				mailOptions = {
+					from: `Wanamic ${process.env.EMAIL_ADDRESS}`,
+					to: userToFollow.email,
+					subject: "New follower",
+					html: html
+				};
+			transporter.sendMail( mailOptions )
+				.catch( err => {
+					throw err;
+				});
 		}
 		user.following.push( userToFollow._id );
 		userToFollow.followers.push( user._id );
