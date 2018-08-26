@@ -10,7 +10,6 @@
 .env.test.local
 .env.production.local
 wanamic.zip
-/emails
 
 npm-debug.log*
 yarn-debug.log*

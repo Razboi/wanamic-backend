@@ -690,7 +690,13 @@ Router.patch( "/update", async( req, res, next ) => {
 			return next( errors.userDoesntExist());
 		}
 		post = Post.findById( postId )
-			.populate({ path: "sharedPost" })
+			.populate({
+				path: "sharedPost",
+				populate: {
+					path: "author",
+					select: "username fullname profileImage"
+				}
+			})
 			.populate({
 				path: "author", select: "username fullname profileImage"
 			})

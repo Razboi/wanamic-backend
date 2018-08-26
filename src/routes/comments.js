@@ -84,7 +84,6 @@ Router.post( "/create", async( req, res, next ) => {
 	} catch ( err ) {
 		return next( err );
 	}
-	console.log( "here" );
 	res.status( 201 );
 	res.send({
 		newComment: newComment,
@@ -120,8 +119,8 @@ Router.delete( "/delete", async( req, res, next ) => {
 		if ( !user._id.equals( comment.author )) {
 			return next( errors.unauthorized());
 		}
-		updatedPost = Post.findById( postId ).exec();
-		updatedPost = await Promise.all([ updatedPost, comment.remove() ]);
+		await comment.remove();
+		updatedPost = await Post.findById( postId ).exec();
 		updatedPost.author = user;
 	} catch ( err ) {
 		return next( err );

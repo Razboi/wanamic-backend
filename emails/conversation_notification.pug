@@ -1,0 +1,16 @@
+doctype html
+html
+	head
+		style
+			include password_reset.css
+	body
+		div#Wrapper
+			h4#Title Hey #{name},
+			p.
+				#{author} started a conversation with you. Click on the button
+				to check it out.
+			br
+			a(href="wanamic.com")#Link
+				button#LinkButton Check it out
+		footer
+			a(href="wanamic.com")#Logo wanamic
