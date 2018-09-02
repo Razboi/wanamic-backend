@@ -95,7 +95,7 @@ Router.delete( "/deleteObject", async( req, res, next ) => {
 	let { token, ticketId, feedback } = req.body;
 
 	if ( !feedback ) {
-		feedback = "Violating our content policy";
+		feedback = "violating our content policy";
 	}
 
 	try {
@@ -117,7 +117,7 @@ Router.delete( "/deleteObject", async( req, res, next ) => {
 		await object.remove();
 		newNotification = await new Notification({
 			author: user._id,
-			content: `One of your ${ticket.type}s has been deleted for "${feedback}".` +
+			content: `One of your ${ticket.type}s has been deleted for ${feedback}.` +
 			" Avoid this kind of behavior or you will be banned.",
 			receiver: infractor._id,
 			alert: true

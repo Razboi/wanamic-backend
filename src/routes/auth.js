@@ -61,6 +61,23 @@ Router.post( "/signup", async( req, res, next ) => {
 			fullname: user.fullname,
 			id: user._id
 		});
+
+		let transporter = nodemailer.createTransport({
+			service: "gmail",
+			auth: {
+				user: process.env.EMAIL_ADDRESS,
+				pass: process.env.EMAIL_PASSWORD
+			}
+		});
+		const
+			usersCount = await User.estimatedDocumentCount(),
+			mailOptions = {
+				from: `Wanamic ${process.env.EMAIL_ADDRESS}`,
+				to: process.env.ADMIN_EMAIL,
+				subject: "New user",
+				html: `${user.fullname}@${user.username} has registered. Total: ${usersCount}`
+			};
+		await transporter.sendMail( mailOptions );
 	} catch ( err ) {
 		return next( err );
 	}
