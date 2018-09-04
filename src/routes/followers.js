@@ -131,7 +131,9 @@ Router.post( "/setupFollow", async( req, res, next ) => {
 		user,
 		target,
 		newNotification,
-		allNotifications = [];
+		allNotifications = [],
+		i,
+		addedPosts;
 
 	if ( !req.body.token || !req.body.users ) {
 		return next( errors.blankData());
@@ -146,7 +148,9 @@ Router.post( "/setupFollow", async( req, res, next ) => {
 		}
 
 		for ( let userToFollow of users ) {
-			target = await User.findOne({ username: userToFollow }).exec();
+			target = await User.findOne({ username: userToFollow })
+				.populate( "posts" )
+				.exec();
 			if ( !target ) {
 				return next( errors.userDoesntExist());
 			}
@@ -170,6 +174,18 @@ Router.post( "/setupFollow", async( req, res, next ) => {
 			}
 			user.following.push( target._id );
 			target.followers.push( user._id );
+
+			if ( target.posts.length > 0 ) {
+				addedPosts = 0;
+				for ( const post of target.posts ) {
+					if ( addedPosts >= 5 ) {
+						break;
+					} else if ( post.privacyRange >= 2 && !user.newsfeed.includes( post._id )) {
+						user.newsfeed.push( post._id );
+						addedPosts++;
+					}
+				}
+			}
 			Promise.all([ user.save(), target.save() ]);
 		}
 		res.status( 201 );
