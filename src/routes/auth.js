@@ -108,7 +108,8 @@ Router.post( "/login", async( req, res, next ) => {
 			profileImage: user.profileImage && user.profileImage,
 			username: user.username,
 			fullname: user.fullname,
-			id: user._id
+			id: user._id,
+			admin: user.admin
 		});
 	} catch ( err ) {
 		return next( err );

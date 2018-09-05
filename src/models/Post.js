@@ -32,7 +32,8 @@ const
 			hostname: { type: String },
 			title: { type: String },
 			description: { type: String },
-			image: { type: String }
+			image: { type: String },
+			type: { type: String }
 		}
 	}, { timestamps: true }),
 

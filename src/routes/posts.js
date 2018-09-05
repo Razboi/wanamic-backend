@@ -402,7 +402,7 @@ Router.post( "/mediaLink", async( req, res, next ) => {
 	}
 
 	const {
-		token, link, mentions, description, alerts, hashtags, privacyRange
+		token, link, mentions, description, alerts, hashtags, privacyRange, type
 	} = req.body;
 
 	try {
@@ -413,12 +413,11 @@ Router.post( "/mediaLink", async( req, res, next ) => {
 		if ( !user ) {
 			return next( errors.userDoesntExist());
 		}
-		if ( !previewData.images ) {
-			return next( errors.invalidLink());
-		}
-		hostname = extractHostname( previewData.url );
-		if ( hostname === "www.youtube.com" ) {
-			[ embeddedUrl ] = previewData.url.replace( "watch?v=", "embed/" ).split( "&" );
+		if ( previewData.images ) {
+			hostname = extractHostname( previewData.url );
+			if ( hostname === "www.youtube.com" ) {
+				[ embeddedUrl ] = previewData.url.replace( "watch?v=", "embed/" ).split( "&" );
+			}
 		}
 		newPost = await new Post({
 			author: user._id,
@@ -434,7 +433,8 @@ Router.post( "/mediaLink", async( req, res, next ) => {
 				hostname: hostname,
 				title: previewData.title,
 				description: previewData.description,
-				image: previewData.images && previewData.images[ 0 ]
+				image: previewData.images && previewData.images[ 0 ],
+				type: previewData.images ? "webpage" : "image"
 			}
 		}).save();
 		newPost = await newPost.populate({

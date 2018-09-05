@@ -8,10 +8,9 @@ findRandomUser = async userId => {
 			randomNum = Math.floor( Math.random() * count ),
 			user = await User.findOne()
 				.skip( randomNum )
-				.select(
-					"username fullname description posts keywords profileImage " +
-					"headerImage friends followers totalLikes"
-				)
+				.select( "username fullname description hobbies profileImage" +
+									" headerImage interests friends followers gender" +
+									" birthday totalLikes totalViews country region" )
 				.exec();
 		return user;
 	} catch ( err ) {
