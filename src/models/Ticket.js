@@ -8,7 +8,7 @@ const
 		target: { type: Schema.Types.ObjectId, ref: "User" },
 		object: { type: Schema.Types.ObjectId },
 		content: { type: String, required: true },
-		type: { type: String, required: true },
+		type: { type: String },
 		deleteFeedback: { type: Boolean, default: false },
 		report: { type: Boolean, default: false }
 	}, { timestamps: true }),

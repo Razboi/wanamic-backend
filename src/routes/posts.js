@@ -417,6 +417,8 @@ Router.post( "/mediaLink", async( req, res, next ) => {
 			hostname = extractHostname( previewData.url );
 			if ( hostname === "www.youtube.com" ) {
 				[ embeddedUrl ] = previewData.url.replace( "watch?v=", "embed/" ).split( "&" );
+			} else if ( hostname === "coub.com" ) {
+				[ embeddedUrl ] = previewData.url.replace( "view", "embed" ).split( "&" );
 			}
 		}
 		newPost = await new Post({
