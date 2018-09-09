@@ -593,4 +593,25 @@ Router.post( "/getLikesAndViews", async( req, res, next ) => {
 });
 
 
+Router.post( "/clubs", async( req, res, next ) => {
+	var
+		userId,
+		user;
+
+	if ( !req.body.token ) {
+		return next( errors.blankData());
+	}
+	try {
+		userId = tokenVerifier( req.body.token );
+		user = await User.findById( userId ).exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+	} catch ( err ) {
+		return next( err );
+	}
+	res.send( user.interests );
+});
+
+
 module.exports = Router;

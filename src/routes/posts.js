@@ -66,7 +66,7 @@ let
 		"filename" : "key";
 
 
-Router.get( "/explore/:skip/:limit", async( req, res, next ) => {
+Router.get( "/global/:skip/:limit", async( req, res, next ) => {
 	let posts;
 
 	if ( !req.params.skip || !req.params.limit ) {
@@ -74,10 +74,33 @@ Router.get( "/explore/:skip/:limit", async( req, res, next ) => {
 	}
 	try {
 		posts = await Post.find()
-			.where( "media" ).equals( true )
 			.where( "sharedPost" ).equals( undefined )
-			.where( "privacyRange" ).equals( "3" )
+			.where( "feed" ).equals( "global" )
 			.limit( parseInt( req.params.limit ))
+			.skip( req.params.skip * req.params.limit )
+			.sort( "-createdAt" )
+			.populate({
+				path: "author",
+				select: "username fullname profileImage"
+			})
+			.exec();
+	} catch ( err ) {
+		return next( err );
+	}
+	res.send( posts );
+});
+
+
+Router.get( "/clubFeed/:club/:skip/", async( req, res, next ) => {
+	let posts;
+
+	if ( !req.params.skip || !req.params.club ) {
+		return next( errors.blankData());
+	}
+	try {
+		posts = await Post.find()
+			.where( "sharedPost" ).equals( undefined )
+			.where( "club" ).equals( req.params.club )
 			.skip( req.params.skip * req.params.limit )
 			.sort( "-createdAt" )
 			.populate({
@@ -160,7 +183,7 @@ Router.post( "/create", async( req, res, next ) => {
 		return next( errors.blankData());
 	}
 	const {
-		token, userInput, alerts, hashtags, privacyRange, mentions
+		token, userInput, alerts, hashtags, feed, selectedClub, mentions
 	} = req.body;
 
 	try {
@@ -174,7 +197,8 @@ Router.post( "/create", async( req, res, next ) => {
 			content: userInput,
 			alerts: alerts,
 			hashtags: hashtags,
-			privacyRange: privacyRange
+			feed: feed,
+			club: selectedClub
 		}).save();
 		newPost = await newPost.populate({
 			path: "author",
@@ -186,16 +210,10 @@ Router.post( "/create", async( req, res, next ) => {
 			{ $push: { "newsfeed": newPost._id } },
 			{ multi: true }
 		).exec();
-
-		if ( privacyRange >= 2 ) {
-			await User.update(
-				{ _id: { $in: user.followers } },
-				{ $push: { "newsfeed": newPost._id } },
-				{ multi: true }
-			).exec();
-		}
 		user.posts.push( newPost._id );
-		user.newsfeed.push( newPost._id );
+		if ( feed === "friends" ) {
+			user.newsfeed.push( newPost._id );
+		}
 
 		mentionsNotifications = notifyMentions(
 			mentions, "post", newPost, user );
@@ -544,7 +562,7 @@ Router.post( "/mediaPicture", upload.single( "picture" ), async( req, res, next 
 });
 
 
-Router.post( "/newsfeed/:skip", async( req, res, next ) => {
+Router.post( "/friends/:skip", async( req, res, next ) => {
 	var
 		userId,
 		user;

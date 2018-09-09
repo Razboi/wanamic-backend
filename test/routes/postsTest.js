@@ -17,7 +17,7 @@ mongoose.connect( process.env.DEV_MONGODB_URL, { useNewUrlParser: true }).then((
 	console.log( "MongoDB connected" );
 }).catch( err => console.log( err ));
 
-describe( "POST posts/explore/:skip/:limit", function() {
+describe( "POST posts/global/:skip/:limit", function() {
 	var
 		author,
 		token;
@@ -38,7 +38,7 @@ describe( "POST posts/explore/:skip/:limit", function() {
 
 	it( "gets explore posts, should return 200", function( done ) {
 		chai.request( "localhost:8081" )
-			.get( "/posts/explore/0/10" )
+			.get( "/posts/global/0/10" )
 			.end(( err, res ) => {
 				res.should.have.status( 200 );
 				done();
@@ -47,7 +47,7 @@ describe( "POST posts/explore/:skip/:limit", function() {
 
 	it( "should return 404 for invalid route", function( done ) {
 		chai.request( "localhost:8081" )
-			.get( "/posts/explore/" )
+			.get( "/posts/global/" )
 			.end(( err, res ) => {
 				res.should.have.status( 404 );
 				done();
@@ -504,7 +504,7 @@ describe( "GET posts/:username/:skip", function() {
 
 
 
-describe( "GET posts/newsfeed/:skip", function() {
+describe( "GET posts/friends/:skip", function() {
 	var
 		author,
 		token;
@@ -525,7 +525,7 @@ describe( "GET posts/newsfeed/:skip", function() {
 
 	it( "should get the user newsfeed", function( done ) {
 		chai.request( "localhost:8081" )
-			.post( "/posts/newsfeed/0" )
+			.post( "/posts/friends/0" )
 			.send({
 				token: token
 			})
@@ -537,7 +537,7 @@ describe( "GET posts/newsfeed/:skip", function() {
 
 	it( "should return 422 Missing token", function( done ) {
 		chai.request( "localhost:8081" )
-			.post( "/posts/newsfeed/0" )
+			.post( "/posts/friends/0" )
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
 				res.text.should.equal( "Required data not found" );
@@ -547,7 +547,7 @@ describe( "GET posts/newsfeed/:skip", function() {
 
 	it( "should return 422 Missing token", function( done ) {
 		chai.request( "localhost:8081" )
-			.post( "/posts/newsfeed/0" )
+			.post( "/posts/friends/0" )
 			.send({
 				token: "123123asdasd123123"
 			})
