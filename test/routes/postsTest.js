@@ -299,7 +299,7 @@ describe( "POST posts/media", function() {
 		chai.request( "localhost:8081" )
 			.post( "/posts/media" )
 			.send({
-				token: token, data: { privacyRange: 1, alerts: {} }
+				token: token, data: { feed: "global", selectedClub: "test", alerts: {} }
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 201 );
@@ -470,7 +470,7 @@ describe( "POST posts/mediaPicture", function() {
 });
 
 
-describe( "GET posts/:username/:skip", function() {
+describe( "GET posts/timeline/:skip", function() {
 	var
 		author,
 		token;
@@ -491,7 +491,7 @@ describe( "GET posts/:username/:skip", function() {
 
 	it( "should get the user posts", function( done ) {
 		chai.request( "localhost:8081" )
-			.post( "/posts/testuser/0" )
+			.post( "/posts/timeline/0" )
 			.send({
 				token: token
 			})

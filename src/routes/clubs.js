@@ -2,6 +2,7 @@ const
 	Router = require( "express" ).Router(),
 	User = require( "../models/User" ),
 	Club = require( "../models/Club" ),
+	Post = require( "../models/Post" ),
 	Ticket = require( "../models/Ticket" ),
 	Notification = require( "../models/Notification" ),
 	tokenVerifier = require( "../utils/tokenVerifier" ),
@@ -228,8 +229,8 @@ Router.post( "/joinClub", async( req, res, next ) => {
 		if ( club.bannedUsers.includes( user._id )) {
 			return next( errors.bannedFromClub());
 		}
-		club.members.push( user._id );
-		user.clubs.push( club._id );
+		!club.members.includes( user._id ) && club.members.push( user._id );
+		!user.clubs.includes( club._id ) && user.clubs.push( club._id );
 		await Promise.all([ club.save(), user.save() ]);
 	} catch ( err ) {
 		return next( err );
@@ -347,19 +348,163 @@ Router.post( "/banUser", async( req, res, next ) => {
 });
 
 
+Router.post( "/requestSuccessor", async( req, res, next ) => {
+	var
+		userId,
+		user,
+		successor,
+		club;
+
+	if ( !req.body.token || !req.body.username || !req.body.clubId ) {
+		return next( errors.blankData());
+	}
+	const { token, username, clubId } = req.body;
+
+	try {
+		userId = tokenVerifier( token );
+		user = await User.findById( userId ).exec();
+		successor = await User.findOne({ username: username }).exec();
+		if ( !user || !successor ) {
+			return next( errors.userDoesntExist());
+		}
+		club = await Club.findById( clubId ).exec();
+		if ( !club.president.equals( user._id ) && !club.moderators.includes( user._id )) {
+			return next( errors.unauthorized());
+		}
+		const alreadyNotified = await Notification.findOne({
+			author: user._id,
+			receiver: successor._id,
+			clubSuccession: true,
+			clubName: club.name
+		}).exec();
+		if ( alreadyNotified ) {
+			return next( errors.duplicatedNotification());
+		}
+		const notification = await new Notification({
+			author: user._id,
+			receiver: successor._id,
+			content: `${user.fullname} has offered you the presidency of ${club.title}.`,
+			clubSuccession: true,
+			clubName: club.name
+		}).save();
+		successor.notifications.push( notification );
+		successor.newNotifications++;
+		await Promise.all([ club.save(), successor.save() ]);
+	} catch ( err ) {
+		return next( err );
+	}
+	res.sendStatus( 201 );
+});
+
+
+Router.post( "/acceptPresidency", async( req, res, next ) => {
+	var
+		userId,
+		user,
+		successor,
+		club;
+
+	if ( !req.body.token || !req.body.clubName ) {
+		return next( errors.blankData());
+	}
+	const { token, clubName } = req.body;
+
+	try {
+		userId = tokenVerifier( token );
+		user = await User.findById( userId ).exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+		club = await Club.findOne({ name: clubName }).exec();
+		const notification = await Notification.findOne({
+			author: club.president,
+			receiver: user._id,
+			clubSuccession: true
+		}).exec();
+		if ( notification ) {
+			club.president = user._id;
+			await notification.remove();
+			!club.members.includes( user._id ) && club.members.push( user._id );
+			!user.clubs.includes( club._id ) && user.clubs.push( club._id );
+		}
+		await Promise.all([ club.save(), user.save() ]);
+	} catch ( err ) {
+		return next( err );
+	}
+	res.sendStatus( 200 );
+});
+
+
 Router.get( "/suggestions", async( req, res, next ) => {
 	var
 		clubs;
 
 	try {
 		clubs = await Club.aggregate()
-			.sample( 5 )
+			.sample( 6 )
 			.match({ approved: true })
 			.exec();
 	} catch ( err ) {
 		return next( err );
 	}
 	res.send( clubs );
+});
+
+
+Router.get( "/randomClub", async( req, res, next ) => {
+	var
+		club;
+
+	try {
+		[ club ] = await Club.aggregate()
+			.sample( 1 )
+			.match({ approved: true })
+			.exec();
+		club.president = await User.findById( club.president )
+			.select( "username fullname" )
+			.exec();
+		club.feed = await Post.find({ "_id": { $in: club.feed } })
+			.populate({
+				path: "author",
+				select: "username fullname profileImage"
+			}).exec();
+	} catch ( err ) {
+		return next( err );
+	}
+	res.send( club );
+});
+
+
+Router.get( "/search/:name", async( req, res, next ) => {
+	var
+		club;
+
+	try {
+		const searchRegex = new RegExp( req.params.name );
+		club = await Club.findOne({
+			name: { $regex: searchRegex, $options: "i" }
+		})
+			.populate({
+				path: "president",
+				select: "username fullname profileImage"
+			})
+			.populate({
+				path: "feed",
+				options: {
+					limit: 10,
+					sort: "-createdAt"
+				},
+				populate: {
+					path: "author",
+					select: "username fullname profileImage"
+				}
+			})
+			.where( "approved" ).equals( true )
+			.exec();
+	} catch ( err ) {
+		return next( err );
+	}
+	res.send( club );
 });
 
 

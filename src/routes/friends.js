@@ -20,13 +20,13 @@ Router.post( "/getFriends", async( req, res, next ) => {
 		userId = tokenVerifier( req.body.token );
 		user = await User.findById( userId )
 			.populate({
-				path: "friends following",
+				path: "friends",
 				options: {
 					select: "username fullname profileImage",
 					sort: { createdAt: -1 }
 				}
 			})
-			.select( "friends following" )
+			.select( "friends" )
 			.exec();
 		if ( !user ) {
 			return next( errors.userDoesntExist());
@@ -34,7 +34,7 @@ Router.post( "/getFriends", async( req, res, next ) => {
 	} catch ( err ) {
 		return next( err );
 	}
-	res.send([ ...user.friends, ...user.following ]);
+	res.send( user.friends );
 });
 
 
@@ -215,23 +215,6 @@ Router.post( "/accept", async( req, res, next ) => {
 		user.friends.push( friend._id );
 		friend.friends.push( user._id );
 
-		// Unfollow
-		if ( friend.following.some( id => user._id.equals( id ))) {
-			const
-				indexUser = friend.following.indexOf( user._id ),
-				indexFriend = user.followers.indexOf( friend._id );
-
-			friend.following.splice( indexUser, 1 );
-			user.followers.splice( indexFriend, 1 );
-		}
-		if ( user.following.some( id => friend._id.equals( id ))) {
-			const
-				indexFriend = user.following.indexOf( friend._id ),
-				indexUser = friend.followers.indexOf( user._id );
-
-			user.following.splice( indexFriend, 1 );
-			friend.followers.splice( indexUser, 1 );
-		}
 		const requestIndex = friend.pendingRequests.indexOf( user.username );
 		friend.pendingRequests.splice( requestIndex, 1 );
 		Promise.all([ user.save(), friend.save(), notification.remove() ]);

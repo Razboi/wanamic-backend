@@ -13,8 +13,6 @@ const
 		posts: [ { type: Schema.Types.ObjectId, ref: "Post" } ],
 		newsfeed: [ { type: Schema.Types.ObjectId, ref: "Post" } ],
 		friends: [ { type: Schema.Types.ObjectId, ref: "User" } ],
-		followers: [ { type: Schema.Types.ObjectId, ref: "User" } ],
-		following: [ { type: Schema.Types.ObjectId, ref: "User" } ],
 		notifications: [ { type: Schema.Types.ObjectId, ref: "Notification" } ],
 		newNotifications: { type: Number, default: 0 },
 		pendingRequests: [ { type: String } ],
