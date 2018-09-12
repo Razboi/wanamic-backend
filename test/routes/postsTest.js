@@ -504,7 +504,7 @@ describe( "GET posts/:username/:skip", function() {
 
 
 
-describe( "GET posts/friends/:skip", function() {
+describe( "GET posts/home/:skip", function() {
 	var
 		author,
 		token;
@@ -525,7 +525,7 @@ describe( "GET posts/friends/:skip", function() {
 
 	it( "should get the user newsfeed", function( done ) {
 		chai.request( "localhost:8081" )
-			.post( "/posts/friends/0" )
+			.post( "/posts/home/0" )
 			.send({
 				token: token
 			})
@@ -537,7 +537,7 @@ describe( "GET posts/friends/:skip", function() {
 
 	it( "should return 422 Missing token", function( done ) {
 		chai.request( "localhost:8081" )
-			.post( "/posts/friends/0" )
+			.post( "/posts/home/0" )
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
 				res.text.should.equal( "Required data not found" );
@@ -547,7 +547,7 @@ describe( "GET posts/friends/:skip", function() {
 
 	it( "should return 422 Missing token", function( done ) {
 		chai.request( "localhost:8081" )
-			.post( "/posts/friends/0" )
+			.post( "/posts/home/0" )
 			.send({
 				token: "123123asdasd123123"
 			})

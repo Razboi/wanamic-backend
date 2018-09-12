@@ -12,7 +12,9 @@ const
 		comment: { type: Boolean, default: false },
 		follow: { type: Boolean, default: false },
 		friendRequest: { type: Boolean, default: false },
-		alert: { type: Boolean, default: false }
+		alert: { type: Boolean, default: false },
+		clubRequestResponse: { type: Boolean, default: false },
+		clubName: { type: String }
 	}, { timestamps: true }),
 
 

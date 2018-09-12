@@ -32,7 +32,8 @@ const
 		birthday: { type: Date },
 		admin: { type: Boolean, default: false },
 		infractions: [ { type: String } ],
-		banned: { type: String }
+		banned: { type: String },
+		clubs: [ { type: Schema.Types.ObjectId, ref: "Club" } ]
 	}, { timestamps: true });
 
 UserSchema.methods.isValidPassword = function( password ) {

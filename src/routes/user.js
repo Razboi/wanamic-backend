@@ -474,7 +474,7 @@ Router.delete( "/deleteAccount", async( req, res, next ) => {
 			await new Ticket({
 				author: user._id,
 				content: req.body.feedback,
-				fromDeletedAccount: true
+				deleteFeedback: true
 			}).save();
 		}
 		await user.remove();
@@ -603,14 +603,16 @@ Router.post( "/clubs", async( req, res, next ) => {
 	}
 	try {
 		userId = tokenVerifier( req.body.token );
-		user = await User.findById( userId ).exec();
+		user = await User.findById( userId )
+			.populate( "clubs" )
+			.exec();
 		if ( !user ) {
 			return next( errors.userDoesntExist());
 		}
 	} catch ( err ) {
 		return next( err );
 	}
-	res.send( user.interests );
+	res.send( user.clubs );
 });
 
 

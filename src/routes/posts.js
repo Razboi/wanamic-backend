@@ -4,6 +4,7 @@ const
 	tokenVerifier = require( "../utils/tokenVerifier" ),
 	Post = require( "../models/Post" ),
 	Ticket = require( "../models/Ticket" ),
+	Club = require( "../models/Club" ),
 	LinkPreview = require( "react-native-link-preview" ),
 	extractHostname = require( "../utils/extractHostname" ),
 	aws = require( "aws-sdk" ),
@@ -75,7 +76,7 @@ Router.get( "/global/:skip/:limit", async( req, res, next ) => {
 	try {
 		posts = await Post.find()
 			.where( "sharedPost" ).equals( undefined )
-			.where( "feed" ).equals( "global" )
+			.where( "feed" ).ne( "home" )
 			.limit( parseInt( req.params.limit ))
 			.skip( req.params.skip * req.params.limit )
 			.sort( "-createdAt" )
@@ -91,27 +92,30 @@ Router.get( "/global/:skip/:limit", async( req, res, next ) => {
 });
 
 
-Router.get( "/clubFeed/:club/:skip/", async( req, res, next ) => {
-	let posts;
+Router.get( "/clubFeed/:club/:skip", async( req, res, next ) => {
+	let club;
 
 	if ( !req.params.skip || !req.params.club ) {
 		return next( errors.blankData());
 	}
 	try {
-		posts = await Post.find()
-			.where( "sharedPost" ).equals( undefined )
-			.where( "club" ).equals( req.params.club )
-			.skip( req.params.skip * req.params.limit )
-			.sort( "-createdAt" )
+		club = await Club.findOne({ name: req.params.club })
 			.populate({
-				path: "author",
-				select: "username fullname profileImage"
+				path: "feed",
+				options: {
+					skip: parseInt( req.params.skip ),
+					sort: "-createdAt"
+				},
+				populate: {
+					path: "author",
+					select: "username fullname profileImage"
+				}
 			})
 			.exec();
 	} catch ( err ) {
 		return next( err );
 	}
-	res.send( posts );
+	res.send( club.feed );
 });
 
 
@@ -192,28 +196,33 @@ Router.post( "/create", async( req, res, next ) => {
 		if ( !user ) {
 			return next( errors.userDoesntExist());
 		}
+		club = await Club.findOne({ name: selectedClub }).exec();
 		newPost = await new Post({
 			author: user._id,
 			content: userInput,
 			alerts: alerts,
 			hashtags: hashtags,
 			feed: feed,
-			club: selectedClub
+			club: club && club._id
 		}).save();
 		newPost = await newPost.populate({
 			path: "author",
 			select: "fullname username profileImage"
 		}).execPopulate();
 
-		await User.update(
-			{ _id: { $in: user.friends } },
-			{ $push: { "newsfeed": newPost._id } },
-			{ multi: true }
-		).exec();
-		user.posts.push( newPost._id );
-		if ( feed === "friends" ) {
-			user.newsfeed.push( newPost._id );
+		if ( feed === "home" ) {
+			await User.update(
+				{ _id: { $in: user.friends } },
+				{ $push: { "newsfeed": newPost._id } },
+				{ multi: true }
+			).exec();
+		} else if ( feed === "club" ) {
+			const club = await Club.findOne({ name: selectedClub }).exec();
+			club.feed.push( newPost._id );
+			await club.save();
 		}
+		user.posts.push( newPost._id );
+		user.newsfeed.push( newPost._id );
 
 		mentionsNotifications = notifyMentions(
 			mentions, "post", newPost, user );
@@ -562,7 +571,7 @@ Router.post( "/mediaPicture", upload.single( "picture" ), async( req, res, next 
 });
 
 
-Router.post( "/friends/:skip", async( req, res, next ) => {
+Router.post( "/home/:skip", async( req, res, next ) => {
 	var
 		userId,
 		user;
@@ -672,7 +681,7 @@ Router.delete( "/delete", async( req, res, next ) => {
 	try {
 		userId = tokenVerifier( token );
 		user = User.findById( userId ).exec();
-		post = Post.findById( postId ).exec();
+		post = Post.findById( postId ).populate( "club" ).exec();
 		[ user, post ] = await Promise.all([ user, post ]);
 		if ( !user ) {
 			return next( errors.userDoesntExist());
@@ -680,7 +689,8 @@ Router.delete( "/delete", async( req, res, next ) => {
 		if ( !post ) {
 			return next( errors.postDoesntExist());
 		}
-		if ( !user._id.equals( post.author._id )) {
+		const clubPresident = post.club && post.club.president;
+		if ( !user._id.equals( post.author._id ) && !user._id.equals( clubPresident )) {
 			return next( errors.unauthorized());
 		}
 		await removePost( user, post );
@@ -750,13 +760,10 @@ Router.post( "/share", async( req, res, next ) => {
 		newPost,
 		mentionsNotifications;
 
-	if ( !req.body.postId || !req.body.token || !req.body.privacyRange
-	|| !req.body.alerts ) {
+	if ( !req.body.postId || !req.body.token ) {
 		return next( errors.blankData());
 	}
-	const {
-		postId, token, description, privacyRange, alerts, mentions, hashtags
-	} = req.body;
+	const { postId, token, description, mentions, hashtags } = req.body;
 
 	try {
 		userId = tokenVerifier( token );
@@ -790,9 +797,9 @@ Router.post( "/share", async( req, res, next ) => {
 			author: user._id,
 			content: description,
 			sharedPost: originalPost._id,
-			privacyRange: privacyRange,
-			alerts: alerts,
-			hashtags: hashtags
+			hashtags: hashtags,
+			alerts: originalPost.alerts,
+			feed: "home"
 		}).save();
 
 		await User.update(
@@ -800,13 +807,6 @@ Router.post( "/share", async( req, res, next ) => {
 			{ $push: { "newsfeed": newPost._id } },
 			{ multi: true }
 		).exec();
-		if ( privacyRange >= 2 ) {
-			await User.update(
-				{ _id: { $in: user.followers } },
-				{ $push: { "newsfeed": newPost._id } },
-				{ multi: true }
-			).exec();
-		}
 		user.posts.push( newPost._id );
 		user.newsfeed.push( newPost._id );
 

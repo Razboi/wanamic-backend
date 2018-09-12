@@ -21,7 +21,7 @@ const
 		},
 		privacyRange: { type: Number, default: 1 },
 		feed: { type: String },
-		club: { type: String },
+		club: { type: Schema.Types.ObjectId, ref: "Club" },
 		mediaContent: {
 			title: { type: String },
 			artist: { type: String },
