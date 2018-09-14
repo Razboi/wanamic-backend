@@ -106,8 +106,9 @@ Router.get( "/clubFeed/:club/:skip", async( req, res, next ) => {
 			.populate({
 				path: "feed",
 				options: {
-					skip: parseInt( req.params.skip ),
-					sort: "-createdAt"
+					skip: parseInt( req.params.skip ) * 10,
+					sort: "-createdAt",
+					limit: 10
 				},
 				populate: {
 					path: "author",
@@ -401,7 +402,7 @@ Router.post( "/media", async( req, res, next ) => {
 			{ multi: true }
 		).exec();
 
-		if ( feed === "club" ) {
+		if ( data.feed === "club" ) {
 			club.feed.push( newPost._id );
 			await club.save();
 			await User.update(

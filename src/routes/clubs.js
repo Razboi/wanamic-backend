@@ -186,7 +186,8 @@ Router.get( "/getClub/:club", async( req, res, next ) => {
 			.populate({
 				path: "feed",
 				options: {
-					limit: 10
+					limit: 10,
+					sort: "-createdAt"
 				},
 				populate: {
 					path: "author",

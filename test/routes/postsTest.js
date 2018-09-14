@@ -299,7 +299,8 @@ describe( "POST posts/media", function() {
 		chai.request( "localhost:8081" )
 			.post( "/posts/media" )
 			.send({
-				token: token, data: { feed: "global", selectedClub: "test", alerts: {} }
+				token: token,
+				data: { feed: "global", selectedClub: "test", alerts: {} }
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 201 );
@@ -329,20 +330,6 @@ describe( "POST posts/media", function() {
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
 				res.text.should.equal( "Required data not found" );
-				done();
-			});
-	});
-
-	it( "should return 401 for invalid token", function( done ) {
-		chai.request( "localhost:8081" )
-			.post( "/posts/media" )
-			.send({
-				token: "1232312sadasd213213",
-				data: { privacyRange: 1, alerts: {} }
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 401 );
-				res.text.should.equal( "jwt malformed" );
 				done();
 			});
 	});
@@ -493,7 +480,7 @@ describe( "GET posts/timeline/:skip", function() {
 		chai.request( "localhost:8081" )
 			.post( "/posts/timeline/0" )
 			.send({
-				token: token
+				token: token, username: "testuser"
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 200 );
