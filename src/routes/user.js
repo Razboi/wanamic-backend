@@ -253,7 +253,7 @@ Router.post( "/randomUser", async( req, res, next ) => {
 	}
 	try {
 		userId = tokenVerifier( req.body.token );
-		randomUser = await findRandomUser( userId );
+		randomUser = await findRandomUser( userId, req.body.exposition );
 		res.send( randomUser );
 	} catch ( err ) {
 		return next( err );

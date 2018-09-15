@@ -461,6 +461,9 @@ Router.get( "/randomClub", async( req, res, next ) => {
 			.sample( 1 )
 			.match({ approved: true })
 			.exec();
+		if ( !club ) {
+			return next( errors.clubDoesntExist());
+		}
 		club.president = await User.findById( club.president )
 			.select( "username fullname" )
 			.exec();
