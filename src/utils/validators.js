@@ -18,12 +18,9 @@ module.exports = {
 		return re.test( username ) && !notAllowedRe.test( username );
 	},
 	validateFullname: fullname => {
-		if ( fullname.length > 30 ) {
+		if ( fullname.length > 30 || !fullname ) {
 			return false;
 		}
-		const
-			re = /[a-z\s]+$/i,
-			notAllowedRe = /[._]/;
-		return re.test( fullname ) && !notAllowedRe.test( fullname );
+		return true;
 	},
 };

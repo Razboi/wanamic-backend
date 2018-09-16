@@ -13,7 +13,9 @@ const
 
 dotenv.config();
 chai.use( chaiHttp );
-mongoose.connect( process.env.MONGODB_URL );
+mongoose.connect( process.env.DEV_MONGODB_URL, { useNewUrlParser: true }).then(() => {
+	console.log( "MongoDB connected" );
+}).catch( err => console.log( err ));
 
 
 describe( "POST user/userInfo", function() {
@@ -37,7 +39,7 @@ describe( "POST user/userInfo", function() {
 	});
 
 	it( "should return 200", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/userInfo" )
 			.send({
 				token: token,
@@ -50,7 +52,7 @@ describe( "POST user/userInfo", function() {
 	});
 
 	it( "should return 404 User doesn't exist", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/userInfo" )
 			.send({
 				token: token,
@@ -64,7 +66,7 @@ describe( "POST user/userInfo", function() {
 	});
 
 	it( "should return 422 Token not found", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/userInfo" )
 			.send({
 				username: "unexistinguser"
@@ -77,7 +79,7 @@ describe( "POST user/userInfo", function() {
 	});
 
 	it( "should return 422 Username not found", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/userInfo" )
 			.send({
 				token: token,
@@ -90,7 +92,7 @@ describe( "POST user/userInfo", function() {
 	});
 
 	it( "should return 401 invalid jwt", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/userInfo" )
 			.send({
 				username: "unexistinguser",
@@ -127,7 +129,7 @@ describe( "post user/info", function() {
 	});
 
 	it( "sets the user info, should return 200", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/info" )
 			.send({
 				token: token
@@ -139,7 +141,7 @@ describe( "post user/info", function() {
 	});
 
 	it( "should return 422 Token not found", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/info" )
 			.send({
 				userImage: null,
@@ -153,7 +155,7 @@ describe( "post user/info", function() {
 	});
 
 	it( "should return 401 invalid jwt", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/info" )
 			.send({
 				token: "123123sadasda1231312",
@@ -172,7 +174,7 @@ describe( "post user/info", function() {
 
 describe( "post user/match", function() {
 	it( "should return 200", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/match" )
 			.send({
 				data: [ "Technology", "Art", "Science" ]
@@ -184,7 +186,7 @@ describe( "post user/match", function() {
 	});
 
 	it( "should return 422", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/match" )
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
@@ -217,7 +219,7 @@ describe( "post user/updateInterests", function() {
 	});
 
 	it( "should return 201", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/updateInterests" )
 			.send({
 				token: token,
@@ -230,7 +232,7 @@ describe( "post user/updateInterests", function() {
 	});
 
 	it( "should return 422", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/updateInterests" )
 			.send({
 				token: token
@@ -243,7 +245,7 @@ describe( "post user/updateInterests", function() {
 	});
 
 	it( "should return 422", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/updateInterests" )
 			.send({
 				newInterests: []
@@ -256,7 +258,7 @@ describe( "post user/updateInterests", function() {
 	});
 
 	it( "should return 401 invalid jwt", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/updateInterests" )
 			.send({
 				token: "123123sadasda1231312",
@@ -293,7 +295,7 @@ describe( "post user/sugestedUsers", function() {
 	});
 
 	it( "should return 200", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/sugestedUsers" )
 			.send({
 				token: token,
@@ -306,7 +308,7 @@ describe( "post user/sugestedUsers", function() {
 	});
 
 	it( "should return 422", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/sugestedUsers" )
 			.send({
 				token: token
@@ -319,7 +321,7 @@ describe( "post user/sugestedUsers", function() {
 	});
 
 	it( "should return 422", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/sugestedUsers" )
 			.send({
 				skip: 0
@@ -332,7 +334,7 @@ describe( "post user/sugestedUsers", function() {
 	});
 
 	it( "should return 401 invalid jwt", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/sugestedUsers" )
 			.send({
 				token: "123123sadasda1231312",
@@ -368,7 +370,7 @@ describe( "post user/randomUser", function() {
 	});
 
 	it( "should return 200", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/randomUser" )
 			.send({
 				token: token
@@ -380,7 +382,7 @@ describe( "post user/randomUser", function() {
 	});
 
 	it( "should return 422", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/randomUser" )
 			.send({
 			})
@@ -392,7 +394,7 @@ describe( "post user/randomUser", function() {
 	});
 
 	it( "should return 401 invalid jwt", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/randomUser" )
 			.send({
 				token: "123123sadasda1231312"
@@ -427,7 +429,7 @@ describe( "post user/matchHobbies", function() {
 	});
 
 	it( "should return 200", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/matchHobbies" )
 			.send({
 				token: token,
@@ -441,7 +443,7 @@ describe( "post user/matchHobbies", function() {
 	});
 
 	it( "should return 422", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/matchHobbies" )
 			.send({
 				token: token,
@@ -455,7 +457,7 @@ describe( "post user/matchHobbies", function() {
 	});
 
 	it( "should return 422", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/matchHobbies" )
 			.send({
 				token: token,
@@ -469,7 +471,7 @@ describe( "post user/matchHobbies", function() {
 	});
 
 	it( "should return 422", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/matchHobbies" )
 			.send({
 				data: [],
@@ -483,7 +485,7 @@ describe( "post user/matchHobbies", function() {
 	});
 
 	it( "should return 401 invalid jwt", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/matchHobbies" )
 			.send({
 				token: "123123sadasda1231312",
@@ -521,7 +523,7 @@ describe( "post user/setUserKw", function() {
 	});
 
 	it( "should return 201", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/setUserKw" )
 			.send({
 				token: token,
@@ -534,7 +536,7 @@ describe( "post user/setUserKw", function() {
 	});
 
 	it( "should return 422", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/setUserKw" )
 			.send({
 				token: token
@@ -547,7 +549,7 @@ describe( "post user/setUserKw", function() {
 	});
 
 	it( "should return 422", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/setUserKw" )
 			.send({
 				data: []
@@ -560,7 +562,7 @@ describe( "post user/setUserKw", function() {
 	});
 
 	it( "should return 401 invalid jwt", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/setUserKw" )
 			.send({
 				token: "123123sadasda1231312",
@@ -597,7 +599,7 @@ describe( "post user/getChats", function() {
 	});
 
 	it( "should return 200", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/getChats" )
 			.send({ token: token })
 			.end(( err, res ) => {
@@ -607,7 +609,7 @@ describe( "post user/getChats", function() {
 	});
 
 	it( "should return 422", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/getChats" )
 			.send({})
 			.end(( err, res ) => {
@@ -618,7 +620,7 @@ describe( "post user/getChats", function() {
 	});
 
 	it( "should return 401 invalid jwt", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/getChats" )
 			.send({ token: "123123sadasda1231312" })
 			.end(( err, res ) => {
@@ -652,7 +654,7 @@ describe( "post user/getSocialCircle", function() {
 	});
 
 	it( "should return 200", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/getSocialCircle" )
 			.send({ token: token })
 			.end(( err, res ) => {
@@ -662,7 +664,7 @@ describe( "post user/getSocialCircle", function() {
 	});
 
 	it( "should return 422", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/getSocialCircle" )
 			.send({})
 			.end(( err, res ) => {
@@ -673,7 +675,7 @@ describe( "post user/getSocialCircle", function() {
 	});
 
 	it( "should return 401 invalid jwt", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/user/getSocialCircle" )
 			.send({ token: "123123sadasda1231312" })
 			.end(( err, res ) => {

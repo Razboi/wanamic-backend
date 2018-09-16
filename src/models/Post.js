@@ -1,5 +1,5 @@
 const
-	fs = require( "fs" ),
+	removeImage = require( "../utils/removeImage" ),
 	mongoose = require( "mongoose" ),
 	Schema = mongoose.Schema,
 
@@ -20,6 +20,8 @@ const
 			spoilerDescription: { type: String }
 		},
 		privacyRange: { type: Number, default: 1 },
+		feed: { type: String },
+		club: { type: Schema.Types.ObjectId, ref: "Club" },
 		mediaContent: {
 			title: { type: String },
 			artist: { type: String },
@@ -32,12 +34,14 @@ const
 			hostname: { type: String },
 			title: { type: String },
 			description: { type: String },
-			image: { type: String }
+			image: { type: String },
+			type: { type: String }
 		}
 	}, { timestamps: true }),
 
 
 	Post = mongoose.model( "Post", PostSchema );
+
 
 PostSchema.post( "remove", async( post, next ) => {
 	try {
@@ -46,14 +50,7 @@ PostSchema.post( "remove", async( post, next ) => {
 		}).exec();
 
 		if ( post.picture ) {
-			const
-				picPath = "../wanamic-frontend/src/images/",
-				picFile = post.mediaContent.image;
-			fs.unlink( picPath + picFile, err => {
-				if ( err ) {
-					next( err );
-				}
-			});
+			removeImage( post.mediaContent.image );
 		}
 		next();
 	} catch ( err ) {

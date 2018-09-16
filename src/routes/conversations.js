@@ -4,6 +4,8 @@ const
 	Message = require( "../models/Message" ),
 	Conversation = require( "../models/Conversation" ),
 	tokenVerifier = require( "../utils/tokenVerifier" ),
+	nodemailer = require( "nodemailer" ),
+	Email = require( "email-templates" ),
 	errors = require( "../utils/errors" );
 
 
@@ -126,6 +128,31 @@ Router.post( "/add", async( req, res, next ) => {
 					options: { sort: { createdAt: -1 } }
 				}).execPopulate();
 			friend.openConversations.push( friendConversation._id );
+
+			const
+				email = new Email(),
+				html = await email.render( "conversation_notification", {
+					name: friend.fullname.split( " " )[ 0 ],
+					author: user.fullname
+				});
+			let transporter = nodemailer.createTransport({
+				service: "gmail",
+				auth: {
+					user: process.env.EMAIL_ADDRESS,
+					pass: process.env.EMAIL_PASSWORD
+				}
+			});
+			const
+				mailOptions = {
+					from: `Wanamic ${process.env.EMAIL_ADDRESS}`,
+					to: friend.email,
+					subject: "New conversation",
+					html: html
+				};
+			transporter.sendMail( mailOptions )
+				.catch( err => {
+					throw err;
+				});
 		}
 		Promise.all([ user.save(), friend.save() ]);
 		newMessage.author = user;

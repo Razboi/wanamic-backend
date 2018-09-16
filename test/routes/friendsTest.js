@@ -12,7 +12,9 @@ const
 
 dotenv.config();
 chai.use( chaiHttp );
-mongoose.connect( process.env.MONGODB_URL );
+mongoose.connect( process.env.DEV_MONGODB_URL, { useNewUrlParser: true }).then(() => {
+	console.log( "MongoDB connected" );
+}).catch( err => console.log( err ));
 
 describe( "POST friends/add", function() {
 	var
@@ -45,7 +47,7 @@ describe( "POST friends/add", function() {
 	});
 
 	it( "adds a new friend, should return 201", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/friends/add" )
 			.send({
 				token: token,
@@ -58,7 +60,7 @@ describe( "POST friends/add", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/friends/add" )
 			.send({
 				token: token
@@ -71,7 +73,7 @@ describe( "POST friends/add", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/friends/add" )
 			.send({
 				friendUsername: target.username
@@ -84,7 +86,7 @@ describe( "POST friends/add", function() {
 	});
 
 	it( "should return 401 malformed jwt", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/friends/add" )
 			.send({
 				token: "123213adasdsad21321321",
@@ -98,7 +100,7 @@ describe( "POST friends/add", function() {
 	});
 
 	it( "should return 404 User doesn't exist", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/friends/add" )
 			.send({
 				token: token,
@@ -142,7 +144,7 @@ describe( "DELETE friends/delete", function() {
 	});
 
 	it( "deletes a friend, should return 200", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.delete( "/friends/delete" )
 			.send({
 				token: token,
@@ -155,7 +157,7 @@ describe( "DELETE friends/delete", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.delete( "/friends/delete" )
 			.send({
 				token: token
@@ -168,7 +170,7 @@ describe( "DELETE friends/delete", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.delete( "/friends/delete" )
 			.send({
 				friendUsername: target.username
@@ -181,7 +183,7 @@ describe( "DELETE friends/delete", function() {
 	});
 
 	it( "should return 401 malformed jwt", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.delete( "/friends/delete" )
 			.send({
 				token: "123213adasdsad21321321",
@@ -195,7 +197,7 @@ describe( "DELETE friends/delete", function() {
 	});
 
 	it( "should return 404 User doesn't exist", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.delete( "/friends/delete" )
 			.send({
 				token: token,
@@ -239,7 +241,7 @@ describe( "POST friends/isRequested", function() {
 	});
 
 	it( "should return 200", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/friends/isRequested" )
 			.send({
 				token: token,
@@ -252,7 +254,7 @@ describe( "POST friends/isRequested", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/friends/isRequested" )
 			.send({
 				token: token
@@ -265,7 +267,7 @@ describe( "POST friends/isRequested", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/friends/isRequested" )
 			.send({
 				targetUsername: target.username
@@ -278,7 +280,7 @@ describe( "POST friends/isRequested", function() {
 	});
 
 	it( "should return 401 malformed jwt", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/friends/isRequested" )
 			.send({
 				token: "123213adasdsad21321321",
@@ -292,7 +294,7 @@ describe( "POST friends/isRequested", function() {
 	});
 
 	it( "should return 404 User doesn't exist", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/friends/isRequested" )
 			.send({
 				token: token,
@@ -343,7 +345,7 @@ describe( "POST friends/accept", function() {
 	});
 
 	it( "should return 201", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/friends/accept" )
 			.send({
 				token: token,
@@ -356,7 +358,7 @@ describe( "POST friends/accept", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/friends/accept" )
 			.send({
 				token: token
@@ -369,7 +371,7 @@ describe( "POST friends/accept", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/friends/accept" )
 			.send({
 				friendUsername: target.username
@@ -382,7 +384,7 @@ describe( "POST friends/accept", function() {
 	});
 
 	it( "should return 401 malformed jwt", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/friends/accept" )
 			.send({
 				token: "123213adasdsad21321321",
@@ -396,7 +398,7 @@ describe( "POST friends/accept", function() {
 	});
 
 	it( "should return 404 User doesn't exist", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/friends/accept" )
 			.send({
 				token: token,

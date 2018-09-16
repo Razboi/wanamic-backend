@@ -13,8 +13,6 @@ const
 		posts: [ { type: Schema.Types.ObjectId, ref: "Post" } ],
 		newsfeed: [ { type: Schema.Types.ObjectId, ref: "Post" } ],
 		friends: [ { type: Schema.Types.ObjectId, ref: "User" } ],
-		followers: [ { type: Schema.Types.ObjectId, ref: "User" } ],
-		following: [ { type: Schema.Types.ObjectId, ref: "User" } ],
 		notifications: [ { type: Schema.Types.ObjectId, ref: "Notification" } ],
 		newNotifications: { type: Number, default: 0 },
 		pendingRequests: [ { type: String } ],
@@ -30,7 +28,11 @@ const
 		region: { type: String },
 		gender: { type: String },
 		birthday: { type: Date },
-	});
+		admin: { type: Boolean, default: false },
+		infractions: [ { type: String } ],
+		banned: { type: String },
+		clubs: [ { type: Schema.Types.ObjectId, ref: "Club" } ]
+	}, { timestamps: true });
 
 UserSchema.methods.isValidPassword = function( password ) {
 	if ( !password || !this.passwordHash ) {

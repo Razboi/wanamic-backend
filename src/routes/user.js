@@ -3,29 +3,66 @@ const
 	User = require( "../models/User" ),
 	Ticket = require( "../models/Ticket" ),
 	bcrypt = require( "bcrypt" ),
+	aws = require( "aws-sdk" ),
 	multer = require( "multer" ),
+	multerS3 = require( "multer-s3" ),
 	tokenVerifier = require( "../utils/tokenVerifier" ),
 	findRandomUser = require( "../utils/findRandomUser" ),
 	removeDuplicates = require( "../utils/removeDuplicatesArrOfObj" ),
 	validators = require( "../utils/validators" ),
 	errors = require( "../utils/errors" ),
-	fs = require( "fs" ),
+	removeImage = require( "../utils/removeImage" ),
 	path = require( "path" );
 
-var upload = multer({
-	dest: "../wanamic-frontend/src/images",
-	fileFilter: function( req, file, callback ) {
-		var ext = path.extname( file.originalname );
-		if ( ext !== ".png" && ext !== ".jpg" && ext !== ".gif" && ext !== ".jpeg" ) {
-			return callback( new Error(
-				"Only .png .jpg .gif .jpeg images are allowed" ));
-		}
-		callback( null, true );
-	},
-	limits: {
-		fileSize: 1024 * 1024
-	}
-});
+let
+	s3 = new aws.S3({
+		accessKeyId: process.env.ACCESS_KEY_ID,
+		secretAccessKey: process.env.SECRET_ACCESS_KEY,
+		Bucket: "wanamic.com"
+	}),
+	upload = process.env.NODE_ENV === "dev" ?
+		multer({
+			dest: "../wanamic-frontend/src/images",
+			fileFilter: function( req, file, callback ) {
+				var ext = path.extname( file.originalname );
+				if (( file.mimetype !== "image/jpeg" && file.mimetype !== "image/png"
+					&& file.mimetype !== "image/jpg" && file.mimetype !== "image/gif" )) {
+					return callback( new Error(
+						"Only .png .jpg .gif .jpeg images are allowed" ));
+				}
+				callback( null, true );
+			},
+			limits: {
+				fileSize: 1010000
+			}
+		})
+		:
+		multer({
+			storage: multerS3({
+				s3: s3,
+				bucket: "wanamic.com",
+				metadata: function( req, file, cb ) {
+					cb( null, { fieldName: file.fieldname });
+				},
+				key: function( req, file, cb ) {
+					cb( null, Date.now().toString());
+				}
+			}),
+			fileFilter: function( req, file, callback ) {
+				var ext = path.extname( file.originalname );
+				if (( file.mimetype !== "image/jpeg" && file.mimetype !== "image/png"
+					&& file.mimetype !== "image/jpg" && file.mimetype !== "image/gif" )) {
+					return callback( new Error(
+						"Only .png .jpg .gif .jpeg images are allowed" ));
+				}
+				callback( null, true );
+			},
+			limits: {
+				fileSize: 1010000
+			}
+		}),
+	filenameProp = process.env.NODE_ENV === "dev" ?
+		"filename" : "key";
 
 
 Router.post( "/userInfo", async( req, res, next ) => {
@@ -44,7 +81,7 @@ Router.post( "/userInfo", async( req, res, next ) => {
 		requester = User.findById( userId ).exec();
 		user = User.findOne({ username: username })
 			.select( "username fullname description hobbies profileImage" +
-								" headerImage interests friends followers gender" +
+								" headerImage interests friends gender" +
 								" birthday totalLikes totalViews country region" )
 			.exec();
 		[ requester, user ] = await Promise.all([ requester, user ]);
@@ -83,7 +120,7 @@ Router.post( "/info", upload.fields([ { name: "userImage", maxCount: 1 },
 		if ( !user ) {
 			return next( errors.userDoesntExist());
 		}
-		if ( description && description !== user.description ) {
+		if ( description !== "undefined" && description !== user.description ) {
 			user.description = description;
 		}
 		if ( fullname && fullname !== user.fullname &&
@@ -101,39 +138,29 @@ Router.post( "/info", upload.fields([ { name: "userImage", maxCount: 1 },
 			}
 			user.username = username;
 		}
-		if ( country && country !== user.country ) {
+		if ( country !== "undefined" && country !== user.country ) {
 			user.country = country;
 		}
-		if ( region && region !== user.region ) {
+		if ( region !== "undefined" && region !== user.region ) {
 			user.region = region;
 		}
-		if ( gender && gender !== user.gender ) {
+		if ( gender !== "undefined" && gender !== user.gender ) {
 			user.gender = gender;
 		}
-		if ( birthday && birthday !== user.birthday ) {
+		if ( birthday !== "undefined" && birthday !== user.birthday ) {
 			user.birthday = birthday;
 		}
 		if ( req.files && req.files[ "userImage" ]) {
 			if ( user.profileImage ) {
-				const oldPicFile = user.profileImage;
-				fs.unlink( "../wanamic-frontend/src/images/" + oldPicFile, err => {
-					if ( err ) {
-						next( err );
-					}
-				});
+				removeImage( user.profileImage );
 			}
-			user.profileImage = req.files[ "userImage" ][ 0 ].filename;
+			user.profileImage = req.files[ "userImage" ][ 0 ][ filenameProp ];
 		}
 		if ( req.files && req.files[ "headerImage" ]) {
 			if ( user.headerImage ) {
-				const oldPicFile = user.profileImage;
-				fs.unlink( "../wanamic-frontend/src/images/" + oldPicFile, err => {
-					if ( err ) {
-						next( err );
-					}
-				});
+				removeImage( user.headerImage );
 			}
-			user.headerImage = req.files[ "headerImage" ][ 0 ].filename;
+			user.headerImage = req.files[ "headerImage" ][ 0 ][ filenameProp ];
 		}
 		await user.save();
 		res.status( 201 );
@@ -206,7 +233,7 @@ Router.post( "/sugestedUsers", async( req, res, next ) => {
 			.where( "_id" ).ne( user.id )
 			.select(
 				"username fullname description hobbies profileImage headerImage " +
-				"friends followers totalLikes"
+				"friends totalLikes"
 			)
 			.exec();
 	} catch ( err ) {
@@ -226,7 +253,7 @@ Router.post( "/randomUser", async( req, res, next ) => {
 	}
 	try {
 		userId = tokenVerifier( req.body.token );
-		randomUser = await findRandomUser( userId );
+		randomUser = await findRandomUser( userId, req.body.exposition );
 		res.send( randomUser );
 	} catch ( err ) {
 		return next( err );
@@ -250,7 +277,7 @@ Router.post( "/matchHobbies", async( req, res, next ) => {
 			.where( "_id" ).ne( userId )
 			.select(
 				"username fullname description hobbies profileImage headerImage " +
-				"friends followers"
+				"friends"
 			)
 			.exec();
 	} catch ( err ) {
@@ -326,8 +353,7 @@ Router.post( "/getChats", async( req, res, next ) => {
 Router.post( "/getSocialCircle", async( req, res, next ) => {
 	var
 		userId,
-		user,
-		socialCircle = [];
+		user;
 
 	if ( !req.body.token ) {
 		return next( errors.blankData());
@@ -335,17 +361,15 @@ Router.post( "/getSocialCircle", async( req, res, next ) => {
 	try {
 		userId = tokenVerifier( req.body.token );
 		user = await User.findById( userId )
-			.populate( "friends followers following", "username fullname profileImage" )
-			.select( "friends followers following" )
+			.populate({
+				path: "friends",
+				select: "username fullname profileImage"
+			})
 			.exec();
 		if ( !user ) {
 			return next( errors.userDoesntExist());
 		}
-		socialCircle = socialCircle.concat(
-			user.friends, user.following, user.followers
-		);
-		socialCircle = removeDuplicates( socialCircle, "username" );
-		res.send( socialCircle );
+		res.send( user.friends );
 	} catch ( err ) {
 		return next( err );
 	}
@@ -447,7 +471,7 @@ Router.delete( "/deleteAccount", async( req, res, next ) => {
 			await new Ticket({
 				author: user._id,
 				content: req.body.feedback,
-				fromDeletedAccount: true
+				deleteFeedback: true
 			}).save();
 		}
 		await user.remove();
@@ -460,10 +484,7 @@ Router.delete( "/deleteAccount", async( req, res, next ) => {
 
 Router.post( "/getUserAlbum", async( req, res, next ) => {
 	var
-		visitorId,
-		user,
-		relationLevel,
-		filteredPosts = [];
+		user;
 
 	if ( !req.body.token || !req.body.username ) {
 		return next( errors.blankData());
@@ -471,7 +492,6 @@ Router.post( "/getUserAlbum", async( req, res, next ) => {
 	const { token, username } = req.body;
 
 	try {
-		visitorId = tokenVerifier( token );
 		user = await User.findOne({ username: username })
 			.populate({
 				path: "posts",
@@ -485,20 +505,10 @@ Router.post( "/getUserAlbum", async( req, res, next ) => {
 		if ( !user ) {
 			return next( errors.userDoesntExist());
 		}
-		if ( user.friends.some( id => id.equals( visitorId ))
-				|| user._id.equals( visitorId )) {
-			relationLevel = 1;
-		} else if ( user.followers.some( id => id.equals( visitorId ))) {
-			relationLevel = 2;
-		} else {
-			relationLevel = 3;
-		}
-		filteredPosts = user.posts.filter( post =>
-			post.privacyRange >= relationLevel );
 	} catch ( err ) {
 		return next( err );
 	}
-	res.send( filteredPosts );
+	res.send( user.posts );
 });
 
 
@@ -518,7 +528,7 @@ Router.post( "/getUserNetwork", async( req, res, next ) => {
 		requester = User.findById( requesterId ).exec();
 		user = User.findOne({ username: username })
 			.populate({
-				path: "friends followers following",
+				path: "friends",
 				select: "username fullname profileImage description hobbies"
 			})
 			.exec();
@@ -531,13 +541,10 @@ Router.post( "/getUserNetwork", async( req, res, next ) => {
 	}
 	res.send({
 		user: {
-			friends: user.friends,
-			followers: user.followers,
-			following: user.following
+			friends: user.friends
 		},
 		requester: {
-			friends: requester.friends,
-			following: requester.following
+			friends: requester.friends
 		}
 	});
 });
@@ -563,6 +570,35 @@ Router.post( "/getLikesAndViews", async( req, res, next ) => {
 		return next( err );
 	}
 	res.send( user );
+});
+
+
+Router.post( "/clubs", async( req, res, next ) => {
+	var
+		userId,
+		user;
+
+	if ( !req.body.token ) {
+		return next( errors.blankData());
+	}
+	try {
+		userId = tokenVerifier( req.body.token );
+		user = await User.findById( userId )
+			.populate({
+				path: "clubs",
+				populate: {
+					path: "president",
+					select: "username fullname"
+				}
+			})
+			.exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+	} catch ( err ) {
+		return next( err );
+	}
+	res.send( user.clubs );
 });
 
 

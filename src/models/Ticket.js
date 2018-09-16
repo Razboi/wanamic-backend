@@ -6,9 +6,13 @@ const
 	TicketSchema = mongoose.Schema({
 		author: { type: Schema.Types.ObjectId, ref: "User", required: true },
 		target: { type: Schema.Types.ObjectId, ref: "User" },
-		content: { type: String, required: true },
-		fromDeletedAccount: { type: Boolean, default: false },
-		fromReport: { type: Boolean, default: false }
+		object: { type: Schema.Types.ObjectId },
+		content: { type: String },
+		type: { type: String },
+		deleteFeedback: { type: Boolean, default: false },
+		report: { type: Boolean, default: false },
+		clubRequest: { type: Boolean, default: false },
+		clubName: { type: String }
 	}, { timestamps: true }),
 
 	Ticket = mongoose.model( "Ticket", TicketSchema );

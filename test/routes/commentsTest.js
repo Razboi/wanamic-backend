@@ -15,7 +15,9 @@ const
 
 dotenv.config();
 chai.use( chaiHttp );
-mongoose.connect( process.env.MONGODB_URL );
+mongoose.connect( process.env.DEV_MONGODB_URL, { useNewUrlParser: true }).then(() => {
+	console.log( "MongoDB connected" );
+}).catch( err => console.log( err ));
 
 describe( "POST comments/create", function() {
 	var
@@ -48,7 +50,7 @@ describe( "POST comments/create", function() {
 	});
 
 	it( "creates a comment", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/comments/create" )
 			.send({
 				token: token,
@@ -62,7 +64,7 @@ describe( "POST comments/create", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/comments/create" )
 			.send({
 				token: token,
@@ -76,7 +78,7 @@ describe( "POST comments/create", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/comments/create" )
 			.send({
 				token: token,
@@ -90,7 +92,7 @@ describe( "POST comments/create", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/comments/create" )
 			.send({
 				postId: post._id,
@@ -104,7 +106,7 @@ describe( "POST comments/create", function() {
 	});
 
 	it( "should return 401 malformed jwt", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/comments/create" )
 			.send({
 				token: "123213adasdsad21321321",
@@ -153,7 +155,7 @@ describe( "DELETE comments/delete", function() {
 	});
 
 	it( "deletes a comment, should return 200", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.delete( "/comments/delete" )
 			.send({
 				token: token,
@@ -167,7 +169,7 @@ describe( "DELETE comments/delete", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.delete( "/comments/delete" )
 			.send({
 				token: token,
@@ -181,7 +183,7 @@ describe( "DELETE comments/delete", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.delete( "/comments/delete" )
 			.send({
 				token: token,
@@ -195,7 +197,7 @@ describe( "DELETE comments/delete", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.delete( "/comments/delete" )
 			.send({
 				postId: post._id,
@@ -209,7 +211,7 @@ describe( "DELETE comments/delete", function() {
 	});
 
 	it( "should return 401 malformed jwt", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.delete( "/comments/delete" )
 			.send({
 				token: "123213adasdsad21321321",
@@ -259,7 +261,7 @@ describe( "PATCH comments/update", function() {
 	});
 
 	it( "updates a comment, should return 200", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.patch( "/comments/update" )
 			.send({
 				token: token,
@@ -273,7 +275,7 @@ describe( "PATCH comments/update", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.patch( "/comments/update" )
 			.send({
 				token: token,
@@ -287,7 +289,7 @@ describe( "PATCH comments/update", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.patch( "/comments/update" )
 			.send({
 				token: token,
@@ -301,7 +303,7 @@ describe( "PATCH comments/update", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.patch( "/comments/update" )
 			.send({
 				newContent: "updated",
@@ -315,7 +317,7 @@ describe( "PATCH comments/update", function() {
 	});
 
 	it( "should return 401 malformed jwt", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.patch( "/comments/update" )
 			.send({
 				token: "123213adasdsad21321321",
@@ -357,7 +359,7 @@ describe( "POST comments/retrieve/:skip", function() {
 	});
 
 	it( "gets the post comments, should return 200", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/comments/retrieve/0" )
 			.send({
 				token: token,
@@ -370,7 +372,7 @@ describe( "POST comments/retrieve/:skip", function() {
 	});
 
 	it( "should return 404 for endpoint not found", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/comments/retrieve/" )
 			.send({
 				token: token,
@@ -383,41 +385,12 @@ describe( "POST comments/retrieve/:skip", function() {
 	});
 
 	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/comments/retrieve/0" )
-			.send({
-				token: token
-			})
+			.send({})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
 				res.text.should.equal( "Required data not found" );
-				done();
-			});
-	});
-
-	it( "should return 422 Empty data", function( done ) {
-		chai.request( "localhost:8000" )
-			.post( "/comments/retrieve/0" )
-			.send({
-				postId: post._id
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 422 );
-				res.text.should.equal( "Required data not found" );
-				done();
-			});
-	});
-
-	it( "should return 401 malformed jwt", function( done ) {
-		chai.request( "localhost:8000" )
-			.post( "/comments/retrieve/0" )
-			.send({
-				token: "123213adasdsad21321321",
-				postId: post._id
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 401 );
-				res.text.should.equal( "jwt malformed" );
 				done();
 			});
 	});

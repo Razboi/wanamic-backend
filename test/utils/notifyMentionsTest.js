@@ -9,7 +9,9 @@ const
 	notifyMentions = require( "../../src/utils/notifyMentions" );
 
 dotenv.config();
-mongoose.connect( process.env.MONGODB_URL );
+mongoose.connect( process.env.DEV_MONGODB_URL, { useNewUrlParser: true }).then(() => {
+	console.log( "MongoDB connected" );
+}).catch( err => console.log( err ));
 
 describe( "notifyMentions", function() {
 	let

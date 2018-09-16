@@ -4,15 +4,16 @@ const
 	should = chai.should(),
 	request = require( "request" ),
 	mongoose = require( "mongoose" ),
-	dotenv = require( "dotenv" ),
+	dotenv = require( "dotenv" ).config(),
 	bcrypt = require( "bcrypt" ),
 	tokenGenerator = require( "../../src/utils/tokenGenerator" ),
 	refreshTokenGenerator = require( "../../src/utils/refreshTokenGenerator" ),
 	User = require( "../../src/models/User" );
 
-dotenv.config();
 chai.use( chaiHttp );
-mongoose.connect( process.env.MONGODB_URL );
+mongoose.connect( process.env.DEV_MONGODB_URL, { useNewUrlParser: true }).then(() => {
+	console.log( "MongoDB connected" );
+}).catch( err => console.log( err ));
 
 describe( "auth/signup", function() {
 
@@ -33,7 +34,7 @@ describe( "auth/signup", function() {
 	});
 
 	it( "should return 201", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/auth/signup" )
 			.send({
 				credentials: {
@@ -51,7 +52,7 @@ describe( "auth/signup", function() {
 	});
 
 	it( "should return 422 for blank credentials", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/auth/signup" )
 			.send({
 				credentials: {
@@ -67,7 +68,7 @@ describe( "auth/signup", function() {
 	});
 
 	it( "should return 422 for already registered email", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/auth/signup" )
 			.send({
 				credentials: {
@@ -85,7 +86,7 @@ describe( "auth/signup", function() {
 	});
 
 	it( "should return 422 for already registered username", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/auth/signup" )
 			.send({
 				credentials: {
@@ -120,7 +121,7 @@ describe( "auth/login", function() {
 	});
 
 	it( "should return 200", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/auth/login" )
 			.send({
 				credentials: {
@@ -136,7 +137,7 @@ describe( "auth/login", function() {
 	});
 
 	it( "should return 422 for blank credentials", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/auth/login" )
 			.send({
 				credentials: {
@@ -152,7 +153,7 @@ describe( "auth/login", function() {
 	});
 
 	it( "should return 422 for blank credentials", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/auth/login" )
 			.send({
 				credentials: {
@@ -168,7 +169,7 @@ describe( "auth/login", function() {
 	});
 
 	it( "should return 404 for invalid email", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/auth/login" )
 			.send({
 				credentials: {
@@ -184,7 +185,7 @@ describe( "auth/login", function() {
 	});
 
 	it( "should return 401 for invalid password", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/auth/login" )
 			.send({
 				credentials: {
@@ -217,11 +218,11 @@ describe( "auth/verify", function() {
 			fullname: "Test User",
 			passwordHash: bcrypt.hashSync( "test", 10 )
 		}).save();
-		token = await tokenGenerator( author );
+		token = tokenGenerator( author );
 	});
 
 	it( "should return 200", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/auth/verify" )
 			.send({ token: token })
 			.end(( err, res ) => {
@@ -231,7 +232,7 @@ describe( "auth/verify", function() {
 	});
 
 	it( "should return 422", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/auth/verify" )
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
@@ -241,7 +242,7 @@ describe( "auth/verify", function() {
 	});
 
 	it( "should return 401 malformed jwt", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/auth/verify" )
 			.send({ token: "123213adasdsad21321321" })
 			.end(( err, res ) => {
@@ -277,7 +278,7 @@ describe( "auth/token", function() {
 	});
 
 	it( "should return 201", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/auth/token" )
 			.send({ refreshToken: refreshToken })
 			.end(( err, res ) => {
@@ -287,7 +288,7 @@ describe( "auth/token", function() {
 	});
 
 	it( "should return 422", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/auth/token" )
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
@@ -297,7 +298,7 @@ describe( "auth/token", function() {
 	});
 
 	it( "should return 500 jwt malformed", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/auth/token" )
 			.send({ refreshToken: "123213adasdsad21321321" })
 			.end(( err, res ) => {
@@ -329,7 +330,7 @@ describe( "auth/refreshToken", function() {
 	});
 
 	it( "should return 201", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/auth/refreshToken" )
 			.send({ token: token })
 			.end(( err, res ) => {
@@ -339,7 +340,7 @@ describe( "auth/refreshToken", function() {
 	});
 
 	it( "should return 422", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/auth/refreshToken" )
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
@@ -349,7 +350,7 @@ describe( "auth/refreshToken", function() {
 	});
 
 	it( "should return 401 malformed jwt", function( done ) {
-		chai.request( "localhost:8000" )
+		chai.request( "localhost:8081" )
 			.post( "/auth/refreshToken" )
 			.send({ token: "123213adasdsad21321321" })
 			.end(( err, res ) => {

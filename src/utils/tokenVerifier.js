@@ -9,7 +9,6 @@ tokenVerifier = ( token, cb ) => {
 		throw err;
 	}
 	try {
-		// get userId from token
 		data = jwt.verify( token, process.env.SECRET_JWT );
 		if ( cb ) {
 			return cb( data.id );

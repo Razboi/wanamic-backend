@@ -12,7 +12,6 @@ const
 
 CommentSchema.post( "remove", async( comment, next ) => {
 	try {
-		console.log( comment.post, comment._id );
 		await mongoose.model( "Post" ).update(
 			{ _id: comment.post },
 			{ $pull: { "comments": comment._id } }

@@ -3,6 +3,8 @@ const
 	User = require( "../models/User" ),
 	tokenVerifier = require( "../utils/tokenVerifier" ),
 	Notification = require( "../models/Notification" ),
+	nodemailer = require( "nodemailer" ),
+	Email = require( "email-templates" ),
 	errors = require( "../utils/errors" );
 
 // change name
@@ -18,13 +20,13 @@ Router.post( "/getFriends", async( req, res, next ) => {
 		userId = tokenVerifier( req.body.token );
 		user = await User.findById( userId )
 			.populate({
-				path: "friends following",
+				path: "friends",
 				options: {
 					select: "username fullname profileImage",
 					sort: { createdAt: -1 }
 				}
 			})
-			.select( "friends following" )
+			.select( "friends" )
 			.exec();
 		if ( !user ) {
 			return next( errors.userDoesntExist());
@@ -32,7 +34,7 @@ Router.post( "/getFriends", async( req, res, next ) => {
 	} catch ( err ) {
 		return next( err );
 	}
-	res.send([ ...user.friends, ...user.following ]);
+	res.send( user.friends );
 });
 
 
@@ -69,8 +71,7 @@ Router.post( "/add", async( req, res, next ) => {
 			author: user._id,
 			receiver: friend._id,
 			friendRequest: true
-		})
-			.exec();
+		}).exec();
 		if ( duplicatedNotification ) {
 			return next( errors.duplicatedNotification());
 		}
@@ -85,6 +86,31 @@ Router.post( "/add", async( req, res, next ) => {
 		friend.notifications.push( newNotification );
 		friend.newNotifications++;
 		Promise.all([ user.save(), friend.save() ]);
+
+		const
+			email = new Email(),
+			html = await email.render( "friend_req_notification", {
+				name: friend.fullname.split( " " )[ 0 ],
+				requester: user.fullname
+			});
+		let transporter = nodemailer.createTransport({
+			service: "gmail",
+			auth: {
+				user: process.env.EMAIL_ADDRESS,
+				pass: process.env.EMAIL_PASSWORD
+			}
+		});
+		const
+			mailOptions = {
+				from: `Wanamic ${process.env.EMAIL_ADDRESS}`,
+				to: friend.email,
+				subject: "New friend request",
+				html: html
+			};
+		transporter.sendMail( mailOptions )
+			.catch( err => {
+				throw err;
+			});
 	} catch ( err ) {
 		return next( err );
 	}
@@ -189,23 +215,6 @@ Router.post( "/accept", async( req, res, next ) => {
 		user.friends.push( friend._id );
 		friend.friends.push( user._id );
 
-		// Unfollow
-		if ( friend.following.some( id => user._id.equals( id ))) {
-			const
-				indexUser = friend.following.indexOf( user._id ),
-				indexFriend = user.followers.indexOf( friend._id );
-
-			friend.following.splice( indexUser, 1 );
-			user.followers.splice( indexFriend, 1 );
-		}
-		if ( user.following.some( id => friend._id.equals( id ))) {
-			const
-				indexFriend = user.following.indexOf( friend._id ),
-				indexUser = friend.followers.indexOf( user._id );
-
-			user.following.splice( indexFriend, 1 );
-			friend.followers.splice( indexUser, 1 );
-		}
 		const requestIndex = friend.pendingRequests.indexOf( user.username );
 		friend.pendingRequests.splice( requestIndex, 1 );
 		Promise.all([ user.save(), friend.save(), notification.remove() ]);

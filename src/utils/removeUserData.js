@@ -1,5 +1,5 @@
 const
-	fs = require( "fs" ),
+	removeImage = require( "./removeImage" ),
 	mongoose = require( "mongoose" ),
 	Post = require( "../models/Post" ),
 	Comment = require( "../models/Comment" ),
@@ -54,20 +54,10 @@ removeUserData = async user => {
 		}
 
 		if ( user.profileImage ) {
-			const imagePath = "../wanamic-frontend/src/images/" + user.profileImage;
-			fs.unlink( imagePath, err => {
-				if ( err ) {
-					throw err;
-				}
-			});
+			removeImage( user.profileImage );
 		}
 		if ( user.headerImage ) {
-			const imagePath = "../wanamic-frontend/src/images/" + user.headerImage;
-			fs.unlink( imagePath, err => {
-				if ( err ) {
-					throw err;
-				}
-			});
+			removeImage( user.headerImage );
 		}
 		return true;
 	} catch ( err ) {

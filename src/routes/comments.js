@@ -4,6 +4,7 @@ const
 	Post = require( "../models/Post" ),
 	Comment = require( "../models/Comment" ),
 	Notification = require( "../models/Notification" ),
+	Ticket = require( "../models/Ticket" ),
 	notifyMentions = require( "../utils/notifyMentions" ),
 	tokenVerifier = require( "../utils/tokenVerifier" ),
 	errors = require( "../utils/errors" );
@@ -78,8 +79,8 @@ Router.post( "/create", async( req, res, next ) => {
 			postAuthor.newNotifications++;
 			await postAuthor.save();
 			commentNotification.author = user;
-			newComment.author = user;
 		}
+		newComment.author = user;
 	} catch ( err ) {
 		return next( err );
 	}
@@ -118,8 +119,8 @@ Router.delete( "/delete", async( req, res, next ) => {
 		if ( !user._id.equals( comment.author )) {
 			return next( errors.unauthorized());
 		}
-		updatedPost = Post.findById( postId ).exec();
-		updatedPost = await Promise.all([ updatedPost, comment.remove() ]);
+		await comment.remove();
+		updatedPost = await Post.findById( postId ).exec();
 		updatedPost.author = user;
 	} catch ( err ) {
 		return next( err );
@@ -173,16 +174,14 @@ Router.patch( "/update", async( req, res, next ) => {
 
 Router.post( "/retrieve/:skip", async( req, res, next ) => {
 	let
-		userId,
 		post;
 
-	if ( !req.body.token || !req.body.postId || !req.params.skip ) {
+	if ( !req.body.postId || !req.params.skip ) {
 		return next( errors.blankData());
 	}
-	const { token, postId } = req.body;
+	const { postId } = req.body;
 
 	try {
-		userId = tokenVerifier( token );
 		post = await Post.findById( postId )
 			.populate({
 				path: "comments",
@@ -205,5 +204,64 @@ Router.post( "/retrieve/:skip", async( req, res, next ) => {
 	}
 	res.send( post.comments );
 });
+
+
+Router.post( "/getComment", async( req, res, next ) => {
+	let
+		comment;
+
+	if ( !req.body.commentId ) {
+		return next( errors.blankData());
+	}
+
+	try {
+		comment = await Comment.findById( req.body.commentId )
+			.populate({
+				path: "author",
+				select: "username fullname profileImage"
+			})
+			.exec();
+		if ( !comment ) {
+			return next( errors.commentDoesntExist());
+		}
+	} catch ( err ) {
+		return next( err );
+	}
+	res.send( comment );
+});
+
+
+Router.post( "/report", async( req, res, next ) => {
+	var
+		userId,
+		user,
+		comment;
+
+	if ( !req.body.commentId || !req.body.token || !req.body.content ) {
+		return next( errors.blankData());
+	}
+	const { commentId, content, token } = req.body;
+
+	try {
+		userId = tokenVerifier( token );
+		user = await User.findById( userId ).exec();
+		comment = await Comment.findById( commentId ).exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+		await new Ticket({
+			author: user._id,
+			target: comment.author,
+			object: comment._id,
+			content: content,
+			report: true,
+			type: "comment"
+		}).save();
+	} catch ( err ) {
+		return next( err );
+	}
+	res.sendStatus( 201 );
+});
+
 
 module.exports = Router;
