@@ -6,12 +6,12 @@ const
 	posts = require( "./routes/posts" ),
 	comments = require( "./routes/comments" ),
 	friends = require( "./routes/friends" ),
-	followers = require( "./routes/followers" ),
 	user = require( "./routes/user" ),
 	auth = require( "./routes/auth" ),
 	notifications = require( "./routes/notifications" ),
 	conversations = require( "./routes/conversations" ),
 	admin = require( "./routes/admin" ),
+	clubs = require( "./routes/clubs" ),
 	Notification = require( "./models/Notification" ),
 	User = require( "./models/User" ),
 	Message = require( "./models/Message" ),
@@ -42,11 +42,11 @@ app.use( "/auth", auth );
 app.use( "/posts", posts );
 app.use( "/friends", friends );
 app.use( "/user", user );
-app.use( "/followers", followers );
 app.use( "/comments", comments );
 app.use( "/notifications", notifications );
 app.use( "/conversations", conversations );
 app.use( "/admin", admin );
+app.use( "/clubs", clubs );
 
 // error middleware
 app.use(( err, req, res, next ) => {

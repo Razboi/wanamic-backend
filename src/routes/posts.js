@@ -4,6 +4,7 @@ const
 	tokenVerifier = require( "../utils/tokenVerifier" ),
 	Post = require( "../models/Post" ),
 	Ticket = require( "../models/Ticket" ),
+	Club = require( "../models/Club" ),
 	LinkPreview = require( "react-native-link-preview" ),
 	extractHostname = require( "../utils/extractHostname" ),
 	aws = require( "aws-sdk" ),
@@ -66,7 +67,7 @@ let
 		"filename" : "key";
 
 
-Router.get( "/explore/:skip/:limit", async( req, res, next ) => {
+Router.get( "/global/:skip/:limit", async( req, res, next ) => {
 	let posts;
 
 	if ( !req.params.skip || !req.params.limit ) {
@@ -74,9 +75,8 @@ Router.get( "/explore/:skip/:limit", async( req, res, next ) => {
 	}
 	try {
 		posts = await Post.find()
-			.where( "media" ).equals( true )
 			.where( "sharedPost" ).equals( undefined )
-			.where( "privacyRange" ).equals( "3" )
+			.where( "feed" ).ne( "home" )
 			.limit( parseInt( req.params.limit ))
 			.skip( req.params.skip * req.params.limit )
 			.sort( "-createdAt" )
@@ -84,11 +84,42 @@ Router.get( "/explore/:skip/:limit", async( req, res, next ) => {
 				path: "author",
 				select: "username fullname profileImage"
 			})
+			.populate({
+				path: "club"
+			})
 			.exec();
 	} catch ( err ) {
 		return next( err );
 	}
 	res.send( posts );
+});
+
+
+Router.get( "/clubFeed/:club/:skip", async( req, res, next ) => {
+	let club;
+
+	if ( !req.params.skip || !req.params.club ) {
+		return next( errors.blankData());
+	}
+	try {
+		club = await Club.findOne({ name: req.params.club })
+			.populate({
+				path: "feed",
+				options: {
+					skip: parseInt( req.params.skip ) * 10,
+					sort: "-createdAt",
+					limit: 10
+				},
+				populate: {
+					path: "author",
+					select: "username fullname profileImage"
+				}
+			})
+			.exec();
+	} catch ( err ) {
+		return next( err );
+	}
+	res.send( club.feed );
 });
 
 
@@ -160,7 +191,7 @@ Router.post( "/create", async( req, res, next ) => {
 		return next( errors.blankData());
 	}
 	const {
-		token, userInput, alerts, hashtags, privacyRange, mentions
+		token, userInput, alerts, hashtags, feed, selectedClub, mentions
 	} = req.body;
 
 	try {
@@ -169,12 +200,14 @@ Router.post( "/create", async( req, res, next ) => {
 		if ( !user ) {
 			return next( errors.userDoesntExist());
 		}
+		club = await Club.findOne({ name: selectedClub }).exec();
 		newPost = await new Post({
 			author: user._id,
 			content: userInput,
 			alerts: alerts,
 			hashtags: hashtags,
-			privacyRange: privacyRange
+			feed: feed,
+			club: club && club._id
 		}).save();
 		newPost = await newPost.populate({
 			path: "author",
@@ -187,9 +220,11 @@ Router.post( "/create", async( req, res, next ) => {
 			{ multi: true }
 		).exec();
 
-		if ( privacyRange >= 2 ) {
+		if ( feed === "club" ) {
+			club.feed.push( newPost._id );
+			await club.save();
 			await User.update(
-				{ _id: { $in: user.followers } },
+				{ _id: { $in: club.members, $ne: user._id } },
 				{ $push: { "newsfeed": newPost._id } },
 				{ multi: true }
 			).exec();
@@ -325,10 +360,11 @@ Router.post( "/media", async( req, res, next ) => {
 		userId,
 		user,
 		newPost,
-		mentionsNotifications;
+		mentionsNotifications,
+		club;
 
-	if ( !req.body.token || !req.body.data || !req.body.data.privacyRange ||
-			!req.body.data.alerts ) {
+	if ( !req.body.token || !req.body.data || !req.body.data.feed ||
+			!req.body.data.alerts || !req.body.data.selectedClub ) {
 		return next( errors.blankData());
 	}
 	const { data, token } = req.body;
@@ -339,6 +375,7 @@ Router.post( "/media", async( req, res, next ) => {
 		if ( !user ) {
 			return next( errors.userDoesntExist());
 		}
+		club = Club.findOne({ name: data.selectedClub }).exec();
 		newPost = await new Post({
 			author: user._id,
 			media: true,
@@ -346,7 +383,8 @@ Router.post( "/media", async( req, res, next ) => {
 			content: data.content,
 			alerts: data.alerts,
 			hashtags: data.hashtags,
-			privacyRange: data.privacyRange,
+			feed: data.feed,
+			club: club && club._id,
 			mediaContent: {
 				title: data.title,
 				artist: data.artist,
@@ -363,9 +401,12 @@ Router.post( "/media", async( req, res, next ) => {
 			{ $push: { "newsfeed": newPost._id } },
 			{ multi: true }
 		).exec();
-		if ( data.privacyRange >= 2 ) {
-			User.update(
-				{ _id: { $in: user.followers } },
+
+		if ( data.feed === "club" ) {
+			club.feed.push( newPost._id );
+			await club.save();
+			await User.update(
+				{ _id: { $in: club.members, $ne: user._id } },
 				{ $push: { "newsfeed": newPost._id } },
 				{ multi: true }
 			).exec();
@@ -395,14 +436,15 @@ Router.post( "/mediaLink", async( req, res, next ) => {
 		previewData,
 		hostname,
 		embeddedUrl,
-		mentionsNotifications;
+		mentionsNotifications,
+		club;
 
 	if ( !req.body.token || !req.body.link ) {
 		return next( errors.blankData());
 	}
 
 	const {
-		token, link, mentions, description, alerts, hashtags, privacyRange, type
+		token, link, mentions, description, alerts, hashtags, feed, selectedClub, type
 	} = req.body;
 
 	try {
@@ -421,6 +463,7 @@ Router.post( "/mediaLink", async( req, res, next ) => {
 				[ embeddedUrl ] = previewData.url.replace( "view", "embed" ).split( "&" );
 			}
 		}
+		club = await Club.findOne({ name: selectedClub }).exec();
 		newPost = await new Post({
 			author: user._id,
 			media: true,
@@ -428,7 +471,8 @@ Router.post( "/mediaLink", async( req, res, next ) => {
 			content: description,
 			alerts: alerts,
 			hashtags: hashtags,
-			privacyRange: privacyRange,
+			feed: feed,
+			club: club && club._id,
 			linkContent: {
 				url: previewData.url,
 				embeddedUrl: embeddedUrl,
@@ -450,9 +494,11 @@ Router.post( "/mediaLink", async( req, res, next ) => {
 			{ multi: true }
 		).exec();
 
-		if ( privacyRange >= 2 ) {
+		if ( feed === "club" ) {
+			club.feed.push( newPost._id );
+			await club.save();
 			await User.update(
-				{ _id: { $in: user.followers } },
+				{ _id: { $in: club.members, $ne: user._id } },
 				{ $push: { "newsfeed": newPost._id } },
 				{ multi: true }
 			).exec();
@@ -479,14 +525,15 @@ Router.post( "/mediaPicture", upload.single( "picture" ), async( req, res, next 
 		newPost,
 		mentionsNotifications,
 		user,
-		userId;
+		userId,
+		club;
 
 	if ( !req.body.token || !req.body || !req.file ) {
 		return next( errors.blankData());
 	}
 	const {
 		token, mentions, hashtags, content, nsfw, spoiler,
-		spoilerDescription, privacyRange
+		spoilerDescription, feed, selectedClub
 	} = req.body;
 
 	try {
@@ -495,18 +542,20 @@ Router.post( "/mediaPicture", upload.single( "picture" ), async( req, res, next 
 		if ( !user ) {
 			return next( errors.userDoesntExist());
 		}
+		club = await Club.findOne({ name: selectedClub }).exec();
 		newPost = await new Post({
 			author: user._id,
 			media: true,
 			picture: true,
 			content: content,
+			feed: feed,
+			club: club && club._id,
 			alerts: {
 				nsfw: nsfw,
 				spoiler: spoiler,
 				spoilerDescription: spoilerDescription
 			},
 			hashtags: hashtags,
-			privacyRange: privacyRange,
 			mediaContent: {
 				image: req.file[ filenameProp ],
 			}
@@ -515,14 +564,18 @@ Router.post( "/mediaPicture", upload.single( "picture" ), async( req, res, next 
 			path: "author",
 			select: "fullname username profileImage"
 		}).execPopulate();
+
 		await User.update(
 			{ _id: { $in: user.friends } },
 			{ $push: { "newsfeed": newPost._id } },
 			{ multi: true }
 		).exec();
-		if ( privacyRange >= 2 ) {
+
+		if ( feed === "club" ) {
+			club.feed.push( newPost._id );
+			await club.save();
 			await User.update(
-				{ _id: { $in: user.followers } },
+				{ _id: { $in: club.members, $ne: user._id } },
 				{ $push: { "newsfeed": newPost._id } },
 				{ multi: true }
 			).exec();
@@ -544,7 +597,7 @@ Router.post( "/mediaPicture", upload.single( "picture" ), async( req, res, next 
 });
 
 
-Router.post( "/newsfeed/:skip", async( req, res, next ) => {
+Router.post( "/home/:skip", async( req, res, next ) => {
 	var
 		userId,
 		user;
@@ -572,7 +625,10 @@ Router.post( "/newsfeed/:skip", async( req, res, next ) => {
 						populate: {
 							path: "author",
 							select: "fullname username profileImage",
-						}
+						},
+					},
+					{
+						path: "club"
 					}
 				]
 			})
@@ -587,20 +643,17 @@ Router.post( "/newsfeed/:skip", async( req, res, next ) => {
 });
 
 
-// user timeline
-Router.post( "/:username/:skip", async( req, res, next ) => {
+Router.post( "/timeline/:skip", async( req, res, next ) => {
 	var
-		relationLvl,
-		visitorId,
-		user,
-		filteredPosts;
+		user;
 
-	if ( !req.params.username || !req.params.skip || !req.body.token ) {
+	if ( !req.body.token || !req.body.username || !req.params.skip ) {
 		return next( errors.blankData());
 	}
+	const { username, token } = req.body;
 	try {
-		visitorId = tokenVerifier( req.body.token );
-		user = await User.findOne({ username: req.params.username })
+		// token will be useful when adding user blocking
+		user = await User.findOne({ username: username })
 			.populate({
 				path: "posts",
 				options: {
@@ -618,7 +671,10 @@ Router.post( "/:username/:skip", async( req, res, next ) => {
 						populate: {
 							path: "author",
 							select: "fullname username profileImage",
-						}
+						},
+					},
+					{
+						path: "club"
 					}
 				]
 			})
@@ -626,20 +682,10 @@ Router.post( "/:username/:skip", async( req, res, next ) => {
 		if ( !user ) {
 			return next( errors.userDoesntExist());
 		}
-		if ( user.friends.some( id => id.equals( visitorId ))
-				|| user._id.equals( visitorId )) {
-			relationLvl = 1;
-		} else if ( user.followers.some( id => id.equals( visitorId ))) {
-			relationLvl = 2;
-		} else {
-			relationLvl = 3;
-		}
-		filteredPosts = user.posts.filter( post =>
-			post.privacyRange >= relationLvl );
 	} catch ( err ) {
 		return next( err );
 	}
-	res.send( filteredPosts );
+	res.send( user.posts );
 });
 
 
@@ -654,7 +700,7 @@ Router.delete( "/delete", async( req, res, next ) => {
 	try {
 		userId = tokenVerifier( token );
 		user = User.findById( userId ).exec();
-		post = Post.findById( postId ).exec();
+		post = Post.findById( postId ).populate( "club" ).exec();
 		[ user, post ] = await Promise.all([ user, post ]);
 		if ( !user ) {
 			return next( errors.userDoesntExist());
@@ -662,7 +708,8 @@ Router.delete( "/delete", async( req, res, next ) => {
 		if ( !post ) {
 			return next( errors.postDoesntExist());
 		}
-		if ( !user._id.equals( post.author._id )) {
+		const clubPresident = post.club && post.club.president;
+		if ( !user._id.equals( post.author._id ) && !user._id.equals( clubPresident )) {
 			return next( errors.unauthorized());
 		}
 		await removePost( user, post );
@@ -732,13 +779,10 @@ Router.post( "/share", async( req, res, next ) => {
 		newPost,
 		mentionsNotifications;
 
-	if ( !req.body.postId || !req.body.token || !req.body.privacyRange
-	|| !req.body.alerts ) {
+	if ( !req.body.postId || !req.body.token ) {
 		return next( errors.blankData());
 	}
-	const {
-		postId, token, description, privacyRange, alerts, mentions, hashtags
-	} = req.body;
+	const { postId, token, description, mentions, hashtags } = req.body;
 
 	try {
 		userId = tokenVerifier( token );
@@ -772,9 +816,9 @@ Router.post( "/share", async( req, res, next ) => {
 			author: user._id,
 			content: description,
 			sharedPost: originalPost._id,
-			privacyRange: privacyRange,
-			alerts: alerts,
-			hashtags: hashtags
+			hashtags: hashtags,
+			alerts: originalPost.alerts,
+			feed: "home"
 		}).save();
 
 		await User.update(
@@ -782,13 +826,6 @@ Router.post( "/share", async( req, res, next ) => {
 			{ $push: { "newsfeed": newPost._id } },
 			{ multi: true }
 		).exec();
-		if ( privacyRange >= 2 ) {
-			await User.update(
-				{ _id: { $in: user.followers } },
-				{ $push: { "newsfeed": newPost._id } },
-				{ multi: true }
-			).exec();
-		}
 		user.posts.push( newPost._id );
 		user.newsfeed.push( newPost._id );
 

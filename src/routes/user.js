@@ -81,7 +81,7 @@ Router.post( "/userInfo", async( req, res, next ) => {
 		requester = User.findById( userId ).exec();
 		user = User.findOne({ username: username })
 			.select( "username fullname description hobbies profileImage" +
-								" headerImage interests friends followers gender" +
+								" headerImage interests friends gender" +
 								" birthday totalLikes totalViews country region" )
 			.exec();
 		[ requester, user ] = await Promise.all([ requester, user ]);
@@ -233,7 +233,7 @@ Router.post( "/sugestedUsers", async( req, res, next ) => {
 			.where( "_id" ).ne( user.id )
 			.select(
 				"username fullname description hobbies profileImage headerImage " +
-				"friends followers totalLikes"
+				"friends totalLikes"
 			)
 			.exec();
 	} catch ( err ) {
@@ -253,7 +253,7 @@ Router.post( "/randomUser", async( req, res, next ) => {
 	}
 	try {
 		userId = tokenVerifier( req.body.token );
-		randomUser = await findRandomUser( userId );
+		randomUser = await findRandomUser( userId, req.body.exposition );
 		res.send( randomUser );
 	} catch ( err ) {
 		return next( err );
@@ -277,7 +277,7 @@ Router.post( "/matchHobbies", async( req, res, next ) => {
 			.where( "_id" ).ne( userId )
 			.select(
 				"username fullname description hobbies profileImage headerImage " +
-				"friends followers"
+				"friends"
 			)
 			.exec();
 	} catch ( err ) {
@@ -353,8 +353,7 @@ Router.post( "/getChats", async( req, res, next ) => {
 Router.post( "/getSocialCircle", async( req, res, next ) => {
 	var
 		userId,
-		user,
-		socialCircle = [];
+		user;
 
 	if ( !req.body.token ) {
 		return next( errors.blankData());
@@ -362,17 +361,15 @@ Router.post( "/getSocialCircle", async( req, res, next ) => {
 	try {
 		userId = tokenVerifier( req.body.token );
 		user = await User.findById( userId )
-			.populate( "friends followers following", "username fullname profileImage" )
-			.select( "friends followers following" )
+			.populate({
+				path: "friends",
+				select: "username fullname profileImage"
+			})
 			.exec();
 		if ( !user ) {
 			return next( errors.userDoesntExist());
 		}
-		socialCircle = socialCircle.concat(
-			user.friends, user.following, user.followers
-		);
-		socialCircle = removeDuplicates( socialCircle, "username" );
-		res.send( socialCircle );
+		res.send( user.friends );
 	} catch ( err ) {
 		return next( err );
 	}
@@ -474,7 +471,7 @@ Router.delete( "/deleteAccount", async( req, res, next ) => {
 			await new Ticket({
 				author: user._id,
 				content: req.body.feedback,
-				fromDeletedAccount: true
+				deleteFeedback: true
 			}).save();
 		}
 		await user.remove();
@@ -487,10 +484,7 @@ Router.delete( "/deleteAccount", async( req, res, next ) => {
 
 Router.post( "/getUserAlbum", async( req, res, next ) => {
 	var
-		visitorId,
-		user,
-		relationLevel,
-		filteredPosts = [];
+		user;
 
 	if ( !req.body.token || !req.body.username ) {
 		return next( errors.blankData());
@@ -498,7 +492,6 @@ Router.post( "/getUserAlbum", async( req, res, next ) => {
 	const { token, username } = req.body;
 
 	try {
-		visitorId = tokenVerifier( token );
 		user = await User.findOne({ username: username })
 			.populate({
 				path: "posts",
@@ -512,20 +505,10 @@ Router.post( "/getUserAlbum", async( req, res, next ) => {
 		if ( !user ) {
 			return next( errors.userDoesntExist());
 		}
-		if ( user.friends.some( id => id.equals( visitorId ))
-				|| user._id.equals( visitorId )) {
-			relationLevel = 1;
-		} else if ( user.followers.some( id => id.equals( visitorId ))) {
-			relationLevel = 2;
-		} else {
-			relationLevel = 3;
-		}
-		filteredPosts = user.posts.filter( post =>
-			post.privacyRange >= relationLevel );
 	} catch ( err ) {
 		return next( err );
 	}
-	res.send( filteredPosts );
+	res.send( user.posts );
 });
 
 
@@ -545,7 +528,7 @@ Router.post( "/getUserNetwork", async( req, res, next ) => {
 		requester = User.findById( requesterId ).exec();
 		user = User.findOne({ username: username })
 			.populate({
-				path: "friends followers following",
+				path: "friends",
 				select: "username fullname profileImage description hobbies"
 			})
 			.exec();
@@ -558,13 +541,10 @@ Router.post( "/getUserNetwork", async( req, res, next ) => {
 	}
 	res.send({
 		user: {
-			friends: user.friends,
-			followers: user.followers,
-			following: user.following
+			friends: user.friends
 		},
 		requester: {
-			friends: requester.friends,
-			following: requester.following
+			friends: requester.friends
 		}
 	});
 });
@@ -590,6 +570,35 @@ Router.post( "/getLikesAndViews", async( req, res, next ) => {
 		return next( err );
 	}
 	res.send( user );
+});
+
+
+Router.post( "/clubs", async( req, res, next ) => {
+	var
+		userId,
+		user;
+
+	if ( !req.body.token ) {
+		return next( errors.blankData());
+	}
+	try {
+		userId = tokenVerifier( req.body.token );
+		user = await User.findById( userId )
+			.populate({
+				path: "clubs",
+				populate: {
+					path: "president",
+					select: "username fullname"
+				}
+			})
+			.exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+	} catch ( err ) {
+		return next( err );
+	}
+	res.send( user.clubs );
 });
 
 

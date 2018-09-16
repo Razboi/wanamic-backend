@@ -29,6 +29,11 @@ module.exports = {
 		err.statusCode = 404;
 		return err;
 	},
+	clubDoesntExist: () => {
+		var err = new Error( "Club doesn't exist" );
+		err.statusCode = 404;
+		return err;
+	},
 	registeredUsername: () => {
 		var err = new Error( "Username already registered" );
 		err.statusCode = 422;
@@ -36,6 +41,11 @@ module.exports = {
 	},
 	registeredEmail: () => {
 		var err = new Error( "Email already registered" );
+		err.statusCode = 422;
+		return err;
+	},
+	duplicatedClub: () => {
+		var err = new Error( "This club already exists" );
 		err.statusCode = 422;
 		return err;
 	},
@@ -92,6 +102,21 @@ module.exports = {
 	},
 	banned: () => {
 		var err = new Error( "This user is banned" );
+		err.statusCode = 401;
+		return err;
+	},
+	exceededClubRequests: () => {
+		var err = new Error( "Exceeded club requests" );
+		err.statusCode = 422;
+		return err;
+	},
+	presidentCantExit: () => {
+		var err = new Error( "The club president can't exit the club" );
+		err.statusCode = 404;
+		return err;
+	},
+	bannedFromClub: () => {
+		var err = new Error( "This user is banned from the club" );
 		err.statusCode = 401;
 		return err;
 	}

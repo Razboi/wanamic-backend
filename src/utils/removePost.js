@@ -13,7 +13,7 @@ removePost = async( user, post ) => {
 		user.posts.splice( postsIndex, 1 );
 		user.newsfeed.splice( newsfeedIndex, 1 );
 		let updateNewsfeed = User.update(
-			{ _id: { $in: [ ...user.friends, ...user.followers ] } },
+			{ _id: { $in: user.friends } },
 			{ $pull: { "newsfeed": post._id } },
 			{ multi: true }
 		).exec();
