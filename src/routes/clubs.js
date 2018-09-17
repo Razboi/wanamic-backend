@@ -468,6 +468,7 @@ Router.get( "/randomClub", async( req, res, next ) => {
 			.select( "username fullname" )
 			.exec();
 		club.feed = await Post.find({ "_id": { $in: club.feed } })
+			.sort({ createdAt: -1 })
 			.populate({
 				path: "author",
 				select: "username fullname profileImage"
