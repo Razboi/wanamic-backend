@@ -209,10 +209,15 @@ Router.post( "/create", async( req, res, next ) => {
 			feed: feed,
 			club: club && club._id
 		}).save();
-		newPost = await newPost.populate({
-			path: "author",
-			select: "fullname username profileImage"
-		}).execPopulate();
+		newPost = await newPost
+			.populate({
+				path: "author",
+				select: "fullname username profileImage"
+			})
+			.populate({
+				path: "club"
+			})
+			.execPopulate();
 
 		await User.update(
 			{ _id: { $in: user.friends } },
@@ -375,7 +380,7 @@ Router.post( "/media", async( req, res, next ) => {
 		if ( !user ) {
 			return next( errors.userDoesntExist());
 		}
-		club = Club.findOne({ name: data.selectedClub }).exec();
+		club = await Club.findOne({ name: data.selectedClub }).exec();
 		newPost = await new Post({
 			author: user._id,
 			media: true,
@@ -396,6 +401,7 @@ Router.post( "/media", async( req, res, next ) => {
 			path: "author",
 			select: "fullname username profileImage"
 		}).execPopulate();
+		newPost.club = club;
 		await User.update(
 			{ _id: { $in: user.friends } },
 			{ $push: { "newsfeed": newPost._id } },
@@ -487,6 +493,7 @@ Router.post( "/mediaLink", async( req, res, next ) => {
 			path: "author",
 			select: "fullname username profileImage"
 		}).execPopulate();
+		newPost.club = club;
 
 		await User.update(
 			{ _id: { $in: user.friends } },
@@ -564,6 +571,7 @@ Router.post( "/mediaPicture", upload.single( "picture" ), async( req, res, next 
 			path: "author",
 			select: "fullname username profileImage"
 		}).execPopulate();
+		newPost.club = club;
 
 		await User.update(
 			{ _id: { $in: user.friends } },
