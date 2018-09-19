@@ -274,7 +274,7 @@ describe( "post user/updateInterests", function() {
 
 
 
-describe( "post user/sugestedUsers", function() {
+describe( "post user/suggestedUsers", function() {
 	var
 		token,
 		author;
@@ -296,10 +296,9 @@ describe( "post user/sugestedUsers", function() {
 
 	it( "should return 200", function( done ) {
 		chai.request( "localhost:8081" )
-			.post( "/user/sugestedUsers" )
+			.post( "/user/suggestedUsers" )
 			.send({
-				token: token,
-				skip: 0
+				token: token
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 200 );
@@ -309,23 +308,8 @@ describe( "post user/sugestedUsers", function() {
 
 	it( "should return 422", function( done ) {
 		chai.request( "localhost:8081" )
-			.post( "/user/sugestedUsers" )
-			.send({
-				token: token
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 422 );
-				res.text.should.equal( "Required data not found" );
-				done();
-			});
-	});
-
-	it( "should return 422", function( done ) {
-		chai.request( "localhost:8081" )
-			.post( "/user/sugestedUsers" )
-			.send({
-				skip: 0
-			})
+			.post( "/user/suggestedUsers" )
+			.send({})
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
 				res.text.should.equal( "Required data not found" );
@@ -335,10 +319,9 @@ describe( "post user/sugestedUsers", function() {
 
 	it( "should return 401 invalid jwt", function( done ) {
 		chai.request( "localhost:8081" )
-			.post( "/user/sugestedUsers" )
+			.post( "/user/suggestedUsers" )
 			.send({
-				token: "123123sadasda1231312",
-				skip: 0
+				token: "123123sadasda1231312"
 			})
 			.end(( err, res ) => {
 				res.should.have.status( 401 );
