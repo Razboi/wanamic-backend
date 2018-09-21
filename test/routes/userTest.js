@@ -65,19 +65,6 @@ describe( "POST user/userInfo", function() {
 			});
 	});
 
-	it( "should return 422 Token not found", function( done ) {
-		chai.request( "localhost:8081" )
-			.post( "/user/userInfo" )
-			.send({
-				username: "unexistinguser"
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 422 );
-				res.text.should.equal( "Required data not found" );
-				done();
-			});
-	});
-
 	it( "should return 422 Username not found", function( done ) {
 		chai.request( "localhost:8081" )
 			.post( "/user/userInfo" )
@@ -87,20 +74,6 @@ describe( "POST user/userInfo", function() {
 			.end(( err, res ) => {
 				res.should.have.status( 422 );
 				res.text.should.equal( "Required data not found" );
-				done();
-			});
-	});
-
-	it( "should return 401 invalid jwt", function( done ) {
-		chai.request( "localhost:8081" )
-			.post( "/user/userInfo" )
-			.send({
-				username: "unexistinguser",
-				token: "123213asdasd123123123"
-			})
-			.end(( err, res ) => {
-				res.should.have.status( 401 );
-				res.text.should.equal( "jwt malformed" );
 				done();
 			});
 	});
