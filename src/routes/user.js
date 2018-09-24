@@ -660,4 +660,25 @@ Router.post( "/feedback", async( req, res, next ) => {
 });
 
 
+Router.get( "/suggestions/:search", async( req, res, next ) => {
+	var suggestions = [];
+
+	if ( !req.params.search ) {
+		return next( errors.blankData());
+	}
+	try {
+		const searchRegex = new RegExp( req.params.search );
+		suggestions = await User.find({
+			fullname: { $regex: searchRegex, $options: "i" }
+		})
+			.limit( 10 )
+			.select( "username fullname profileImage" )
+			.exec();
+	} catch ( err ) {
+		return next( err );
+	}
+	res.send( suggestions );
+});
+
+
 module.exports = Router;
