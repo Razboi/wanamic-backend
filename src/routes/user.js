@@ -213,13 +213,13 @@ Router.post( "/updateInterests", async( req, res, next ) => {
 });
 
 
-Router.post( "/sugestedUsers", async( req, res, next ) => {
+Router.post( "/suggestedUsers", async( req, res, next ) => {
 	var
 		userId,
 		user,
 		sugestedUser;
 
-	if ( !req.body.token || req.body.skip === undefined ) {
+	if ( !req.body.token ) {
 		return next( errors.blankData());
 	}
 	try {
@@ -228,13 +228,55 @@ Router.post( "/sugestedUsers", async( req, res, next ) => {
 		if ( !user ) {
 			return next( errors.userDoesntExist());
 		}
-		sugestedUser = await User.findOne({ interests: { $in: user.interests } })
-			.skip( req.body.skip )
-			.where( "_id" ).ne( user.id )
-			.select(
+		[ sugestedUser ] = await User.aggregate()
+			.match({
+				interests: { $in: user.interests },
+				"_id": { $ne: user.id }
+			})
+			.project(
 				"username fullname description hobbies profileImage headerImage " +
 				"friends totalLikes"
 			)
+			.sample( 1 )
+			.exec();
+	} catch ( err ) {
+		return next( err );
+	}
+	res.send( sugestedUser );
+});
+
+
+Router.post( "/suggestedUserChat", async( req, res, next ) => {
+	var
+		userId,
+		user,
+		sugestedUser,
+		openConversations = [];
+
+	if ( !req.body.token ) {
+		return next( errors.blankData());
+	}
+	try {
+		userId = tokenVerifier( req.body.token );
+		user = await User.findById( userId )
+			.populate( "openConversations" )
+			.exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+		for ( const conversation of user.openConversations ) {
+			openConversations.push( conversation.target );
+		}
+		[ sugestedUser ] = await User.aggregate()
+			.match({
+				interests: { $in: user.interests },
+				"_id": { $ne: user._id, $nin: openConversations }
+			})
+			.project(
+				"username fullname description hobbies profileImage headerImage " +
+				"friends totalLikes"
+			)
+			.sample( 1 )
 			.exec();
 	} catch ( err ) {
 		return next( err );
@@ -599,6 +641,33 @@ Router.post( "/clubs", async( req, res, next ) => {
 		return next( err );
 	}
 	res.send( user.clubs );
+});
+
+
+Router.post( "/feedback", async( req, res, next ) => {
+	var
+		userId,
+		user;
+
+	if ( !req.body.token || !req.body.content ) {
+		return next( errors.blankData());
+	}
+	const { token, content } = req.body;
+	try {
+		userId = tokenVerifier( token );
+		user = await User.findById( userId ).exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+		await new Ticket({
+			author: user._id,
+			content: `Feedback: ${content}`,
+			type: "feedback"
+		}).save();
+	} catch ( err ) {
+		return next( err );
+	}
+	res.sendStatus( 201 );
 });
 
 
