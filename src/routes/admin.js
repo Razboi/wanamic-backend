@@ -5,8 +5,10 @@ const
 	Post = require( "../models/Post" ),
 	Comment = require( "../models/Comment" ),
 	Notification = require( "../models/Notification" ),
+	Club = require( "../models/Club" ),
 	tokenVerifier = require( "../utils/tokenVerifier" ),
-	errors = require( "../utils/errors" );
+	errors = require( "../utils/errors" ),
+	sm = require( "sitemap" );
 
 Router.post( "/adminData", async( req, res, next ) => {
 	var
@@ -175,6 +177,48 @@ Router.post( "/banUser", async( req, res, next ) => {
 		return next( err );
 	}
 	res.sendStatus( 200 );
+});
+
+
+Router.get( "/sitemap", async( req, res, next ) => {
+	let
+		users = [],
+		profileUrls = [],
+		clubs = [],
+		clubUrls = [],
+		sitemap;
+	try {
+		users = await User.find().select( "username" ).exec();
+		profileUrls = users.map( user => {
+			return { url: `/${user.username}`, changefreq: "weekly", priority: 0.7 };
+		});
+		clubs = await Club.find().select( "name" ).exec();
+		clubUrls = clubs.map( club => {
+			return { url: `/c/${club.name}`, changefreq: "daily", priority: 0.8 };
+		});
+		sitemap = sm.createSitemap({
+			hostname: "https://wanamic.com",
+			cacheTime: 600000,
+			urls: [
+				{ url: "/", changefreq: "daily", priority: 1 },
+				{ url: "/signup", changefreq: "weekly", priority: 0.6 },
+				{ url: "/login", changefreq: "monthly", priority: 0.5 },
+				{ url: "/settings", changefreq: "weekly", priority: 0.5 },
+				{ url: "/explore", changefreq: "weekly", priority: 0.6 },
+				...profileUrls,
+				...clubUrls
+			]
+		});
+		sitemap.toXML( function( err, xml ) {
+			if ( err ) {
+				return res.status( 500 ).end();
+			}
+			res.header( "Content-Type", "application/xml" );
+			res.send( xml );
+		});
+	} catch ( err ) {
+		return next( err );
+	}
 });
 
 

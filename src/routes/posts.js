@@ -655,12 +655,11 @@ Router.post( "/timeline/:skip", async( req, res, next ) => {
 	var
 		user;
 
-	if ( !req.body.token || !req.body.username || !req.params.skip ) {
+	if ( !req.body.username || !req.params.skip ) {
 		return next( errors.blankData());
 	}
-	const { username, token } = req.body;
+	const { username } = req.body;
 	try {
-		// token will be useful when adding user blocking
 		user = await User.findOne({ username: username })
 			.populate({
 				path: "posts",
