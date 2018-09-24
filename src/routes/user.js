@@ -271,7 +271,9 @@ Router.post( "/suggestedUserChat", async( req, res, next ) => {
 		[ sugestedUser ] = await User.aggregate()
 			.match({
 				interests: { $in: user.interests },
-				"_id": { $ne: user._id, $nin: openConversations }
+				_id: { $ne: user._id, $nin: openConversations },
+				profileImage: { $ne: undefined },
+				hobbies: { $ne: [] }
 			})
 			.project(
 				"username fullname description hobbies profileImage headerImage " +
