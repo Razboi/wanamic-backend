@@ -468,6 +468,7 @@ Router.get( "/randomClub", async( req, res, next ) => {
 			.select( "username fullname" )
 			.exec();
 		club.feed = await Post.find({ "_id": { $in: club.feed } })
+			.sort({ createdAt: -1 })
 			.populate({
 				path: "author",
 				select: "username fullname profileImage"
@@ -479,36 +480,22 @@ Router.get( "/randomClub", async( req, res, next ) => {
 });
 
 
-Router.get( "/search/:name", async( req, res, next ) => {
-	var
-		club;
+Router.get( "/suggestions/:search", async( req, res, next ) => {
+	var suggestions = [];
 
 	try {
-		const searchRegex = new RegExp( req.params.name );
-		club = await Club.findOne({
+		const searchRegex = new RegExp( req.params.search );
+		suggestions = await Club.find({
 			name: { $regex: searchRegex, $options: "i" }
 		})
-			.populate({
-				path: "president",
-				select: "username fullname profileImage"
-			})
-			.populate({
-				path: "feed",
-				options: {
-					limit: 10,
-					sort: "-createdAt"
-				},
-				populate: {
-					path: "author",
-					select: "username fullname profileImage"
-				}
-			})
+			.select( "name title" )
+			.limit( 10 )
 			.where( "approved" ).equals( true )
 			.exec();
 	} catch ( err ) {
 		return next( err );
 	}
-	res.send( club );
+	res.send( suggestions );
 });
 
 

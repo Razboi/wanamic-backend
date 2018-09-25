@@ -67,30 +67,31 @@ let
 
 Router.post( "/userInfo", async( req, res, next ) => {
 	var
-		userId,
+		requesterId,
 		requester,
 		user;
 
-	if ( !req.body.username || !req.body.token ) {
+	if ( !req.body.username ) {
 		return next( errors.blankData());
 	}
 	const { username, token } = req.body;
 
 	try {
-		userId = tokenVerifier( token );
-		requester = User.findById( userId ).exec();
-		user = User.findOne({ username: username })
+		user = await User.findOne({ username: username })
 			.select( "username fullname description hobbies profileImage" +
 								" headerImage interests friends gender" +
 								" birthday totalLikes totalViews country region" )
 			.exec();
-		[ requester, user ] = await Promise.all([ requester, user ]);
-		if ( !user || !requester ) {
+		if ( !user ) {
 			return next( errors.userDoesntExist());
 		}
-		if ( user.username !== requester.username ) {
-			user.totalViews++;
-			await user.save();
+		if ( token ) {
+			requesterId = tokenVerifier( token );
+			requester = await User.findById( requesterId ).exec();
+			if ( user.username !== requester.username ) {
+				user.totalViews++;
+				await user.save();
+			}
 		}
 	} catch ( err ) {
 		return next( err );
@@ -213,13 +214,13 @@ Router.post( "/updateInterests", async( req, res, next ) => {
 });
 
 
-Router.post( "/sugestedUsers", async( req, res, next ) => {
+Router.post( "/suggestedUsers", async( req, res, next ) => {
 	var
 		userId,
 		user,
 		sugestedUser;
 
-	if ( !req.body.token || req.body.skip === undefined ) {
+	if ( !req.body.token ) {
 		return next( errors.blankData());
 	}
 	try {
@@ -228,13 +229,57 @@ Router.post( "/sugestedUsers", async( req, res, next ) => {
 		if ( !user ) {
 			return next( errors.userDoesntExist());
 		}
-		sugestedUser = await User.findOne({ interests: { $in: user.interests } })
-			.skip( req.body.skip )
-			.where( "_id" ).ne( user.id )
-			.select(
+		[ sugestedUser ] = await User.aggregate()
+			.match({
+				interests: { $in: user.interests },
+				"_id": { $ne: user.id }
+			})
+			.project(
 				"username fullname description hobbies profileImage headerImage " +
 				"friends totalLikes"
 			)
+			.sample( 1 )
+			.exec();
+	} catch ( err ) {
+		return next( err );
+	}
+	res.send( sugestedUser );
+});
+
+
+Router.post( "/suggestedUserChat", async( req, res, next ) => {
+	var
+		userId,
+		user,
+		sugestedUser,
+		openConversations = [];
+
+	if ( !req.body.token ) {
+		return next( errors.blankData());
+	}
+	try {
+		userId = tokenVerifier( req.body.token );
+		user = await User.findById( userId )
+			.populate( "openConversations" )
+			.exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+		for ( const conversation of user.openConversations ) {
+			openConversations.push( conversation.target );
+		}
+		[ sugestedUser ] = await User.aggregate()
+			.match({
+				interests: { $in: user.interests },
+				_id: { $ne: user._id, $nin: openConversations },
+				profileImage: { $ne: undefined },
+				hobbies: { $ne: [] }
+			})
+			.project(
+				"username fullname description hobbies profileImage headerImage " +
+				"friends totalLikes"
+			)
+			.sample( 1 )
 			.exec();
 	} catch ( err ) {
 		return next( err );
@@ -486,10 +531,10 @@ Router.post( "/getUserAlbum", async( req, res, next ) => {
 	var
 		user;
 
-	if ( !req.body.token || !req.body.username ) {
+	if ( !req.body.username ) {
 		return next( errors.blankData());
 	}
-	const { token, username } = req.body;
+	const { username } = req.body;
 
 	try {
 		user = await User.findOne({ username: username })
@@ -514,39 +559,27 @@ Router.post( "/getUserAlbum", async( req, res, next ) => {
 
 Router.post( "/getUserNetwork", async( req, res, next ) => {
 	var
-		requesterId,
-		requester,
 		user;
 
-	if ( !req.body.token || !req.body.username ) {
+	if ( !req.body.username ) {
 		return next( errors.blankData());
 	}
-	const { token, username } = req.body;
+	const { username } = req.body;
 
 	try {
-		requesterId = tokenVerifier( token );
-		requester = User.findById( requesterId ).exec();
-		user = User.findOne({ username: username })
+		user = await User.findOne({ username: username })
 			.populate({
 				path: "friends",
 				select: "username fullname profileImage description hobbies"
 			})
 			.exec();
-		[ requester, user ] = await Promise.all([ requester, user ]);
-		if ( !user || !requester ) {
+		if ( !user ) {
 			return next( errors.userDoesntExist());
 		}
 	} catch ( err ) {
 		return next( err );
 	}
-	res.send({
-		user: {
-			friends: user.friends
-		},
-		requester: {
-			friends: requester.friends
-		}
-	});
+	res.send( user.friends );
 });
 
 
@@ -599,6 +632,54 @@ Router.post( "/clubs", async( req, res, next ) => {
 		return next( err );
 	}
 	res.send( user.clubs );
+});
+
+
+Router.post( "/feedback", async( req, res, next ) => {
+	var
+		userId,
+		user;
+
+	if ( !req.body.token || !req.body.content ) {
+		return next( errors.blankData());
+	}
+	const { token, content } = req.body;
+	try {
+		userId = tokenVerifier( token );
+		user = await User.findById( userId ).exec();
+		if ( !user ) {
+			return next( errors.userDoesntExist());
+		}
+		await new Ticket({
+			author: user._id,
+			content: `Feedback: ${content}`,
+			type: "feedback"
+		}).save();
+	} catch ( err ) {
+		return next( err );
+	}
+	res.sendStatus( 201 );
+});
+
+
+Router.get( "/suggestions/:search", async( req, res, next ) => {
+	var suggestions = [];
+
+	if ( !req.params.search ) {
+		return next( errors.blankData());
+	}
+	try {
+		const searchRegex = new RegExp( req.params.search );
+		suggestions = await User.find({
+			fullname: { $regex: searchRegex, $options: "i" }
+		})
+			.limit( 10 )
+			.select( "username fullname profileImage" )
+			.exec();
+	} catch ( err ) {
+		return next( err );
+	}
+	res.send( suggestions );
 });
 
 
